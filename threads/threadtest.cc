@@ -164,7 +164,7 @@ void Consumer(int which){
 //	to call SimpleThread, and then calling SimpleThread ourselves.
 //----------------------------------------------------------------------
 
-void ThreadTest(){
+void ProdConsTest(){
     DEBUG('t', "Entering ProdCons\n");
     bufLock = new(std::nothrow) Lock("bufLock");
     contentLock = new(std::nothrow) Lock("contentLock");
