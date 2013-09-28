@@ -183,10 +183,92 @@ void ProdConsTest(){
     t->Fork(Producer, 1);
     t3->Fork(Consumer, 3);
 
-
+// SimpleThreadPriority
+// 	Loop 5 times, yielding the CPU to another ready thread 
+//	each iteration.
+//
+//	"which" is simply a number identifying the thread, for debugging
+//	purposes.  
+//----------------------------------------------------------------------
 
     //SimpleThread(0);
 }
 
 
+void
+SimpleThread(int which)
+{
+    int num;
+    
+    for (num = 0; num < 5; num++) {
+    printf("*** thread %d looped %d times\n", which, num);
+        currentThread->Yield();
+    }
+}
+
+//----------------------------------------------------------------------
+// ThreadTest
+//  Set up a ping-pong between two threads, by forking a thread 
+//  to call SimpleThread, and then calling SimpleThread ourselves.
+//----------------------------------------------------------------------
+
+void
+ThreadTest()
+{
+    DEBUG('t', "Entering SimpleTest");
+
+    Thread *t = new(std::nothrow) Thread("forked thread");
+
+    t->Fork(SimpleThread, 1);
+    SimpleThread(0);
+}
+
+//----------------------------------------------------------------------
+// SimpleThreadPriority
+//  Loop 5 times, yielding the CPU to another ready thread 
+//  each iteration.
+//
+//  "which" is simply a number identifying the thread, for debugging
+//  purposes.  
+//----------------------------------------------------------------------
+
+void
+SimpleThreadPriority(int which)
+{
+    int num;
+    
+    for (num = 0; num < 5; num++) {
+    printf("*** thread %d with looped %d times\n", which, num);
+        currentThread->Yield();
+    }
+}
+
+//----------------------------------------------------------------------
+// ThreadTest for priority threads
+//  Creates two new threads aside from the main thread.  For the first
+//  test, the first, fourth and fifth of these threads will be given 
+//  the highest priority and the other two will have an equal lower 
+//  priority.  The thread with the highest priority should finish first.  
+//----------------------------------------------------------------------
+
+void
+ThreadTestPriority()
+{
+    DEBUG('t', "Entering SimpleTestPriority");
+    DEBUG('t', "Starting the first priority test");
+
+    Thread *t1 = new(std::nothrow) Thread("forked thread1", 0);
+    Thread *t2 = new(std::nothrow) Thread("forked thread2", 1);
+    Thread *t3 = new(std::nothrow) Thread("forked thread3", 1);
+    Thread *t4 = new(std::nothrow) Thread("forked thread4", 0);
+    Thread *t5 = new(std::nothrow) Thread("forked thread5", 0);
+    Thread *t6 = new(std::nothrow) Thread("forked thread6", 1);
+
+    t1->Fork(SimpleThreadPriority, 1);
+    t2->Fork(SimpleThreadPriority, 2);
+    t3->Fork(SimpleThreadPriority, 3);
+    t4->Fork(SimpleThreadPriority, 4);
+    t5->Fork(SimpleThreadPriority, 5);
+    t6->Fork(SimpleThreadPriority, 6);
+}
 #endif
