@@ -241,7 +241,7 @@ Lock::~Lock() {}
 void Lock::Acquire() 
 {
     int localVal = 0;
-    while (freed == 0) {            // semaphore not available
+    while (localVal == 0) {            // semaphore not available
         IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
         localVal = freed;
         freed = 0;
@@ -297,7 +297,7 @@ void Condition::Signal(Lock* conditionLock)
     thread = (Thread *)queue->Remove();
     if (thread != NULL)    // make thread ready, consuming the V immediately
         scheduler->ReadyToRun(thread);
-    conditionLock->Release();
+    //conditionLock->Release();
     // Puts thread on ready list, which must reaquire lock
     (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
 
@@ -315,7 +315,7 @@ void Condition::Broadcast(Lock* conditionLock)
         scheduler->ReadyToRun(thread);
         thread = (Thread *)queue->Remove();
     }
-    conditionLock->Release();
+    //conditionLock->Release();
     (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
 
 }
