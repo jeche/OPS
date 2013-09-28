@@ -319,4 +319,4 @@ void Condition::Broadcast(Lock* conditionLock)
     (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
 
 }
-#endif
+#endif // CHANGED
