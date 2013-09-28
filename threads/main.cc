@@ -264,7 +264,7 @@ main(int argc, char **argv)
     else {
         ASSERT(argc > 1);
         if (strcmp(argv[2], "2") == 0) {
-        	ThreadTestPriority();  //CHANGE TO THE NAME OF YOUR TEST FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!!!
+        	ProdCons();  
         }
         else if (strcmp(argv[2], "5") == 0) {
         	ThreadTestPriority();  //CHANGE TO THE NAME OF YOUR TEST FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!!!
