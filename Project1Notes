@@ -9,7 +9,7 @@ Similar to a reader-writer situation.  We know by disabling interupts that the t
 
 There is less overhead (memory-wise and less function calls) in using low-level calls rather than semaphores.  Semaphores also disable interupts, so the overhead cost in that aspect is the same.  
 
-In Release we assert that "freed" is 0 because only one thread can have the lock at a time.  We also assert that the current thread must be holding the lock in order to release it.  We assert these things inside of where interrupts are disabled for safety***********************************************************
+In Release we assert that "freed" is 0 because only one thread can have the lock at a time.  We also assert that the current thread must be holding the lock in order to release it.  We assert these things inside of where interrupts are disabled for safety***********************************************************  We set the threadname to null in release because we want to make sure that if the thread tries to do something with the lock after it has been released that it won't be able to.
 
 
 We are including <string.h> in order to use the strcmp function to test if the current thread is the same as the thread that holds the lock.
