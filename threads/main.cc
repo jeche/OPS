@@ -230,7 +230,7 @@ main(int argc, char **argv)
 
 // External functions used by this file
 
-extern void ThreadTest(void), ThreadTestPriority(void),ProdCons(void), Copy(char *unixFile, char *nachosFile);
+extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(void), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
@@ -259,12 +259,13 @@ main(int argc, char **argv)
     (void) Initialize(argc, argv);
     
 #ifdef THREADS
-    if (strcmp(argv[1], "-P") != 0)
-    	ThreadTest();
+    if (argc == 1 || strcmp(argv[1], "-P") != 0){
+	ThreadTest();
+    }
     else {
         ASSERT(argc > 1);
         if (strcmp(argv[2], "2") == 0) {
-        	ProdCons();  //CHANGE TO THE NAME OF YOUR TEST FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!!!
+        	ProdConsTest();
         }
         else if (strcmp(argv[2], "5") == 0) {
         	ThreadTestPriority();  //CHANGE TO THE NAME OF YOUR TEST FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!!!
