@@ -240,11 +240,26 @@ Lock::Lock(const char* debugName)
 Lock::~Lock() {}
 void Lock::Acquire() 
 {
+
+    // IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
+    
+    // while (value == 0) {            // semaphore not available
+    // queue->Append((void *)currentThread);   // so go to sleep
+    // currentThread->Sleep();
+    // } 
+    // value--;                    // semaphore available, 
+    //                     // consume its value
+    // 
+    // (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
     int localVal = 0;
-    while (freed == 0) {            // semaphore not available
+    while (localVal == 0) {            // semaphore not available
         IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
         localVal = freed;
         freed = 0;
+        if(localVal == 0){
+            queue->Append((void *)currentThread);   // so go to sleep
+            currentThread->Sleep();
+        }
         (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
     }
     threadName = currentThread->getName();
@@ -252,12 +267,20 @@ void Lock::Acquire()
 }
 void Lock::Release() 
 {
-    IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
-    ASSERT(freed == 0); // 
-    ASSERT(this->isHeldByCurrentThread()); // 
+    // IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
+    // ASSERT(freed == 0); // 
+    // ASSERT(this->isHeldByCurrentThread()); // 
+    // freed = 1;
+    // threadName = NULL;
+    // (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
+    Thread *thread;
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+
+    thread = (Thread *)queue->Remove();
+    if (thread != NULL)    // make thread ready, consuming the V immediately
+    scheduler->ReadyToRun(thread);
     freed = 1;
-    threadName = NULL;
-    (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
+    (void) interrupt->SetLevel(oldLevel);
 }
 
 bool Lock::isHeldByCurrentThread()
