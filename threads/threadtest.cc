@@ -327,11 +327,12 @@ ElevatorManager* manager = new(std::nothrow) ElevatorManager("manager");
 
 void ElevatorArrivalHandler(int)
 {
-	elevatorLock->Acquire();
-	curFloor += dir;
-	waiting[curFloor]->Broadcast(elevatorLock);
-	filled->Wait(elevatorLock);
-    return;
+	done++;
+	// elevatorLock->Acquire();
+	// curFloor += dir;
+	// waiting[curFloor]->Broadcast(elevatorLock);
+	// filled->Wait(elevatorLock);
+    	return;
 };
 
 //	NOTE: although our definition allows only a single integer argument
@@ -363,9 +364,9 @@ void Person(int arg)
 void Elevator(int floors)
 {
 	Timer* arrivalTimer = new(std::nothrow) Timer(ElevatorArrivalHandler, 0, false); // Need to make sure interrupt 100
-	while(!done)
+	while(done!=10)
 	{
-		done = 1;
+		
 	}
 	delete timer;
 }
@@ -383,9 +384,9 @@ ElevatorTest()
     t = new(std::nothrow) Thread("p1");
     PersonArgs* pArgs = new(std::nothrow) PersonArgs(1, 2);
     int arg = (int)pArgs;
-    t->Fork(Person, arg);
+    // t->Fork(Person, arg);
 
     
-    done = 1;
+ //   done = 1;
 }
 #endif
