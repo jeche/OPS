@@ -357,7 +357,8 @@ void Person(int arg)
 	pArgs = (PersonArgs*)((void*) arg);
 	printf("Leaving = %d, Going = %d", pArgs->leaving, pArgs->going);
 	// Give an id?
-	manager->ArrivingGoingFromTo(pArgs->leaving, pArgs->going);
+	// manager->ArrivingGoingFromTo(pArgs->leaving, pArgs->going);
+	while(done!=10){}
 	return;
 }
 
@@ -384,7 +385,7 @@ ElevatorTest()
     t = new(std::nothrow) Thread("p1");
     PersonArgs* pArgs = new(std::nothrow) PersonArgs(1, 2);
     int arg = (int)pArgs;
-    // t->Fork(Person, arg);
+    t->Fork(Person, arg);
 
     
  //   done = 1;
