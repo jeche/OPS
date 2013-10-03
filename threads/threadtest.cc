@@ -270,17 +270,122 @@ ThreadTestPriority()
     t5->Fork(SimpleThreadPriority, 5);
     t6->Fork(SimpleThreadPriority, 6);
 }
+int done = 0;
+int* floor = 0;
+Lock* elevatorLock = new(std::nothrow) Lock("elevatorLock");
+Condition* waiting[4];
+Condition* filled;
+int waiter[4] = {0, 0, 0, 0};
+int curFloor = 0;
+int dir = 1;
+int peopleIn = 0;
+
+class ElevatorManager {
+  private:
+    //int curFloor = 0; // can never be greater than 3 or less than 0.
+    // int directionup = 1;
+    int dest;
+    const char* name;
+
+  public:
+    ElevatorManager(const char* debugName)
+    {
+    	name = debugName;
+    	// queue = new(std::nothrow) List();
+    };
+    
+    ~ElevatorManager()
+    {
+    };
+
+    void ArrivingGoingFromTo(int atFloor, int toFloor)
+    {
+		elevatorLock->Acquire();
+		waiter[atFloor]++;
+		while(curFloor != atFloor)
+		{
+			waiting[atFloor]->Wait(elevatorLock);
+		}
+		waiter[atFloor]--;
+		peopleIn++;
+		if(waiter[atFloor] == 0)
+		{
+			filled->Signal(elevatorLock);
+		}
+		while(curFloor != toFloor)
+		{
+			waiting[toFloor]->Wait(elevatorLock);
+		}
+		peopleIn--;
+		elevatorLock->Release();
+
+    };
+
+};
+
+ElevatorManager* manager = new(std::nothrow) ElevatorManager("manager");
+
+void ElevatorArrivalHandler(int)
+{
+	elevatorLock->Acquire();
+	curFloor += dir;
+	waiting[curFloor]->Broadcast(elevatorLock);
+	filled->Wait(elevatorLock);
+    return;
+};
+
+//	NOTE: although our definition allows only a single integer argument
+//	to be passed to the procedure, it is possible to pass multiple
+//	arguments by making them fields of a structure, and passing a pointer
+//	to the structure as "arg".
+class PersonArgs
+{
+	public:
+		int leaving;
+		int going;
+		PersonArgs(int g, int l)
+		{
+			going = g;
+			leaving = l;
+		};
+};
+
+void Person(int arg)
+{
+	PersonArgs * pArgs;
+	pArgs = (PersonArgs*)((void*) arg);
+	printf("Leaving = %d, Going = %d", pArgs->leaving, pArgs->going);
+	// Give an id?
+	manager->ArrivingGoingFromTo(pArgs->leaving, pArgs->going);
+	return;
+}
+
+void Elevator(int floors)
+{
+	Timer* arrivalTimer = new(std::nothrow) Timer(ElevatorArrivalHandler, 0, false); // Need to make sure interrupt 100
+	while(!done)
+	{
+		done = 1;
+	}
+	delete timer;
+}
+
 void
-ElevatorTestPriority()
+ElevatorTest()
 {
+	int floors = 3;
+	for(int i = 0; i < floors; i++)
+	{
+		waiting[i] = new(std::nothrow) Condition("waitingBuffer");
+	}
+	Thread *t = new(std::nothrow) Thread("elevator");
+    t->Fork(Elevator, 1);
+    t = new(std::nothrow) Thread("p1");
+    PersonArgs* pArgs = new(std::nothrow) PersonArgs(1, 2);
+    int arg = (int)pArgs;
+    t->Fork(Person, arg);
 
-}
-void Elevator()
-{
-
-}
-void Person()
-{
-
+    
+    done = 1;
 }
 #endif
