@@ -230,7 +230,7 @@ ASSERT(argc > 1);
 
 // External functions used by this file
 
-extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(void), ElevatorTest(void), Copy(char *unixFile, char *nachosFile);
+extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(int numProducers, int numConsumers), ElevatorTest(void), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
@@ -255,6 +255,8 @@ main(int argc, char **argv)
     int argCount;	// the number of arguments
 // for a particular command
 
+    char* intCheck1;  // checking arguments to make sure they are integers
+    char* intCheck2;
     DEBUG('t', "Entering main");
     (void) Initialize(argc, argv);
     
@@ -265,10 +267,23 @@ main(int argc, char **argv)
     else {
         ASSERT(argc > 1);
         if (strcmp(argv[2], "2") == 0) {
-        	ProdConsTest();
+            ASSERT(argc > 3);
+            int numProducers = strtol(argv[3], &intCheck1, 10);
+            //Checks to make sure the numProducers is a positive nonzero integer
+            if (*intCheck1 != '\0' || numProducers <= 0){
+                printf("ERROR: Incorrect input\n");
+                exit(1);
+            }
+            int numConsumers = strtol(argv[4], &intCheck2, 10);
+            //Checks to make sure the numConsumers is a positive nonzero integer
+            if (*intCheck2 != '\0' || numConsumers <= 0){
+                printf("ERROR: Incorrect input\n");
+                exit(1);
+            }
+        	ProdConsTest(numProducers, numConsumers);
         }
         else if (strcmp(argv[2], "5") == 0) {
-         ElevatorTest(); //CHANGE TO THE NAME OF YOUR TEST FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!!!
+         ElevatorTest(); 
         }
         else if (strcmp(argv[2], "8") == 0) {
          ThreadTestPriority();

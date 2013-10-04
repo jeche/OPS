@@ -80,9 +80,13 @@ ThreadTest()
 // 	Replace the contents of ThreadTest(indef) to run 
 //	
 //----------------------------------------------------------------------
+FILE *read_from, *write_to;
+int childpid;
+
 int N = 5;
 char buf[5];
 char content[]="Hello World!\n";
+//char content[]="Wake up it's time to do systems right now\n";
 Lock *bufLock, *contentLock;
 Condition *notFull, *notEmpty;
 int contCur=0, putCur=0, getCur=0, bufFree=N;
@@ -145,30 +149,49 @@ void Producer(int which){
 void Consumer(int which){
     DEBUG('t', "Entering Consumer\n");
     char c;
-    while((c=getBuf())!='\0'){printf("%c", c);}
-    //printf("\n");
+    while (1)
+     {
+        c = getBuf();
+        printf("%c", c);
+    }
+    //while((c=getBuf())!='\0'){printf("%c", c);}
     DEBUG('t', "Exiting Consumer\n");
-    /*int num;
-    
-    for (num = 0; num < 5; num++) {
-    printf("*** thread %d looped %d times\n", which, num);
-        currentThread->Yield();
-    }*/
     
 }
 
 //----------------------------------------------------------------------
-// ThreadTest
-// 	Set up a ping-pong between two threads, by forking a thread 
-//	to call SimpleThread, and then calling SimpleThread ourselves.
+// ProdConsTest
+// Sets up as many producers and consumers as requested by the user and
+// then runs the producer/consumer scenario on the string requested by
+// the user.
 //----------------------------------------------------------------------
 
-void ProdConsTest(){
+void ProdConsTest(int numProducers, int numConsumers){
     DEBUG('t', "Entering ProdCons\n");
     bufLock = new(std::nothrow) Lock("bufLock");
     contentLock = new(std::nothrow) Lock("contentLock");
     notEmpty = new(std::nothrow) Condition("notEmpty");
     notFull = new(std::nothrow) Condition("notFull");
+    
+    childpid = start_child("wish",&read_from,&write_to);
+    // Tell wish to read the init script
+    fprintf (write_to, "source barrier.tcl\n");
+
+    // for (int i = 0; i < numProducers; i++) {
+    //     char name[15];
+    //     memset(name, '\0', 15);
+    //     sprintf(name, "Producer%d", i);
+    //     //fprintf(stderr, "%s", name);
+    //     Thread *t = new(std::nothrow) Thread(name);
+    //     t->Fork(Producer, i);
+    // }
+
+    // for (int j = 0; j < numConsumers; j++) {
+    //     char name1[15];
+    //     sprintf(name1, "Consumer%d", j);
+    //     Thread *t3 = new(std::nothrow) Thread(name1);
+    //     t3->Fork(Consumer, j);
+    // }
 
     Thread *t = new(std::nothrow) Thread("Producer1");
     Thread *t2 = new(std::nothrow) Thread("Producer2");
@@ -180,19 +203,20 @@ void ProdConsTest(){
     Thread *t8 = new(std::nothrow) Thread("Consumer7");
 
     t->Fork(Producer, 1);
+    t2->Fork(Producer, 2);
     t3->Fork(Consumer, 3);
-
-// SimpleThreadPriority
-// 	Loop 5 times, yielding the CPU to another ready thread 
-//	each iteration.
-//
-//	"which" is simply a number identifying the thread, for debugging
-//	purposes.  
-//----------------------------------------------------------------------
-
-    //SimpleThread(0);
+    t4->Fork(Consumer, 4);
+    t5->Fork(Consumer, 5);
 }
 
+//----------------------------------------------------------------------
+// SimpleThreadPriority
+//  Loop 5 times, yielding the CPU to another ready thread 
+//  each iteration.
+//
+//  "which" is simply a number identifying the thread, for debugging
+//  purposes.  
+//----------------------------------------------------------------------
 
 void
 SimpleThread(int which)
@@ -237,17 +261,18 @@ SimpleThreadPriority(int which)
     int num;
     
     for (num = 0; num < 5; num++) {
-    printf("*** thread %d with looped %d times\n", which, num);
+    printf("*** thread %d looped %d times\n", which, num);
         currentThread->Yield();
     }
+    printf("***** thread %d finished with priority: %d\n", which, currentThread->getPriority());
 }
 
 //----------------------------------------------------------------------
 // ThreadTest for priority threads
-//  Creates two new threads aside from the main thread.  For the first
-//  test, the first, fourth and fifth of these threads will be given 
-//  the highest priority and the other two will have an equal lower 
-//  priority.  The thread with the highest priority should finish first.  
+//  Creates six new threads aside from the main thread. The first, fourth 
+//  and fifth of these threads will be given the highest priority and the 
+//  other three will have an equal lower priority.  The threads with the 
+//  highest priority should finish first.  
 //----------------------------------------------------------------------
 
 void
@@ -270,6 +295,8 @@ ThreadTestPriority()
     t5->Fork(SimpleThreadPriority, 5);
     t6->Fork(SimpleThreadPriority, 6);
 }
+
+//Elevator
 int done = 0;
 int* floor = 0;
 Lock* elevatorLock = new(std::nothrow) Lock("elevatorLock");
