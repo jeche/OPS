@@ -33,6 +33,8 @@ Setup of ProdCons
   In order to implement the Producer Consumer problem we need several global variables.
     * 2 Locks: bufLock and contentLock. bufLock protects the buffer from being accessed by the threads at the same time, and contentLock does the same for the input string, "Hello World!"  
     * 2 Condition variables: notFull and notEmpty, for the threads to sleep on if either they are a producer and the buffer is full or they are a consumer and the buffer is empty.
+    
+With the bufLock and the 2 condition variables we essentially create a monitor with the 2 methods getBuf and putBuf, if a thread enters either methods it must first acquire the bufLock, blocking any other threads from executing either of the methods. If the thread must sleep on one of the condition variables, it gives up the lock and steps out of the 'monitor', which allows one of the other threads to execute the 2 'monitor' methods. Through this we create mutual exclusion on critical sections with regards to modifying and accessing the buffer.
 
 The test itself creates these locks and condition variables and also creates each of the producer and consumer threads.  Each of the producer and consumer threads fork the correct process.  In order to allow the user to change the size of the buffer (which must be a global variable), we create an actual buffer of size 100 and then take the user argument for buffer size and make that the farthest point either the producer or consumer threads can access.  While this wastes some space, it allows a user more flexibility in testing out the producer consumer system.
 
@@ -47,6 +49,11 @@ The Consumer() method acts similarly to to Producer() method.  All consumer thre
 5. Elevator
 
 8.  Priority Threads
+
+Running Priority Threads
+  ./nachos -P 8 [int #threads] [Additional nachos args]
+  
+  For example, ./nachos -P 8 5 will create five threads.  Each thread is randomly assinged a priority.  Since we are assuming that there are only two priority levels, threads can only be assigned either 0 or 1 as a priority.  0 is a higher priority than 1.
 
 The new constructor that accepts a priority for a thread as well as a thread name is essentially a replica of the original constructor that also sets the priority for this thread.  This is only used by the scheduler when it makes decisions about which thread should be run next.  In the scheduler, we just change the way threads are appended to the list so that it uses the sortedInsert() function instead of just placing them at the end.  This is efficient because the scheduler just keeps the sorted list rather than having to search through the entire list of threads for the lowest priority.  With the sorted insert, we can just leave the remove method alone because it will take the first thread off of the queue and that will be the one with the highest priority (aka, the lowest priority number).
 
