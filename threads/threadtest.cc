@@ -82,14 +82,13 @@ ThreadTest()
 //----------------------------------------------------------------------
 FILE *read_from, *write_to;
 
-int N = 5;
-int prodActive;
-char buf[5];
+int bufsize, visual;
+char buf[100];
 char content[]="Hello World!";
 //char content[]="Wake up it's time to do systems right now\n";
 Lock *bufLock, *contentLock;
 Condition *notFull, *notEmpty;
-int contCur=0, putCur=0, getCur=0, bufFree=N;
+int contCur=0, putCur=0, getCur=0, bufFree=bufsize;
 Thread *prods[100];
 Thread *cons[100];
 char prodnames[100][15];
@@ -97,10 +96,10 @@ char consnames[100][15];
 void printBuf(){
     int i;
     printf("{ ");
-    for(i=0;i<5;i++){
+    for(i=0;i<bufsize;i++){
         printf("%c ", buf[i]);
     }
-    printf("}\n");
+    printf("}");
 }
 int putBuf(char c){
     bufLock->Acquire();
@@ -109,10 +108,10 @@ int putBuf(char c){
     ASSERT(bufLock->isHeldByCurrentThread());
     buf[putCur]=c;
     putCur++;
-    putCur=putCur%N;
+    putCur=putCur%bufsize;
     bufFree--;
     DEBUG('t', "About to notEmpty->Signal\n");
-    printf("Buffer after ");currentThread->Print();printBuf();
+    printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("put in '%c'\n", c);
     notEmpty->Signal(bufLock);
 
     bufLock->Release(); //********Uncomment if we update Signal and Broadcast
@@ -122,45 +121,42 @@ int putBuf(char c){
 char getBuf(){
     bufLock->Acquire();
     DEBUG('t', "getBuf has Lock\n");
-    while(bufFree==N){notEmpty->Wait(bufLock);}
+    while(bufFree==bufsize){notEmpty->Wait(bufLock);}
     ASSERT(bufLock->isHeldByCurrentThread());
     char c = buf[getCur];
-    buf[getCur]='\0';
+    buf[getCur]='_';
     getCur++;
-    getCur=getCur%N;
+    getCur=getCur%bufsize;
     bufFree++;
     DEBUG('t', "About to notFull->Signal\n");
-    printf("Buffer after ");currentThread->Print();printBuf();
+    if(visual){printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("took out '%c'\n", c);}
     notFull->Signal(bufLock);
     bufLock->Release(); //********Uncomment if we update Signal and Broadcast
     return c;
 
 }
+
 void Producer(int which){
     DEBUG('t', "Entering Producer\n");
-    //char content[]="Hello World!";
     char c='a';
     while(c!='\0'){
-        
-        //printBuf();
         contentLock->Acquire();
         c = content[contCur];
         contCur++;
-        //printf("contCur=%d\n", contCur);
         contentLock->Release();
         if(!putBuf(c)){fprintf(stderr, "putBuf failed\n");exit(1);}
     }
-    if(!putBuf('\0')){fprintf(stderr, "putBuf failed\n");exit(1);}
-    prodActive--;
+    //if(!putBuf('\0')){fprintf(stderr, "putBuf failed\n");exit(1);}
+    
     DEBUG('t', "Exiting Producer\n");
 }
+
 void Consumer(int which){
     DEBUG('t', "Entering Consumer\n");
     char c;
-    while (1)
-     {
+    while (1){
         c = getBuf();
-        printf("%c", c);
+        if(!visual){printf("%c", c);}
     }
     //while((c=getBuf())!='\0'){printf("%c", c);}
     DEBUG('t', "Exiting Consumer\n");
@@ -174,15 +170,17 @@ void Consumer(int which){
 // the user.
 //----------------------------------------------------------------------
 
-void ProdConsTest(int numProducers, int numConsumers){
+void ProdConsTest(int numProducers, int numConsumers, int bsize, int vflag){
     DEBUG('t', "Entering ProdCons\n");
     bufLock = new(std::nothrow) Lock("bufLock");
     contentLock = new(std::nothrow) Lock("contentLock");
     notEmpty = new(std::nothrow) Condition("notEmpty");
     notFull = new(std::nothrow) Condition("notFull");
-    prodActive=numProducers;
-    // Tell wish to read the init script
+    bufsize=bsize;
+    visual=vflag;
 
+    // Tell wish to read the init script
+    memset(buf, '_', sizeof(buf));
     for (int i = 0; i < numProducers; i++) {
         sprintf(prodnames[i], "Producer %d", i);
         //fprintf(stderr, "%s", name);
