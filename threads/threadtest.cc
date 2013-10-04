@@ -303,13 +303,13 @@ ThreadTestPriority()
 int* floor = 0;
 Lock* elevatorLock = new(std::nothrow) Lock("elevatorLock");
 Condition* waiting;
-int going[4];
+int going[5];
 Condition* filled; 
 Condition* arrival;
-int uwaiter[4] = {0, 0, 0, 0};
+int uwaiter[5] = {0, 0, 0, 0, 0};
 int upwait = 0;
 int dwait = 0;
-int dwaiter[4] = {0, 0, 0, 0};
+int dwaiter[5] = {0, 0, 0, 0, 0};
 int curFloor = 0;
 int dir = 1;
 int peopleIn = 0;
@@ -544,7 +544,7 @@ ElevatorTest(int people, int seed)
 {
     Thread *t[people + 1];
     char pname[people + 1][5]; 
-	int floors = 4;
+    int floors = 5;
     PersonArgs* pArgs;
     int arg;
     srand(seed);
