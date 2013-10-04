@@ -6,7 +6,7 @@ Locks:
 Disabling interrupts because nachos is a single processor system and it provides us with area of mutual exclusion, similar to test and set.  We will actually be using something similar to test and set for acquiring the lock.
 
 Similar to a reader-writer situation.  We know by disabling interupts that the thread cannot be taken off the CPU during the critical section where free is set.  This is also necessary while we get the name of the current thread, so that we are sure that the thread that has the lock is the current thread.  
-
+ 
 There is less overhead (memory-wise and less function calls) in using low-level calls rather than semaphores.  Semaphores also disable interupts, so the overhead cost in that aspect is the same.  
 
 In Release we assert that "freed" is 0 because only one thread can have the lock at a time.  We also assert that the current thread must be holding the lock in order to release it.  We assert these things inside of where interrupts are disabled for safety***********************************************************  We set the threadname to null in release because we want to make sure that if the thread tries to do something with the lock after it has been released that it won't be able to.
@@ -20,5 +20,18 @@ Condition Variables:
 Asserting that the current thread has the lock in all the functions for the condition variable.
 
 We release the lock that the thread has after we append the thread to the queue because we know that if one thread has the lock then no other threads will be trying to wait because they will be stuck trying to acquire the lock.  This will allow us to avoid a lock or disabling interrrupts around the queue.  REVISIT THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+2. ProdCons
+
+Running Prodcons
+  ./nachos -P 2 <#ofProducers> <#ofConsumers> <buffersize> [Additional nachos Args]
+
+Setup of ProdCons
+  In order to implement the Producer Consumer problem we need several global variables.
+    * 2 Locks, bufLock and contentLock. bufLock protects the buffer from being accessed by the threads at the same time,
+      and contentLock does the same for the input string, "Hello World!"  
+    * 2 Condition variables, notFull and notEmpty, to sleep the threads on and to signal them when the condition 
+
+
 
 
