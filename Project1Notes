@@ -7,7 +7,7 @@ We must disable interrupts because nachos is a single processor system and it pr
 We then get the name of the thread that has acquired the lock in order to implement the isHeldByCurrentThread() function.  At the point where we get the thread name there should only be one thread that can reach this section, since any others will be sleeping on the queue or stuck in the while loop.      
 
 
-In Release() we assert that "freed" is 0 because only one thread can have the lock at a time.  We also assert that the current thread must be holding the lock in order to release it.  We assert these things inside of where interrupts are disabled for safety***********************************************************.  We remove the first thread from thequeue of sleeping threads and wake it up so that it can try to acquire the lock again.  We set the threadname to null in Release() because we want to make sure that if the thread tries to do something with the lock after it no longer has it, it won't be able to.  This is all done with interrupts disabled in order to ensure that the function is atomic.
+In Release() we assert that "freed" is 0 because only one thread can have the lock at a time.  We also assert that the current thread must be holding the lock in order to release it.  We assert these things inside of where interrupts are disabled for safety.  We remove the first thread from thequeue of sleeping threads and wake it up so that it can try to acquire the lock again.  We set the threadname to null in Release() because we want to make sure that if the thread tries to do something with the lock after it no longer has it, it won't be able to.  This is all done with interrupts disabled in order to ensure that the function is atomic.
 
 We choose to use low-level calls rather than semaphores because there is less overhead in using these calls rather than calling the semaphore functions.  Semaphores, like our locks, also disable interupts, so the overhead cost in that aspect is the same.  
 
@@ -47,7 +47,13 @@ Consumer
 The Consumer() method acts similarly to to Producer() method.  All consumer threads get into an infinite while loop that completes when all the consumer threads are put to sleep on the "notEmpty" condition after all the producers have placed all the characters in the buffer.  In their while loop, the consumers call the method getBuf() in order to get the next character from the buffer and print it out to the terminal.  The getBuf() method requires that the thread first acquire the buffer lock.  If the buffer is empty, the consumers wait on the "notEmpty" condition until a producer signals that there is another character in the buffer.  The consumers then access the character at the "getCur" position.  Like in putBuf(), we take the mod of "getCur" to make sure that the threads wrap around to the beginning of the buffer to get the next character once they've gotten to the end.  Finally, the consumers signal the "notFull" condition to let any producers that were waiting for space to be freed up in the buffer to get back on the readyList.  The consumer releases the buffer lock and then begins the process over again.
 
 5. Elevator
-
+  ./nachos -P 5 [int #people] [int positiveSeed] [Additional nachos args]
+  Setup of Elevator
+    For the implementation of the Elevator problem several global variables were necessary.
+    * 1 Lock was necessary, the elevator lock.  In order to request or move the elevator a thread must be holding the elevator lock.
+    * 3 COnditions were necessary: "arrival", "filled", and "waiting"
+    
+    There was an "arrival" condition that the elevator would wait on until the a Person calling the ArrivingGoingFromTo(atFloor, toFloor) function would signal that they were the first person to arrive.
 8.  Priority Threads
 
 Running Priority Threads
