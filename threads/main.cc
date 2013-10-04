@@ -289,7 +289,7 @@ main(int argc, char **argv)
                printf("ERROR: Incorrect input\n");
                 exit(1);
          }
-         int seed = strtol(argv[4], &intCheck3, 10);
+         int seed = strtol(argv[4], &intCheck2, 10);
          if (*intCheck2 != '\0' || seed <= 0){
                 printf("ERROR: Incorrect input\n");
                 exit(1);
