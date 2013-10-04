@@ -50,6 +50,11 @@ The Consumer() method acts similarly to to Producer() method.  All consumer thre
 
 8.  Priority Threads
 
+Running Priority Threads
+  ./nachos -P 8 [int #threads] [Additional nachos args]
+  
+  For example, ./nachos -P 8 5 will create five threads.  Each thread is randomly assinged a priority.  Since we are assuming that there are only two priority levels, threads can only be assigned either 0 or 1 as a priority.  0 is a higher priority than 1.
+
 The new constructor that accepts a priority for a thread as well as a thread name is essentially a replica of the original constructor that also sets the priority for this thread.  This is only used by the scheduler when it makes decisions about which thread should be run next.  In the scheduler, we just change the way threads are appended to the list so that it uses the sortedInsert() function instead of just placing them at the end.  This is efficient because the scheduler just keeps the sorted list rather than having to search through the entire list of threads for the lowest priority.  With the sorted insert, we can just leave the remove method alone because it will take the first thread off of the queue and that will be the one with the highest priority (aka, the lowest priority number).
 
 The priority test that can be run by ./nachos -P 8 creates six new threads.  Three of these have priority 0 and the other three have priority 1.  They run the same simple thread test that originally came with nachos and just include a print statement when they have completed that just tells the user the number of the thread and its priority.  Even with a random seed, all of the threads with priority 0 should finish before the threads with priority 1, suggesting a correct implementation for priority threading.
