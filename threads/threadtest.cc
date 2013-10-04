@@ -83,18 +83,24 @@ ThreadTest()
 FILE *read_from, *write_to;
 
 int N = 5;
+int prodActive;
 char buf[5];
-char content[]="Hello World!\n";
+char content[]="Hello World!";
 //char content[]="Wake up it's time to do systems right now\n";
 Lock *bufLock, *contentLock;
 Condition *notFull, *notEmpty;
 int contCur=0, putCur=0, getCur=0, bufFree=N;
+Thread *prods[100];
+Thread *cons[100];
+char prodnames[100][15];
+char consnames[100][15];
 void printBuf(){
     int i;
+    printf("{ ");
     for(i=0;i<5;i++){
-        printf("%c", buf[i]);
+        printf("%c ", buf[i]);
     }
-    printf("\n");
+    printf("}\n");
 }
 int putBuf(char c){
     bufLock->Acquire();
@@ -106,6 +112,7 @@ int putBuf(char c){
     putCur=putCur%N;
     bufFree--;
     DEBUG('t', "About to notEmpty->Signal\n");
+    printf("Buffer after ");currentThread->Print();printBuf();
     notEmpty->Signal(bufLock);
 
     bufLock->Release(); //********Uncomment if we update Signal and Broadcast
@@ -118,11 +125,12 @@ char getBuf(){
     while(bufFree==N){notEmpty->Wait(bufLock);}
     ASSERT(bufLock->isHeldByCurrentThread());
     char c = buf[getCur];
-    //buf[getCur]=NULL;
+    buf[getCur]='\0';
     getCur++;
     getCur=getCur%N;
     bufFree++;
     DEBUG('t', "About to notFull->Signal\n");
+    printf("Buffer after ");currentThread->Print();printBuf();
     notFull->Signal(bufLock);
     bufLock->Release(); //********Uncomment if we update Signal and Broadcast
     return c;
@@ -143,6 +151,7 @@ void Producer(int which){
         if(!putBuf(c)){fprintf(stderr, "putBuf failed\n");exit(1);}
     }
     if(!putBuf('\0')){fprintf(stderr, "putBuf failed\n");exit(1);}
+    prodActive--;
     DEBUG('t', "Exiting Producer\n");
 }
 void Consumer(int which){
@@ -171,39 +180,36 @@ void ProdConsTest(int numProducers, int numConsumers){
     contentLock = new(std::nothrow) Lock("contentLock");
     notEmpty = new(std::nothrow) Condition("notEmpty");
     notFull = new(std::nothrow) Condition("notFull");
-    
+    prodActive=numProducers;
     // Tell wish to read the init script
 
-    // for (int i = 0; i < numProducers; i++) {
-    //     char name[15];
-    //     memset(name, '\0', 15);
-    //     sprintf(name, "Producer%d", i);
-    //     //fprintf(stderr, "%s", name);
-    //     Thread *t = new(std::nothrow) Thread(name);
-    //     t->Fork(Producer, i);
-    // }
+    for (int i = 0; i < numProducers; i++) {
+        sprintf(prodnames[i], "Producer %d", i);
+        //fprintf(stderr, "%s", name);
+        prods[i] = new(std::nothrow) Thread(prodnames[i]);
+        prods[i]->Fork(Producer, i);
+    }
+    for (int j = 0; j < numConsumers; j++) {
+        sprintf(consnames[j], "Consumer %d", j);
+        cons[j]= new(std::nothrow) Thread(consnames[j]);
+        cons[j]->Fork(Consumer, j);
+    }
 
-    // for (int j = 0; j < numConsumers; j++) {
-    //     char name1[15];
-    //     sprintf(name1, "Consumer%d", j);
-    //     Thread *t3 = new(std::nothrow) Thread(name1);
-    //     t3->Fork(Consumer, j);
-    // }
 
-    Thread *t = new(std::nothrow) Thread("Producer1");
-    Thread *t2 = new(std::nothrow) Thread("Producer2");
-    Thread *t3 = new(std::nothrow) Thread("Consumer2");
-    Thread *t4 = new(std::nothrow) Thread("Consumer3");
-    Thread *t5 = new(std::nothrow) Thread("Consumer4");
-    Thread *t6 = new(std::nothrow) Thread("Consumer5");
-    Thread *t7 = new(std::nothrow) Thread("Consumer6");
-    Thread *t8 = new(std::nothrow) Thread("Consumer7");
+    // char prodbuf[15];
+    // char consbuf[15];
+    // sprintf(prodbuf, "Producer %d", numProducers);
+    // sprintf(consbuf, "Consumer %d", numConsumers);
+    
+    // Thread *tprod = new(std::nothrow) Thread("prodbuf0",1);
+    // Thread *tprod1 = new(std::nothrow) Thread("prodbuf1",1);
+    // Thread *tcons = new(std::nothrow) Thread("consbuf1",0);
+    
 
-    t->Fork(Producer, 1);
-    t2->Fork(Producer, 2);
-    t3->Fork(Consumer, 3);
-    t4->Fork(Consumer, 4);
-    t5->Fork(Consumer, 5);
+    // tprod->Fork(Producer, numProducers);
+    // tprod1->Fork(Producer, numProducers);
+    // tcons->Fork(Consumer, numConsumers);
+
 }
 
 //----------------------------------------------------------------------
