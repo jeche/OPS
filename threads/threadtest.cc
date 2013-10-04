@@ -242,8 +242,8 @@ void ProdConsTest(int numProducers, int numConsumers, int bsize, int vflag){
 
 //End ProdCons
 
+//Start Elevator
 
-//Elevator
 int* floor = 0;
 Lock* elevatorLock;
 Condition* waiting;
@@ -538,5 +538,55 @@ ElevatorTest(int people, int seed)
          pers[i]->Fork(Person, arg); 
      } 
 }
+
+//End Elevator
+
+//Start PriorityThreads
+
+//----------------------------------------------------------------------
+// SimpleThreadPriority
+//  Loop 5 times, yielding the CPU to another ready thread 
+//  each iteration.
+//
+//  "which" is simply a number identifying the thread, for debugging
+//  purposes.  
+//----------------------------------------------------------------------
+
+Thread *threads[100];
+char threadnames[100][15];
+
+void
+SimpleThreadPriority(int which)
+{
+    int num;
+    
+    for (num = 0; num < 5; num++) {
+    printf("*** thread %d looped %d times\n", which, num);
+        currentThread->Yield();
+    }
+    printf("***** thread %d finished with priority: %d\n", which, currentThread->getPriority());
+}
+
+//----------------------------------------------------------------------
+// ThreadTest for priority threads
+//  Creates as many threads as the user requests aside from the main 
+//  thread.  These threads are all given a random priority (either 0 or
+//  1) The threads with the highest priority (0) should finish first.  
+//----------------------------------------------------------------------
+
+void
+ThreadTestPriority(int numThreads)
+{
+    DEBUG('t', "Entering SimpleTestPriority");
+
+    for (int i = 0; i < numThreads; i++) {
+        sprintf(threadnames[i], "priority thread %d", i); //debug name created here
+        int priority = rand() % 2;  //Randomly choose either 0 or 1 for the priority
+        threads[i] = new(std::nothrow) Thread(threadnames[i], priority);
+        threads[i]->Fork(SimpleThreadPriority, i);
+    }
+}
+
+//End PriorityThreads
 #endif
 
