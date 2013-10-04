@@ -95,6 +95,8 @@ the next character once they've gotten to the end.  Finally, the consumers signa
 producers that were waiting for space to be freed up in the buffer to get back on the readyList.  The consumer releases 
 the buffer lock and then begins the process over again.
 
+5. Elevator
+
 8.  Priority Threads
 
 The new constructor that accepts a priority for a thread as well as a thread name is essentially a replica of the 
