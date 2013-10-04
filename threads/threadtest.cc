@@ -81,7 +81,6 @@ ThreadTest()
 //	
 //----------------------------------------------------------------------
 FILE *read_from, *write_to;
-int childpid;
 
 int N = 5;
 char buf[5];
@@ -173,9 +172,7 @@ void ProdConsTest(int numProducers, int numConsumers){
     notEmpty = new(std::nothrow) Condition("notEmpty");
     notFull = new(std::nothrow) Condition("notFull");
     
-    childpid = start_child("wish",&read_from,&write_to);
     // Tell wish to read the init script
-    fprintf (write_to, "source barrier.tcl\n");
 
     // for (int i = 0; i < numProducers; i++) {
     //     char name[15];
