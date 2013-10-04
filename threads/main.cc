@@ -283,7 +283,18 @@ main(int argc, char **argv)
         	ProdConsTest(numProducers, numConsumers);
         }
         else if (strcmp(argv[2], "5") == 0) {
-         ElevatorTest(5, 0);
+         ASSERT(argc > 3);
+         int people = strtol(argv[3], &intCheck1, 10);
+         if (*intCheck1 != '\0' || people <= 0){
+               printf("ERROR: Incorrect input\n");
+                exit(1);
+         }
+         int seed = strtol(argv[4], &intCheck3, 10);
+         if (*intCheck2 != '\0' || seed <= 0){
+                printf("ERROR: Incorrect input\n");
+                exit(1);
+         }
+         ElevatorTest(people, seed);
         }
         else if (strcmp(argv[2], "8") == 0) {
          ThreadTestPriority();
