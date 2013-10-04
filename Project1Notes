@@ -27,7 +27,7 @@ Broadcast() is very similar to signaling.  The only difference is that we use a 
 Running Prodcons
   ./nachos -P 2 [int #ofProducers] [int #ofConsumers] [int buffersize] [-b/-n] [Additional nachos Args]
   
-  For example, ./nachos -P 2 3 2 5 -b will give you the producer consumer test with three producers, two consumers and a buffer size of five with the buffer visualization enabled.  There is a max buffer size of 100.  If buffer visualization in is enabled then every time a producer or consumer thread accesses the buffer, a display of the current state of the buffer will be printed to the screen.  With -n, only the output from the consumers will be produced.
+  For example, ./nachos -P 2 3 2 5 -b will give you the producer consumer test with three producers, two consumers and a buffer size of five with the buffer visualization enabled.  There is a max buffer size of 100.  If buffer visualization in is enabled then every time a producer or consumer thread accesses the buffer, a display of the current state of the buffer will be printed to the screen.  With -n, only the output from the consumers will be produced.  All arguments are required.
 
 Setup of ProdCons
   In order to implement the Producer Consumer problem we need several global variables.
@@ -47,19 +47,41 @@ Consumer
 The Consumer() method acts similarly to to Producer() method.  All consumer threads get into an infinite while loop that completes when all the consumer threads are put to sleep on the "notEmpty" condition after all the producers have placed all the characters in the buffer.  In their while loop, the consumers call the method getBuf() in order to get the next character from the buffer and print it out to the terminal.  The getBuf() method requires that the thread first acquire the buffer lock.  If the buffer is empty, the consumers wait on the "notEmpty" condition until a producer signals that there is another character in the buffer.  The consumers then access the character at the "getCur" position.  Like in putBuf(), we take the mod of "getCur" to make sure that the threads wrap around to the beginning of the buffer to get the next character once they've gotten to the end.  Finally, the consumers signal the "notFull" condition to let any producers that were waiting for space to be freed up in the buffer to get back on the readyList.  The consumer releases the buffer lock and then begins the process over again.
 
 5. Elevator
+
+Running Elevator
   ./nachos -P 5 [int #people] [int positiveSeed] [Additional nachos args]
+  
+  For example, ./nachos -P 5 15 100 will create an elevator with 15 people waiting for it.  The positive seed randomly sets the floors the people are leaving from and going to.  All arguments are required.  There can be no more than 100 people and there must be more than 0.
+  
   Setup of Elevator
     For the implementation of the Elevator problem several global variables were necessary.
-    * 1 Lock was necessary, the elevator lock.  In order to request or move the elevator a thread must be holding the elevator lock.
-    * 3 COnditions were necessary: "arrival", "filled", and "waiting"
+    * 1 Lock was necessary, the elevator lock.  In order to request, get on, get off, or move the elevator a thread must be holding the elevator lock.
+    * 3 Conditions were necessary: "arrival", "filled", and "waiting"
     
-    There was an "arrival" condition that the elevator would wait on until the a Person calling the ArrivingGoingFromTo(atFloor, toFloor) function would signal that they were the first person to arrive.
+    There was an "arrival" condition that the elevator would wait on until the a Person calling the ArrivingGoingFromTo(atFloor, toFloor) function would signal that they were the first person to arrive.  The elevator only waits for an arrival if there is no one in it and there is no one waiting.  
+    
+    The "filled" condition was utilized to tell the elevator that everyone who was waiting at the current floor to go the direction the elevator is going has entered the elevator and everyone who was going to the current floor has exited the elevator.  The wait for "filled" occurs within a while loop that checks the appropriate buffer for people waiting in a certain direction and checks the buffer tallying everyone still in the elevator going to the current floor so that it waits until both are zero (aka that the people have entered and exited appropriately).  "filled" is signaled when the number of people in the appropriate directional buffer is zero, in other words, the last person to enter the elevator and the last person to exit will both signal "filled".  Because we wait for "filled" in a while loop, the elevator won't leave until both are zero even if one has already signaled.
+    
+    All people waiting for the elevator wait on the "wating" condition in a while loop.  These people wait while the current floor of the elevator is not equal to the floor they are at and they wait while the elevator is not going in the direction they want to go even if the elevator is at their floor.  This while loop allows us to have only one condition rather than a bed of conditions because even if a person is signaled, if the elevator is not at their floor, they won't be able to get out of the while loop and will go straight back to sleep.  Every time the elevator reaches a new floor or is woken up, it broadcasts to the "waiting" condition to tell all the waiting people that they can get on if their floors and directions match those of the elevator.  As soon as it broadcasts, the elevator checks to see if anyone is waiting for it on the current floor or if anyone is trying to leave the elevator at the current floor.  If so, it waits on "filled".  Otherwise, it begins incrementing the floor by toggling interrupts.
+    
+    There are three integer arrays to keep track of the number of people in the elevator going to a specific floor ("going"), the number of people waiting to go up from a specific floor ("uWaiter"), and the number of people waiting to go down from a specific floor ("dWaiter").  Floor serves as the index for all the arrays.  Every time a person arrives for the elevator, the direction they are going is determined and then the "uWaiter" or "dWaiter" is incremented appropriately.  "going" is incremented based on the floor they are going to and once they arrive, "going" is decremented before they release the lock.  Once the elevator arrives at a floor, "uWaiter" or "dWaiter" is decremented appropriately as well.
+    
+    Other global integers that are kept include "upWait", "dWait", "peopleWait", and "peopleIn".  "upWait" keeps track of the number of people going up so that we don't have to iterate through the "uWaiter" and sum them up each time.  "dWait" is similar for "dWaiter".  "peopleWait" keeps track of the total number of people waiting.  It is used to track if anyone has arrived at the elevator.  "peopleIn" keeps track of the number of people in the elevator.  It is used in cases when the elevator needs to change direction to pick up people on lower or higher floors (as appropriate).
+    
+    There are also global integers that keep track of the current floor and the current direction the elevator is going as well as the number of floors in the building (assume five).
+    
+    There is also a flag called "moving" that keeps track of whether the elevator is currently moving.  It is set to 1 before the interrupts are toggled and back to 0 afterwards.
+    
+    The ArrivingGoingFromTo(atFloor, toFloor) function is a global function that person threads call when they are requesting the elevator.  They pass in the floor they are currently at and the floor they are going to which are randomly determined.  The function returns the integer of the floor the person got off on and there is an assertion within each person thread that ensures that the floor the person got off on is the floor they wanted to get off on.
+    
+    In addition to calling that function, person threads, when they are forked are given three values.  Two of these values are randomly determined floors within the building.
+
 8.  Priority Threads
 
 Running Priority Threads
   ./nachos -P 8 [int #threads] [Additional nachos args]
   
-  For example, ./nachos -P 8 5 will create five threads.  Each thread is randomly assinged a priority.  Since we are assuming that there are only two priority levels, threads can only be assigned either 0 or 1 as a priority.  0 is a higher priority than 1.
+  For example, ./nachos -P 8 5 will create five threads.  Each thread is randomly assinged a priority.  Since we are assuming that there are only two priority levels, threads can only be assigned either 0 or 1 as a priority.  0 is a higher priority than 1.  All arguments are required.
 
 The new constructor that accepts a priority for a thread as well as a thread name is essentially a replica of the original constructor that also sets the priority for this thread.  This is only used by the scheduler when it makes decisions about which thread should be run next.  In the scheduler, we just change the way threads are appended to the list so that it uses the sortedInsert() function instead of just placing them at the end.  This is efficient because the scheduler just keeps the sorted list rather than having to search through the entire list of threads for the lowest priority.  With the sorted insert, we can just leave the remove method alone because it will take the first thread off of the queue and that will be the one with the highest priority (aka, the lowest priority number).
 
