@@ -382,12 +382,12 @@ class ElevatorManager {
        if(tempDir == -1){
 	       dwaiter[atFloor]--;
            dwait--;
-           fprintf(stderr, "Passenger from floor %d boarded going down to floor %d.\n", atFloor, toFloor);
+           fprintf(stderr, "%s from floor %d boarded going down to floor %d.\n", currentThread->getName(), atFloor, toFloor);
        }
        else{
            uwaiter[atFloor]--;
            upwait--;
-           fprintf(stderr, "Passenger from floor %d boarded going up to floor %d.\n", atFloor, toFloor);
+           fprintf(stderr, "%s from floor %d boarded going up to floor %d.\n", currentThread->getName(), atFloor, toFloor);
        }
 	   going[toFloor]++;
 	   peopleIn++;
@@ -414,7 +414,7 @@ class ElevatorManager {
             filled->Signal(elevatorLock);
        }
        int tempVar = curFloor;
-       fprintf(stderr, "Passenger going to floor %d exited.\n", toFloor);
+       //fprintf(stderr, "Passenger going to floor %d exited.\n", toFloor);
 	   elevatorLock->Release();
        /* Return the value of the floor you got off on. */
        return tempVar;
@@ -440,10 +440,10 @@ void Person(int arg)
 {
 	PersonArgs * pArgs;
 	pArgs = (PersonArgs*)((void*) arg);
-	fprintf(stderr, "Waiting at floor %d to go to floor %d\n", pArgs->leaving, pArgs->going);
+	// fprintf(stderr, "Waiting at floor %d to go to floor %d\n", pArgs->leaving, pArgs->going);
 	int c = manager->ArrivingGoingFromTo(pArgs->leaving, pArgs->going);
-    fprintf(stderr, "I left from %d and got to %d when I wanted to go to %d.\n", pArgs->leaving, pArgs->going, c);
-    ASSERT(c == pArgs->going);
+    	ASSERT(c == pArgs->going);
+    	fprintf(stderr, "%s got off at %d.\n", currentThread->getName(), c);
 	return;
 }
 
@@ -554,41 +554,41 @@ ElevatorTest(int people, int seed)
     arrival = new(std::nothrow) Condition("arrival");
     Thread *te = new(std::nothrow) Thread("elevator");
     te->Fork(Elevator, floors);
-    // for (int i = 0; i< people; i++) { 
-    //     sprintf(pname[i], "p%d", i); 
-    //     t[i] = new(std::nothrow) Thread(pname[i]); 
-    //     pArgs = new(std::nothrow) PersonArgs(rand() % floors, rand() % floors);
-    //     arg = (int)pArgs;
-    //     t[i]->Fork(Person, arg); 
-    // } 
-    te = new(std::nothrow) Thread("aaaaaa1"); 
-    pArgs = new(std::nothrow) PersonArgs(0, 1);
-    arg = (int)pArgs;
-    te->Fork(Person, arg);     
-    te = new(std::nothrow) Thread("aaaaa2a"); 
-    pArgs = new(std::nothrow) PersonArgs(1, 2);
-    arg = (int)pArgs;
-    te->Fork(Person, arg);     
+     for (int i = 0; i< people; i++) { 
+         sprintf(pname[i], "p%d", i); 
+         t[i] = new(std::nothrow) Thread(pname[i]); 
+         pArgs = new(std::nothrow) PersonArgs(rand() % floors, rand() % floors);
+         arg = (int)pArgs;
+         t[i]->Fork(Person, arg); 
+     } 
+    //te = new(std::nothrow) Thread("aaaaaa1"); 
+    //pArgs = new(std::nothrow) PersonArgs(0, 1);
+    //arg = (int)pArgs;
+    //te->Fork(Person, arg);     
+    //te = new(std::nothrow) Thread("aaaaa2a"); 
+    //pArgs = new(std::nothrow) PersonArgs(1, 2);
+    //arg = (int)pArgs;
+    //te->Fork(Person, arg);     
     // te = new(std::nothrow) Thread("aaa3aaa"); 
     // pArgs = new(std::nothrow) PersonArgs(1, 2);
     // arg = (int)pArgs;
     // te->Fork(Person, arg);     
-    te = new(std::nothrow) Thread("aaa4aaa"); 
-    pArgs = new(std::nothrow) PersonArgs(2, 1);
-    arg = (int)pArgs;
-    te->Fork(Person, arg);
-    te = new(std::nothrow) Thread("aaa4aaeea"); 
-    pArgs = new(std::nothrow) PersonArgs(0, 3);
-    arg = (int)pArgs;
-    te->Fork(Person, arg);     
-    te = new(std::nothrow) Thread("aaaqq4aaa"); 
-    pArgs = new(std::nothrow) PersonArgs(3, 0);
-    arg = (int)pArgs;
-    te->Fork(Person, arg);     
-    te = new(std::nothrow) Thread("aaaqq4aaa"); 
-    pArgs = new(std::nothrow) PersonArgs(2, 0);
-    arg = (int)pArgs;
-    te->Fork(Person, arg);     
+    //te = new(std::nothrow) Thread("aaa4aaa"); 
+    //pArgs = new(std::nothrow) PersonArgs(2, 1);
+    //arg = (int)pArgs;
+    //te->Fork(Person, arg);
+    //te = new(std::nothrow) Thread("aaa4aaeea"); 
+    //pArgs = new(std::nothrow) PersonArgs(0, 3);
+    //arg = (int)pArgs;
+    //te->Fork(Person, arg);     
+    //te = new(std::nothrow) Thread("aaaqq4aaa"); 
+    //pArgs = new(std::nothrow) PersonArgs(3, 0);
+    //arg = (int)pArgs;
+    //te->Fork(Person, arg);     
+    //te = new(std::nothrow) Thread("aaaqq4aaa"); 
+    //pArgs = new(std::nothrow) PersonArgs(2, 0);
+    //arg = (int)pArgs;
+    //te->Fork(Person, arg);     
     // te = new(std::nothrow) Thread("aaa5aaa"); 
     // pArgs = new(std::nothrow) PersonArgs(3, 1);
     // arg = (int)pArgs;
