@@ -270,9 +270,9 @@ void Lock::Acquire()
 
         (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
     }
-    IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
+    //IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
     threadName = currentThread->getName();
-    (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
+    //(void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
 
 
 
@@ -297,6 +297,7 @@ void Lock::Release()
     if (thread != NULL)    // make thread ready, consuming the V immediately
         scheduler->ReadyToRun(thread);
     freed = 1;
+    threadName = NULL;
 
     (void) interrupt->SetLevel(oldLevel);
 }
@@ -320,8 +321,8 @@ Condition::Condition(const char* debugName)
 Condition::~Condition() { }
 void Condition::Wait(Lock* conditionLock) 
 {
-    ASSERT(conditionLock->isHeldByCurrentThread());
     IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
+    ASSERT(conditionLock->isHeldByCurrentThread());
     queue->Append((void *)currentThread);// so go to sleep
     conditionLock->Release();
     currentThread->Sleep();
@@ -331,10 +332,9 @@ void Condition::Wait(Lock* conditionLock)
 }
 void Condition::Signal(Lock* conditionLock) 
 { 
-    // Pick up tomorrow here.
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
     ASSERT(conditionLock->isHeldByCurrentThread());
     Thread *thread;
-    IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
     thread = (Thread *)queue->Remove();
     if (thread != NULL)    // make thread ready, consuming the V immediately
         scheduler->ReadyToRun(thread);
@@ -345,11 +345,9 @@ void Condition::Signal(Lock* conditionLock)
 }
 void Condition::Broadcast(Lock* conditionLock) 
 { 
-    // 
-    // Puts thread on ready list, which must reaquire lock, does this for all locks
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
     ASSERT(conditionLock->isHeldByCurrentThread());
     Thread *thread;
-    IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
     thread = (Thread *)queue->Remove();
     while(thread != NULL)    // make thread ready, consuming the V immediately
     {
