@@ -2,12 +2,11 @@
 
 Locks:
 
-We must disable interrupts because nachos is a single processor system and it provides us with area of mutual exclusion, 
-similar to test and set.  We give each thread a local variable in Acquire() in order to create the test-and-set kind of
-process.  This enables us to check this local variable in the while loop.  Since the variable can only be accessed by 
+We must disable interrupts because nachos is a single processor system and it provides us with an area of mutual exclusion, 
+so that we can perform an operation similar to test and set.  We give each thread a variable local to that thread in Acquire() in order to create the test-and-set kind of set of instruction.  This enables us to check this local variable in the while loop without having to disable interrupts around the while loop.  Since the variable can only be accessed by 
 the thread it belongs to, we don't need interrupts disabled when we check the while condition. If the lock is not free, 
 we add the thread to a queue where it can sleep while it waits.  This avoids having the threads busy-wait while the lock 
-is still in use.
+is still in use.  If the lock is free (meaning freed = 1) then the localVal is set to 1 in exactly one thread (whichever one disables interrupts first) and then freed is set back to zero so that any other threads that try to acquire the lock will be unable to. 
 
 We then get the name of the thread that has acquired the lock in order to implement the isHeldByCurrentThread() function.  
 At the point where we get the thread name there should only be one thread that can reach this section, since any others 
