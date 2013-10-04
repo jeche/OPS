@@ -84,11 +84,14 @@ FILE *read_from, *write_to;
 
 int bufsize, visual;
 char buf[100];
+
+/*Note: If you want*/
 char content[]="Hello World!";
+int contentSize;
 //char content[]="Wake up it's time to do systems right now\n";
 Lock *bufLock, *contentLock;
 Condition *notFull, *notEmpty;
-int contCur=0, putCur=0, getCur=0, bufFree=bufsize;
+int contCur=0, putCur=0, getCur=0, bufFree;
 Thread *prods[100];
 Thread *cons[100];
 char prodnames[100][15];
@@ -111,7 +114,7 @@ int putBuf(char c){
     putCur=putCur%bufsize;
     bufFree--;
     DEBUG('t', "About to notEmpty->Signal\n");
-    printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("put in '%c'\n", c);
+    if(visual){printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("put in '%c'\n", c);}
     notEmpty->Signal(bufLock);
 
     bufLock->Release(); //********Uncomment if we update Signal and Broadcast
@@ -139,12 +142,13 @@ char getBuf(){
 void Producer(int which){
     DEBUG('t', "Entering Producer\n");
     char c='a';
-    while(c!='\0'){
+    while(c!='\0'&&contCur<contentSize){
         contentLock->Acquire();
         c = content[contCur];
         contCur++;
         contentLock->Release();
         if(!putBuf(c)){fprintf(stderr, "putBuf failed\n");exit(1);}
+        
     }
     //if(!putBuf('\0')){fprintf(stderr, "putBuf failed\n");exit(1);}
     
@@ -156,6 +160,7 @@ void Consumer(int which){
     char c;
     while (1){
         c = getBuf();
+        //fprintf(stderr, "%d\n", visual);
         if(!visual){printf("%c", c);}
     }
     //while((c=getBuf())!='\0'){printf("%c", c);}
@@ -177,7 +182,10 @@ void ProdConsTest(int numProducers, int numConsumers, int bsize, int vflag){
     notEmpty = new(std::nothrow) Condition("notEmpty");
     notFull = new(std::nothrow) Condition("notFull");
     bufsize=bsize;
+    bufFree=bsize;
+    fprintf(stderr, "%d\n", vflag);
     visual=vflag;
+    contentSize=strlen(content);
 
     // Tell wish to read the init script
     memset(buf, '_', sizeof(buf));

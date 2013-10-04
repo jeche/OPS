@@ -267,7 +267,8 @@ main(int argc, char **argv)
     else {
         ASSERT(argc > 1);
         if (strcmp(argv[2], "2") == 0) {
-            ASSERT(argc > 3);
+            //ASSERT(argc > 3);
+            if(argc<3){fprintf(stderr, "Incorrect Arguments given for Problem #2\n");exit(1);}
             int numProducers = strtol(argv[3], &intCheck1, 10);
             //Checks to make sure the numProducers is a positive nonzero integer
             if (*intCheck1 != '\0' || numProducers <= 0){
@@ -286,10 +287,16 @@ main(int argc, char **argv)
                 printf("ERROR: Incorrect input\n");
                 exit(1);
             }
-            int vflag = 0;
-            if(strcmp(argv[6], "-b" == 0)){
+            int vflag;
+            if(strcmp(argv[6], "-b") == 0){
                 vflag = 1;
             }
+            else if(strcmp(argv[6], "-n")==0){
+                vflag = 0;
+            }
+            else{printf("ERROR: Incorrect input\n");exit(1);}
+
+
             //Checks to make sure the numConsumers is a positive nonzero integer
             if (*intCheck2 != '\0' || numConsumers <= 0){
                 printf("ERROR: Incorrect input\n");
@@ -298,7 +305,7 @@ main(int argc, char **argv)
         	ProdConsTest(numProducers, numConsumers, bufsize, vflag);
         }
         else if (strcmp(argv[2], "5") == 0) {
-         ASSERT(argc > 3);
+         if(argc<3){fprintf(stderr, "Incorrect Arguments given for Problem #5\n");exit(1);}
          // Checks to make sure the number of people getting on the elevator
          // will be more than 0.
          int people = strtol(argv[3], &intCheck1, 10);
