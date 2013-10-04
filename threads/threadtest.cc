@@ -454,7 +454,7 @@ void Elevator(int floors)
     elevatorLock->Acquire();
 	while(1)
 	{
-        fprintf(stderr, "Elevator at floor %d, waiting upwards %d, waiting downward %d, peopleIn %d, peopleWait %d\n", curFloor, upwait, dwait, peopleIn, peopleWait);
+        // fprintf(stderr, "Elevator at floor %d, waiting upwards %d, waiting downward %d, peopleIn %d, peopleWait %d\n", curFloor, upwait, dwait, peopleIn, peopleWait);
         if(peopleIn == 0 && peopleWait == 0){
 		  arrival->Wait(elevatorLock);  // If no one wants to get on the elevator yet and there is no one in the elevator wait for an arrival.
         }
