@@ -230,7 +230,7 @@ ASSERT(argc > 1);
 
 // External functions used by this file
 
-extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(int numProducers, int numConsumers), ElevatorTest(void), Copy(char *unixFile, char *nachosFile);
+extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(int numProducers, int numConsumers), ElevatorTest(int people, int seed), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
@@ -283,7 +283,7 @@ main(int argc, char **argv)
         	ProdConsTest(numProducers, numConsumers);
         }
         else if (strcmp(argv[2], "5") == 0) {
-         ElevatorTest(); 
+         ElevatorTest(5, 0);
         }
         else if (strcmp(argv[2], "8") == 0) {
          ThreadTestPriority();
