@@ -230,7 +230,7 @@ ASSERT(argc > 1);
 
 // External functions used by this file
 
-extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(int numProducers, int numConsumers), ElevatorTest(void), Copy(char *unixFile, char *nachosFile);
+extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(int numProducers, int numConsumers, int bufsize, int vflag), ElevatorTest(int people, int seed), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
@@ -280,10 +280,39 @@ main(int argc, char **argv)
                 printf("ERROR: Incorrect input\n");
                 exit(1);
             }
-        	ProdConsTest(numProducers, numConsumers);
+            int bufsize = strtol(argv[5], &intCheck2, 10);
+            //Checks to make sure the buffer size is a positive nonzero integer
+            if (*intCheck2 != '\0' || bufsize <= 0){
+                printf("ERROR: Incorrect input\n");
+                exit(1);
+            }
+            int vflag = 0;
+            if(strcmp(argv[6], "-b" == 0)){
+                vflag = 1;
+            }
+            //Checks to make sure the numConsumers is a positive nonzero integer
+            if (*intCheck2 != '\0' || numConsumers <= 0){
+                printf("ERROR: Incorrect input\n");
+                exit(1);
+            }            
+        	ProdConsTest(numProducers, numConsumers, bufsize, vflag);
         }
         else if (strcmp(argv[2], "5") == 0) {
-         ElevatorTest(); 
+         ASSERT(argc > 3);
+         // Checks to make sure the number of people getting on the elevator
+         // will be more than 0.
+         int people = strtol(argv[3], &intCheck1, 10);
+         if (*intCheck1 != '\0' || people <= 0){
+               printf("ERROR: Incorrect input\n");
+                exit(1);
+         }
+         // Must use a positive seed.
+         int seed = strtol(argv[4], &intCheck2, 10);
+         if (*intCheck2 != '\0' || seed < 0){
+                printf("ERROR: Incorrect input\n");
+                exit(1);
+         }
+         ElevatorTest(people, seed);
         }
         else if (strcmp(argv[2], "8") == 0) {
          ThreadTestPriority();
