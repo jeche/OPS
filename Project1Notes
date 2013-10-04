@@ -33,6 +33,8 @@ Setup of ProdCons
   In order to implement the Producer Consumer problem we need several global variables.
     * 2 Locks: bufLock and contentLock. bufLock protects the buffer from being accessed by the threads at the same time, and contentLock does the same for the input string, "Hello World!"  
     * 2 Condition variables: notFull and notEmpty, for the threads to sleep on if either they are a producer and the buffer is full or they are a consumer and the buffer is empty.
+    
+With the bufLock and the 2 condition variables we essentially create a monitor with the 2 methods getBuf and putBuf, if a thread enters either methods it must first acquire the bufLock, blocking any other threads from executing either of the methods. If the thread must sleep on one of the condition variables, it gives up the lock and steps out of the 'monitor', which allows one of the other threads to execute the 2 'monitor' methods. Through this we create mutual exclusion on critical sections with regards to modifying and accessing the buffer.
 
 The test itself creates these locks and condition variables and also creates each of the producer and consumer threads.  Each of the producer and consumer threads fork the correct process.  In order to allow the user to change the size of the buffer (which must be a global variable), we create an actual buffer of size 100 and then take the user argument for buffer size and make that the farthest point either the producer or consumer threads can access.  While this wastes some space, it allows a user more flexibility in testing out the producer consumer system.
 
