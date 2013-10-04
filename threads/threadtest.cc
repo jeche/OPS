@@ -68,155 +68,12 @@ ThreadTest()
 //#########################################################################
 //#########################################################################
 //#########################################################################
-//Start ProdCons
 
-//todo: 
 #include "copyright.h"
 #include "system.h"
 #include "synch.h"
 
-//----------------------------------------------------------------------
-// Producer Consumer Example
-// 	Replace the contents of ThreadTest(indef) to run 
-//	
-//----------------------------------------------------------------------
-FILE *read_from, *write_to;
-
-int bufsize, visual;
-char buf[100];
-
-/*Note: If you want*/
-char content[]="Hello World!";
-int contentSize;
-//char content[]="Wake up it's time to do systems right now\n";
-Lock *bufLock, *contentLock;
-Condition *notFull, *notEmpty;
-int contCur=0, putCur=0, getCur=0, bufFree;
-Thread *prods[100];
-Thread *cons[100];
-char prodnames[100][15];
-char consnames[100][15];
-void printBuf(){
-    int i;
-    printf("{ ");
-    for(i=0;i<bufsize;i++){
-        printf("%c ", buf[i]);
-    }
-    printf("}");
-}
-int putBuf(char c){
-    bufLock->Acquire();
-    DEBUG('t', "putBuf has Lock\n");
-    while(bufFree==0){notFull->Wait(bufLock);}
-    ASSERT(bufLock->isHeldByCurrentThread());
-    buf[putCur]=c;
-    putCur++;
-    putCur=putCur%bufsize;
-    bufFree--;
-    DEBUG('t', "About to notEmpty->Signal\n");
-    if(visual){printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("put in '%c'\n", c);}
-    notEmpty->Signal(bufLock);
-
-    bufLock->Release(); //********Uncomment if we update Signal and Broadcast
-    return 1;
-}
-
-char getBuf(){
-    bufLock->Acquire();
-    DEBUG('t', "getBuf has Lock\n");
-    while(bufFree==bufsize){notEmpty->Wait(bufLock);}
-    ASSERT(bufLock->isHeldByCurrentThread());
-    char c = buf[getCur];
-    buf[getCur]='_';
-    getCur++;
-    getCur=getCur%bufsize;
-    bufFree++;
-    DEBUG('t', "About to notFull->Signal\n");
-    if(visual){printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("took out '%c'\n", c);}
-    notFull->Signal(bufLock);
-    bufLock->Release(); //********Uncomment if we update Signal and Broadcast
-    return c;
-
-}
-
-void Producer(int which){
-    DEBUG('t', "Entering Producer\n");
-    char c='a';
-    while(c!='\0'&&contCur<contentSize){
-        contentLock->Acquire();
-        c = content[contCur];
-        contCur++;
-        contentLock->Release();
-        if(!putBuf(c)){fprintf(stderr, "putBuf failed\n");exit(1);}
-        
-    }
-    //if(!putBuf('\0')){fprintf(stderr, "putBuf failed\n");exit(1);}
-    
-    DEBUG('t', "Exiting Producer\n");
-}
-
-void Consumer(int which){
-    DEBUG('t', "Entering Consumer\n");
-    char c;
-    while (1){
-        c = getBuf();
-        //fprintf(stderr, "%d\n", visual);
-        if(!visual){printf("%c", c);}
-    }
-    //while((c=getBuf())!='\0'){printf("%c", c);}
-    DEBUG('t', "Exiting Consumer\n");
-    
-}
-
-//----------------------------------------------------------------------
-// ProdConsTest
-// Sets up as many producers and consumers as requested by the user and
-// then runs the producer/consumer scenario on the string requested by
-// the user.
-//----------------------------------------------------------------------
-
-void ProdConsTest(int numProducers, int numConsumers, int bsize, int vflag){
-    DEBUG('t', "Entering ProdCons\n");
-    bufLock = new(std::nothrow) Lock("bufLock");
-    contentLock = new(std::nothrow) Lock("contentLock");
-    notEmpty = new(std::nothrow) Condition("notEmpty");
-    notFull = new(std::nothrow) Condition("notFull");
-    bufsize=bsize;
-    bufFree=bsize;
-    fprintf(stderr, "%d\n", vflag);
-    visual=vflag;
-    contentSize=strlen(content);
-
-    // Tell wish to read the init script
-    memset(buf, '_', sizeof(buf));
-    for (int i = 0; i < numProducers; i++) {
-        sprintf(prodnames[i], "Producer %d", i);
-        //fprintf(stderr, "%s", name);
-        prods[i] = new(std::nothrow) Thread(prodnames[i]);
-        prods[i]->Fork(Producer, i);
-    }
-    for (int j = 0; j < numConsumers; j++) {
-        sprintf(consnames[j], "Consumer %d", j);
-        cons[j]= new(std::nothrow) Thread(consnames[j]);
-        cons[j]->Fork(Consumer, j);
-    }
-
-
-    // char prodbuf[15];
-    // char consbuf[15];
-    // sprintf(prodbuf, "Producer %d", numProducers);
-    // sprintf(consbuf, "Consumer %d", numConsumers);
-    
-    // Thread *tprod = new(std::nothrow) Thread("prodbuf0",1);
-    // Thread *tprod1 = new(std::nothrow) Thread("prodbuf1",1);
-    // Thread *tcons = new(std::nothrow) Thread("consbuf1",0);
-    
-
-    // tprod->Fork(Producer, numProducers);
-    // tprod1->Fork(Producer, numProducers);
-    // tcons->Fork(Consumer, numConsumers);
-
-}
+//Start SimpleThreads
 
 //----------------------------------------------------------------------
 // SimpleThreadPriority
@@ -255,50 +112,135 @@ ThreadTest()
     SimpleThread(0);
 }
 
+//End SimpleThreads
+
+//Start ProdCons
+
 //----------------------------------------------------------------------
-// SimpleThreadPriority
-//  Loop 5 times, yielding the CPU to another ready thread 
-//  each iteration.
-//
-//  "which" is simply a number identifying the thread, for debugging
-//  purposes.  
+// Producer Consumer Example
+// 	Replace the contents of ThreadTest(indef) to run 
+//	
 //----------------------------------------------------------------------
 
-Thread *threads[100];
-char threadnames[100][15];
+int bufsize, visual;
+char buf[100];
 
-void
-SimpleThreadPriority(int which)
-{
-    int num;
+char content[]="Hello World!";
+int contentSize;
+Lock *bufLock, *contentLock;
+Condition *notFull, *notEmpty;
+int contCur=0, putCur=0, getCur=0, bufFree;
+Thread *prods[100];
+Thread *cons[100];
+char prodnames[100][15];
+char consnames[100][15];
+
+//Prints the buffer, does not include newline at the end
+void printBuf(){
+    int i;
+    printf("{ ");
+    for(i=0;i<bufsize;i++){
+        printf("%c ", buf[i]);
+    }
+    printf("}");
+}
+
+//Producers use this to put the character they have acquired in the buffer
+int putBuf(char c){
+    bufLock->Acquire();
+    DEBUG('t', "putBuf has Lock\n");
+    while(bufFree==0){notFull->Wait(bufLock);}
+    ASSERT(bufLock->isHeldByCurrentThread());
+    buf[putCur]=c;
+    putCur++;
+    putCur=putCur%bufsize;
+    bufFree--;
+    DEBUG('t', "About to notEmpty->Signal\n");
+    if(visual){printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("put in '%c'\n", c);}
+    notEmpty->Signal(bufLock);
+
+    bufLock->Release(); 
+    return 1;
+}
+
+//Consumers use this to take the next character from the buffer
+char getBuf(){
+    bufLock->Acquire();
+    DEBUG('t', "getBuf has Lock\n");
+    while(bufFree==bufsize){notEmpty->Wait(bufLock);}
+    ASSERT(bufLock->isHeldByCurrentThread());
+    char c = buf[getCur];
+    buf[getCur]='_'; //done for the aesthetic printing of the buffer
+    getCur++;
+    getCur=getCur%bufsize;
+    bufFree++;
+    DEBUG('t', "About to notFull->Signal\n");
+    if(visual){printf("Buffer after ");currentThread->Print();printBuf();printf(", ");currentThread->Print();printf("took out '%c'\n", c);}
+    notFull->Signal(bufLock);
+    bufLock->Release(); 
+    return c;
+
+}
+
+void Producer(int which){
+    DEBUG('t', "Entering Producer\n");
+    char c='a'; //initializes c so that it can get into the while loop--is immediately replaced by actual content inside the loop
+    while(c!='\0'&&contCur<contentSize){
+        contentLock->Acquire();  //accounts for multiple producers
+        c = content[contCur];
+        contCur++;
+        contentLock->Release();
+        if(!putBuf(c)){fprintf(stderr, "putBuf failed\n");exit(1);}    
+    }    
+    DEBUG('t', "Exiting Producer\n");
+}
+
+void Consumer(int which){
+    DEBUG('t', "Entering Consumer\n");
+    char c;
+    while (1){
+        c = getBuf();
+        if(!visual){printf("%c", c);}
+    }
+    DEBUG('t', "Exiting Consumer\n");
     
-    for (num = 0; num < 5; num++) {
-    printf("*** thread %d looped %d times\n", which, num);
-        currentThread->Yield();
-    }
-    printf("***** thread %d finished with priority: %d\n", which, currentThread->getPriority());
 }
 
 //----------------------------------------------------------------------
-// ThreadTest for priority threads
-//  Creates six new threads aside from the main thread. The first, fourth 
-//  and fifth of these threads will be given the highest priority and the 
-//  other three will have an equal lower priority.  The threads with the 
-//  highest priority should finish first.  
+// ProdConsTest
+// Sets up as many producers and consumers as requested by the user and
+// then runs the producer/consumer scenario on the string requested by
+// the user.
 //----------------------------------------------------------------------
 
-void
-ThreadTestPriority(int numThreads)
-{
-    DEBUG('t', "Entering SimpleTestPriority");
+void ProdConsTest(int numProducers, int numConsumers, int bsize, int vflag){
+    //Setting up locks and condition variables and other stuff
+    DEBUG('t', "Entering ProdCons\n");
+    bufLock = new(std::nothrow) Lock("bufLock");
+    contentLock = new(std::nothrow) Lock("contentLock");
+    notEmpty = new(std::nothrow) Condition("notEmpty");
+    notFull = new(std::nothrow) Condition("notFull");
+    bufsize=bsize;
+    bufFree=bsize;
+    visual=vflag;
+    contentSize=strlen(content);
 
-    for (int i = 0; i < numThreads; i++) {
-        sprintf(threadnames[i], "priority thread %d", i);
-        int priority = rand() % 2;
-        threads[i] = new(std::nothrow) Thread(threadnames[i], priority);
-        threads[i]->Fork(SimpleThreadPriority, i);
+    memset(buf, '_', sizeof(buf));
+    //Create producers
+    for (int i = 0; i < numProducers; i++) {
+        sprintf(prodnames[i], "Producer %d", i);
+        prods[i] = new(std::nothrow) Thread(prodnames[i]);
+        prods[i]->Fork(Producer, i);
+    }
+    //Create consumers
+    for (int j = 0; j < numConsumers; j++) {
+        sprintf(consnames[j], "Consumer %d", j);
+        cons[j]= new(std::nothrow) Thread(consnames[j]);
+        cons[j]->Fork(Consumer, j);
     }
 }
+
+//End ProdCons
 
 //Elevator
 int* floor = 0;
@@ -564,4 +506,52 @@ ElevatorTest(int people, int seed)
          pers[i]->Fork(Person, arg); 
      } 
 }
+
+//Start PriorityThreads
+
+//----------------------------------------------------------------------
+// SimpleThreadPriority
+//  Loop 5 times, yielding the CPU to another ready thread 
+//  each iteration.
+//
+//  "which" is simply a number identifying the thread, for debugging
+//  purposes.  
+//----------------------------------------------------------------------
+
+Thread *threads[100];
+char threadnames[100][15];
+
+void
+SimpleThreadPriority(int which)
+{
+    int num;
+    
+    for (num = 0; num < 5; num++) {
+    printf("*** thread %d looped %d times\n", which, num);
+        currentThread->Yield();
+    }
+    printf("***** thread %d finished with priority: %d\n", which, currentThread->getPriority());
+}
+
+//----------------------------------------------------------------------
+// ThreadTest for priority threads
+//  Creates as many threads as the user requests aside from the main 
+//  thread.  These threads are all given a random priority (either 0 or
+//  1) The threads with the highest priority (0) should finish first.  
+//----------------------------------------------------------------------
+
+void
+ThreadTestPriority(int numThreads)
+{
+    DEBUG('t', "Entering SimpleTestPriority");
+
+    for (int i = 0; i < numThreads; i++) {
+        sprintf(threadnames[i], "priority thread %d", i); //debug name created here
+        int priority = rand() % 2;  //Randomly choose either 0 or 1 for the priority
+        threads[i] = new(std::nothrow) Thread(threadnames[i], priority);
+        threads[i]->Fork(SimpleThreadPriority, i);
+    }
+}
+
+//End PriorityThreads
 #endif
