@@ -230,7 +230,7 @@ ASSERT(argc > 1);
 
 // External functions used by this file
 
-extern void ThreadTest(void), ThreadTestPriority(void),ProdConsTest(int numProducers, int numConsumers, int bufsize, int vflag), ElevatorTest(int people, int seed), Copy(char *unixFile, char *nachosFile);
+extern void ThreadTest(void), ThreadTestPriority(int numThreads),ProdConsTest(int numProducers, int numConsumers, int bufsize, int vflag), ElevatorTest(int people, int seed), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
@@ -257,6 +257,7 @@ main(int argc, char **argv)
 
     char* intCheck1;  // checking arguments to make sure they are integers
     char* intCheck2;
+    char* intCheck3;
     DEBUG('t', "Entering main");
     (void) Initialize(argc, argv);
     
@@ -322,7 +323,14 @@ main(int argc, char **argv)
          ElevatorTest(people, seed);
         }
         else if (strcmp(argv[2], "8") == 0) {
-         ThreadTestPriority();
+            ASSERT(argc > 1);
+            int numThreads = strtol(argv[3], &intCheck3, 10);
+            //Checks to make sure the buffer size is a positive nonzero integer
+            if (*intCheck3 != '\0' || numThreads <= 0){
+                printf("ERROR: Incorrect input\n");
+                exit(1);
+            }
+            ThreadTestPriority(numThreads);
         }
     }
 #endif

@@ -264,6 +264,9 @@ ThreadTest()
 //  purposes.  
 //----------------------------------------------------------------------
 
+Thread *threads[100];
+char threadnames[100][15];
+
 void
 SimpleThreadPriority(int which)
 {
@@ -285,24 +288,16 @@ SimpleThreadPriority(int which)
 //----------------------------------------------------------------------
 
 void
-ThreadTestPriority()
+ThreadTestPriority(int numThreads)
 {
     DEBUG('t', "Entering SimpleTestPriority");
-    DEBUG('t', "Starting the first priority test");
 
-    Thread *t1 = new(std::nothrow) Thread("forked thread1", 0);
-    Thread *t2 = new(std::nothrow) Thread("forked thread2", 1);
-    Thread *t3 = new(std::nothrow) Thread("forked thread3", 1);
-    Thread *t4 = new(std::nothrow) Thread("forked thread4", 0);
-    Thread *t5 = new(std::nothrow) Thread("forked thread5", 0);
-    Thread *t6 = new(std::nothrow) Thread("forked thread6", 1);
-
-    t1->Fork(SimpleThreadPriority, 1);
-    t2->Fork(SimpleThreadPriority, 2);
-    t3->Fork(SimpleThreadPriority, 3);
-    t4->Fork(SimpleThreadPriority, 4);
-    t5->Fork(SimpleThreadPriority, 5);
-    t6->Fork(SimpleThreadPriority, 6);
+    for (int i = 0; i < numThreads; i++) {
+        sprintf(threadnames[i], "priority thread %d", i);
+        int priority = rand() % 2;
+        threads[i] = new(std::nothrow) Thread(threadnames[i], priority);
+        threads[i]->Fork(SimpleThreadPriority, i);
+    }
 }
 
 //Elevator
