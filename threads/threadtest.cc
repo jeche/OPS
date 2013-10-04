@@ -242,11 +242,12 @@ void ProdConsTest(int numProducers, int numConsumers, int bsize, int vflag){
 
 //End ProdCons
 
+
 //Elevator
 int* floor = 0;
-Lock* elevatorLock = new(std::nothrow) Lock("elevatorLock");
+Lock* elevatorLock;
 Condition* waiting;
-int going[5];
+int going[5] = {0, 0, 0, 0, 0};
 Condition* filled; 
 Condition* arrival;
 int uwaiter[5] = {0, 0, 0, 0, 0};
@@ -258,124 +259,134 @@ int dir = 1;
 int peopleIn = 0;
 int moving = 0;
 int peopleWait = 0;
-
-class ElevatorManager {
-  private:
-    int dest;
-    const char* name;
-
-  public:
-    ElevatorManager(const char* debugName)
-    {
-    	name = debugName;
-    };
+int floors;
+/* Person threads must call this to tell the elevator
+they are waiting and to tell it where they want to go
+to.  It returns an integer of the floor number where
+they ended up */
+int ArrivingGoingFromTo(int atFloor, int toFloor)
+{   /*Acquires the elevator lock*/
+    elevatorLock->Acquire();
+    int tempDir = 0; 
+    /* tempDir will be the direction the person 
+    calling the function wants to go the following
+    if block determines which way.  It also increments
+    the down, or up waiting buffer for the current
+    floor as appropriate.  It also increments the 
+    number of people waiting to go the appropriate direction*/
+    if(atFloor - toFloor < 0){
+        tempDir = 1;
+        uwaiter[atFloor]++;
+        upwait++;
+    }
+    else if(atFloor - toFloor > 0){
+        tempDir = -1;
+        dwaiter[atFloor]++;
+        dwait++;
+    }
+    else if(atFloor - toFloor == 0 && atFloor == floors - 1){
+        tempDir = -1;
+        dwaiter[atFloor]++;
+        dwait++;
+    }
+    else if(atFloor - toFloor == 0 && atFloor == 0){
+        tempDir = 1;
+        uwaiter[atFloor]++;
+        upwait++;        
+    }
+    else if(atFloor - toFloor == 0){
+        // If someone is a fool and tries to get on the elevator
+        // to go to the floor they are currently on they just get
+        // back off again.
+        elevatorLock->Release();
+        return toFloor;
+    }
     
-    ~ElevatorManager()
-    {
-    };
-
-    int ArrivingGoingFromTo(int atFloor, int toFloor)
-    {   /*Acquires the elevator lock*/
-        elevatorLock->Acquire();
-        int tempDir = 0; 
-        /* tempDir will be the direction the person 
-        calling the function wants to go the following
-        if block determines which way.  It also increments
-        the down, or up waiting buffer for the current
-        floor as appropriate.  It also increments the 
-        number of people waiting to go the appropriate direction*/
-        if(atFloor - toFloor < 0){
-            tempDir = 1;
-            uwaiter[atFloor]++;
-            upwait++;
-        }
-        else{
-            tempDir = -1;
-            dwaiter[atFloor]++;
-            dwait++;
-        }
-        peopleWait++; /*increment the number of people waiting*/
-        /* If this person is the first one to call the elevator
-        tell it what direction to go. */
-        if(!moving && peopleIn == 0){
-	       arrival->Signal(elevatorLock);
-           if(atFloor > curFloor){
-            dir = 1;
-           }
-           else if(atFloor < curFloor){
-            dir = -1;
-           }
-           else if(atFloor - toFloor < 0){
-            dir = 1;
-           }
-           else{
-            dir = -1;
-           }
+    /* If this person is the first one to call the elevator
+    tell it what direction to go. */
+    arrival->Signal(elevatorLock);
+    if(!moving && peopleIn == 0 && peopleWait == 0){
+       if(atFloor > curFloor){
+        dir = 1;
        }
-       /* While the elevator is not at the floor the person is waiting at and while it
-       is not going the direction the person wants to go wait */
-	   while(curFloor != atFloor || (curFloor == atFloor && dir != tempDir))
-	   {
-            ASSERT(elevatorLock->isHeldByCurrentThread());
-            waiting->Wait(elevatorLock);
-	   }
-       
-       /* Decrement the appropriate wait counters.  Get on the elevator*/
-       peopleWait--;
-       if(tempDir == -1){
-	       dwaiter[atFloor]--;
-           dwait--;
-           fprintf(stderr, "%s from floor %d boarded going down to floor %d.\n", currentThread->getName(), atFloor, toFloor);
+       else if(atFloor < curFloor){
+        dir = -1;
+       }
+       else if(atFloor - toFloor < 0){
+        dir = 1;
        }
        else{
-           uwaiter[atFloor]--;
-           upwait--;
-           fprintf(stderr, "%s from floor %d boarded going up to floor %d.\n", currentThread->getName(), atFloor, toFloor);
+        dir = -1;
        }
-	   going[toFloor]++;
-	   peopleIn++;
+   }
+   peopleWait++; /*increment the number of people waiting*/
+   /* While the elevator is not at the floor the person is waiting at and while it
+   is not going the direction the person wants to go wait */
+   while(curFloor != atFloor || (curFloor == atFloor && dir != tempDir))
+   {
+        ASSERT(elevatorLock->isHeldByCurrentThread());
+        waiting->Wait(elevatorLock);
+   }
+   ASSERT(curFloor == atFloor);
+   /* Decrement the appropriate wait counters.  Get on the elevator*/
+   peopleWait--;
+   if(tempDir == -1){
+       dwaiter[atFloor]--;
+       dwait--;
+       // fprintf(stderr, "%s from floor %d boarded going down to floor %d.\n", currentThread->getName(), atFloor, toFloor);
+   }
+   else{
+       uwaiter[atFloor]--;
+       upwait--; 
+   }
+   fprintf(stderr, "%s, ", currentThread->getName());
+   
+   going[toFloor]++;
+   peopleIn++;
 
-       /* If no one is waiting on the current floor to go up or down, tell the elevator
-       we are ready for it to go */
-	   if(uwaiter[atFloor] == 0 && (tempDir == 1 || atFloor == 3))
-	   {
-            filled->Signal(elevatorLock);
-	   }
-       else if(dwaiter[atFloor] == 0 && (tempDir == -1 || atFloor == 0)){
-            filled->Signal(elevatorLock);
-       }
-       /* While the elevator has not reached the person's floor sleep */
-	   while(curFloor != toFloor)
-	   {
-		  waiting->Wait(elevatorLock);
-	   }
-       /*Get off the elevator.*/
-	   peopleIn--;
-	   going[toFloor]--;
-       /* If you are the last one to get off tell the elevator it can leave */
-       if(going[toFloor]==0){
-            filled->Signal(elevatorLock);
-       }
-       int tempVar = curFloor;
-       //fprintf(stderr, "Passenger going to floor %d exited.\n", toFloor);
-	   elevatorLock->Release();
-       /* Return the value of the floor you got off on. */
-       return tempVar;
-    };
-
+   /* If no one is waiting on the current floor to go up or down, tell the elevator
+   we are ready for it to go */
+   if(uwaiter[atFloor] == 0 && (tempDir == 1 || atFloor == 3))
+   {
+        fprintf(stderr, "got on the elevator going up at floor %d.\n", curFloor);
+        filled->Signal(elevatorLock);
+   }
+   else if(dwaiter[atFloor] == 0 && (tempDir == -1 || atFloor == 0)){
+        fprintf(stderr, "got on the elevator going down at floor %d.\n", curFloor);
+        filled->Signal(elevatorLock);
+   }
+   /* While the elevator has not reached the person's floor sleep */
+   while(curFloor != toFloor)
+   {
+	  waiting->Wait(elevatorLock);
+   }
+   /*Get off the elevator.*/
+   peopleIn--;
+   going[toFloor]--;
+   /* If you are the last one to get off tell the elevator it can leave */
+   if(going[toFloor]==0){
+        filled->Signal(elevatorLock);
+   }
+   int tempVar = curFloor;
+   fprintf(stderr, "Passenger going to floor %d exited.\n", toFloor);
+   elevatorLock->Release();
+   /* Return the value of the floor you got off on. */
+   return tempVar;
 };
 
-ElevatorManager* manager;
-
+/* Class is used to pass the arguments to tell people where they are
+going to and leaving from to each person thread */
 class PersonArgs
 {
 	public:
 		int leaving;
 		int going;
-		PersonArgs(int l, int g)
+        int delay;
+		PersonArgs(int l, int g, int d)
 		{
 			going = g;
 			leaving = l;
+            delay = d;
 		};
 };
 
@@ -383,21 +394,24 @@ void Person(int arg)
 {
 	PersonArgs * pArgs;
 	pArgs = (PersonArgs*)((void*) arg);
-	// fprintf(stderr, "Waiting at floor %d to go to floor %d\n", pArgs->leaving, pArgs->going);
-	int c = manager->ArrivingGoingFromTo(pArgs->leaving, pArgs->going);
-    	ASSERT(c == pArgs->going);
-    	fprintf(stderr, "%s got off at %d.\n", currentThread->getName(), c);
+    for(int i = 0; i < pArgs->delay; i++){
+        currentThread->Yield();
+    }
+	// fprintf(stderr, "%s waiting at floor %d to go to floor %d\n", currentThread->getName(), pArgs->leaving, pArgs->going);
+	int c = ArrivingGoingFromTo(pArgs->leaving, pArgs->going);
+    ASSERT(c == pArgs->going);
+    fprintf(stderr, "%s got off at %d.\n", currentThread->getName(), c);
 	return;
 }
 
 
-void Elevator(int floors)
+void Elevator(int)
 {
 	
     elevatorLock->Acquire();
 	while(1)
 	{
-        // fprintf(stderr, "Elevator at floor %d, waiting upwards %d, waiting downward %d, peopleIn %d, peopleWait %d\n", curFloor, upwait, dwait, peopleIn, peopleWait);
+        // fprintf(stderr, "Elevator at floor %d, waiting upwards %d, waiting downward %d, peopleIn %d, peopleWait %d, direction is %d\n", curFloor, upwait, dwait, peopleIn, peopleWait, dir);
         if(peopleIn == 0 && peopleWait == 0){
 		  arrival->Wait(elevatorLock);  // If no one wants to get on the elevator yet and there is no one in the elevator wait for an arrival.
         }
@@ -407,7 +421,7 @@ void Elevator(int floors)
               that floor and do not move until they are on and all 
               the people going to the current floor are off.*/
             while(uwaiter[curFloor] > 0 || going[curFloor] > 0){
-                filled->Wait(elevatorLock);
+                filled->Wait(elevatorLock);                
             }
         }
         else{
@@ -435,7 +449,7 @@ void Elevator(int floors)
                 num = dwaiter[f];
             }
             
-            if(num != 0 && !(f - curFloor > 0)){
+            if(num != 0 && !(f - curFloor >= 0)){
                 /* If the people waiting on a different, or current
                  floor as the elevator, but want it to change 
                  direction, change the direction.*/
@@ -443,6 +457,10 @@ void Elevator(int floors)
             }
 
             if(f - curFloor == 0){
+                dir = -1;
+                if(curFloor + dir < 0 || curFloor + dir >= floors){
+                    dir = -dir;
+                }
                 waiting->Broadcast(elevatorLock);
                 while(dwaiter[curFloor] > 0 || going[curFloor] > 0){
                     filled->Wait(elevatorLock);
@@ -456,12 +474,17 @@ void Elevator(int floors)
                 f++;
                 num = uwaiter[f];
             }
-            if(num != 0 && (f - curFloor > 0)){
+            if(num != 0 && (f - curFloor >= 0)){
                 dir = -dir;
             }
             if(f - curFloor == 0){
+                dir = 1;
+                if(curFloor + dir < 0 || curFloor + dir >= floors){
+                    dir = -dir;
+                }
                 waiting->Broadcast(elevatorLock);
                 while(uwaiter[curFloor] > 0 || going[curFloor] > 0){
+                    
                     filled->Wait(elevatorLock);
                 }                
             }
@@ -473,10 +496,19 @@ void Elevator(int floors)
             (void) interrupt->SetLevel(oldLevel);
         }
         curFloor = curFloor + dir; /* Floor has now changed so increase it by the direction you are going.*/
+        if(curFloor == floors){
+            curFloor = floors - 1;
+            dir = -1;
+        }
+        else if(curFloor < 0){
+            curFloor = 0;
+            dir = 1;
+        }
+
         ASSERT(curFloor < floors); /* Do NOT allow the elevator to go to heaven. */
         ASSERT(curFloor >= 0);     /* Do NOT allow the elevator to descend into the
                                     nether world.*/
-        moving = 0; // Elevator should stop moving.
+        moving = 0; // Elevator is no longer moving.
 	}
     elevatorLock->Release();
 	
@@ -488,70 +520,23 @@ char persnames[100][15];
 void
 ElevatorTest(int people, int seed)
 {
-    int floors = 5;
+    floors = 5;
     PersonArgs* pArgs;
     int arg;
     srand(seed);
+    elevatorLock = new(std::nothrow) Lock("elevatorLock");
     filled = new(std::nothrow) Condition("filled");
     waiting = new(std::nothrow) Condition("waiting");
-    manager = new(std::nothrow) ElevatorManager("manager");
     arrival = new(std::nothrow) Condition("arrival");
     Thread *te = new(std::nothrow) Thread("elevator");
     te->Fork(Elevator, floors);
      for (int i = 0; i< people; i++) { 
-         sprintf(persnames[i], "p%d", i);
+         sprintf(persnames[i], "p%d", i+1);
          pers[i] = new(std::nothrow) Thread(persnames[i]); 
-         pArgs = new(std::nothrow) PersonArgs(rand() % floors, rand() % floors);
+         pArgs = new(std::nothrow) PersonArgs(rand() % floors, rand() % floors, rand() % 10);
          arg = (int)pArgs;
          pers[i]->Fork(Person, arg); 
      } 
 }
-
-//Start PriorityThreads
-
-//----------------------------------------------------------------------
-// SimpleThreadPriority
-//  Loop 5 times, yielding the CPU to another ready thread 
-//  each iteration.
-//
-//  "which" is simply a number identifying the thread, for debugging
-//  purposes.  
-//----------------------------------------------------------------------
-
-Thread *threads[100];
-char threadnames[100][15];
-
-void
-SimpleThreadPriority(int which)
-{
-    int num;
-    
-    for (num = 0; num < 5; num++) {
-    printf("*** thread %d looped %d times\n", which, num);
-        currentThread->Yield();
-    }
-    printf("***** thread %d finished with priority: %d\n", which, currentThread->getPriority());
-}
-
-//----------------------------------------------------------------------
-// ThreadTest for priority threads
-//  Creates as many threads as the user requests aside from the main 
-//  thread.  These threads are all given a random priority (either 0 or
-//  1) The threads with the highest priority (0) should finish first.  
-//----------------------------------------------------------------------
-
-void
-ThreadTestPriority(int numThreads)
-{
-    DEBUG('t', "Entering SimpleTestPriority");
-
-    for (int i = 0; i < numThreads; i++) {
-        sprintf(threadnames[i], "priority thread %d", i); //debug name created here
-        int priority = rand() % 2;  //Randomly choose either 0 or 1 for the priority
-        threads[i] = new(std::nothrow) Thread(threadnames[i], priority);
-        threads[i]->Fork(SimpleThreadPriority, i);
-    }
-}
-
-//End PriorityThreads
 #endif
+
