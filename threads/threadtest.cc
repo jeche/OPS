@@ -539,11 +539,12 @@ void Elevator(int floors)
 	
 }
 
+Thread *pers[100];
+char persnames[100][15];
+
 void
 ElevatorTest(int people, int seed)
 {
-    Thread *t[people + 1];
-    char pname[people + 1][5]; 
     int floors = 5;
     PersonArgs* pArgs;
     int arg;
@@ -555,11 +556,11 @@ ElevatorTest(int people, int seed)
     Thread *te = new(std::nothrow) Thread("elevator");
     te->Fork(Elevator, floors);
      for (int i = 0; i< people; i++) { 
-         sprintf(pname[i], "p%d", i); 
-         t[i] = new(std::nothrow) Thread(pname[i]); 
+         sprintf(persnames[i], "p%d", i);
+         pers[i] = new(std::nothrow) Thread(persnames[i]); 
          pArgs = new(std::nothrow) PersonArgs(rand() % floors, rand() % floors);
          arg = (int)pArgs;
-         t[i]->Fork(Person, arg); 
+         pers[i]->Fork(Person, arg); 
      } 
     //te = new(std::nothrow) Thread("aaaaaa1"); 
     //pArgs = new(std::nothrow) PersonArgs(0, 1);
