@@ -1,0 +1,89 @@
+1. Implement locks and condition variables
+
+Locks:
+
+We must disable interrupts because nachos is a single processor system and it provides us with an area of mutual exclusion, so that we can perform an operation similar to test and set. We give each thread a variable local to that thread in Acquire() in order to create the test-and-set kind of set of instruction. This enables us to check this local variable in the while loop without having to disable interrupts around the while loop. Since the variable can only be accessed by the thread it belongs to, we don't need interrupts disabled when we check the while condition. If the lock is not free, we add the thread to a queue where it can sleep while it waits. This avoids having the threads busy-wait while the lock is still in use. If the lock is free (meaning freed = 1) then the localVal is set to 1 in exactly one thread (whichever one disables interrupts first) and then freed is set back to zero so that any other threads that try to acquire the lock will be unable to.
+
+We then get the name of the thread that has acquired the lock in order to implement the isHeldByCurrentThread() function. At the point where we get the thread name there should only be one thread that can reach this section, since any others will be sleeping on the queue or stuck in the while loop.
+
+
+In Release() we assert that "freed" is 0 because only one thread can have the lock at a time. We also assert that the current thread must be holding the lock in order to release it. We assert these things inside of where interrupts are disabled for safety. We remove the first thread from thequeue of sleeping threads and wake it up so that it can try to acquire the lock again. We set the threadname to null in Release() because we want to make sure that if the thread tries to do something with the lock after it no longer has it, it won't be able to. This is all done with interrupts disabled in order to ensure that the function is atomic.
+
+We choose to use low-level calls rather than semaphores because there is less overhead in using these calls rather than calling the semaphore functions. Semaphores, like our locks, also disable interupts, so the overhead cost in that aspect is the same.
+
+We are including <string.h> in order to use the strcmp function to test if the current thread is the same as the thread that holds the lock.
+
+
+Condition Variables:
+
+In Wait(), we begin by checking that the current thread has the lock for that condition. This is mostly a sanity check.Once that is done, we put the current thread on the end of the queue for that condition and then have the thread release the lock so that another thread can acquire it. The thread is then put to sleep, which turns back on interrupts. The thread will only wake up when it has been signaled. At this point, it will need to acquire the lock again before it can exit the Wait().
+
+In Signal(), we make another assert to ensure that the current thread has the lock. Once this has been done, we take the first thread that is waiting on the condition and put it back on the ready list so that it can continue processing. This will only happen if there actually is a thread waiting in the queue.
+
+Broadcast() is very similar to signaling. The only difference is that we use a for loop to iterate through all the threads waiting in the queue in order to wake them all up and put them all back on the ready list. We still assert that the current thread has the lock and disable interrupts while removing things from the queue and adding them to the ready list.
+
+2. ProdCons
+
+Running Prodcons
+  ./nachos -P 2 [int #ofProducers] [int #ofConsumers] [int buffersize] [-b/-n] [Additional nachos Args]
+  
+  For example, ./nachos -P 2 3 2 5 -b will give you the producer consumer test with three producers, two consumers and a buffer size of five with the buffer visualization enabled. There is a max buffer size of 100. If buffer visualization in is enabled then every time a producer or consumer thread accesses the buffer, a display of the current state of the buffer will be printed to the screen. With -n, only the output from the consumers will be produced. All arguments are required.
+
+Setup of ProdCons
+  In order to implement the Producer Consumer problem we need several global variables.
+    * 2 Locks: bufLock and contentLock. bufLock protects the buffer from being accessed by the threads at the same time, and contentLock does the same for the input string, "Hello World!"
+    * 2 Condition variables: notFull and notEmpty, for the threads to sleep on if either they are a producer and the buffer is full or they are a consumer and the buffer is empty.
+    
+With the bufLock and the 2 condition variables we essentially create a monitor with the 2 methods getBuf and putBuf, if a thread enters either methods it must first acquire the bufLock, blocking any other threads from executing either of the methods. If the thread must sleep on one of the condition variables, it gives up the lock and steps out of the 'monitor', which allows one of the other threads to execute the 2 'monitor' methods. Through this we create mutual exclusion on critical sections with regards to modifying and accessing the buffer.
+
+The test itself creates these locks and condition variables and also creates each of the producer and consumer threads. Each of the producer and consumer threads fork the correct process. In order to allow the user to change the size of the buffer (which must be a global variable), we create an actual buffer of size 100 and then take the user argument for buffer size and make that the farthest point either the producer or consumer threads can access. While this wastes some space, it allows a user more flexibility in testing out the producer consumer system.
+
+Producer
+
+In the Producer method, the threads go through a while loop, acquiring a lock in order to make sure they take the correct next character from the string "Hello World!\n" without being interrrupted by another producer. They then go into the putBuf() method which has the thread acquire the lock for the buffer and then place it in the next spot (which is marked by "putCur") if there is one that is empty. We take the mod of putCur to make sure that the threads wrap around to the beginning of the buffer to place characters once they've reached the end. If there are no empty spaces in the buffer, then the threads wait on the "notFull" condition. Once a character has been placed in the buffer, then the threads signal the "notEmpty" condition to let any consumer threads that were waiting on the condition know that there is now a character to consume. The lock on the buffer is then released and the thread returns to the Producer() method. The producer threads continue executing this process until they've reached the last character in the string, the '\0'.
+
+Consumer
+
+The Consumer() method acts similarly to to Producer() method. All consumer threads get into an infinite while loop that completes when all the consumer threads are put to sleep on the "notEmpty" condition after all the producers have placed all the characters in the buffer. In their while loop, the consumers call the method getBuf() in order to get the next character from the buffer and print it out to the terminal. The getBuf() method requires that the thread first acquire the buffer lock. If the buffer is empty, the consumers wait on the "notEmpty" condition until a producer signals that there is another character in the buffer. The consumers then access the character at the "getCur" position. Like in putBuf(), we take the mod of "getCur" to make sure that the threads wrap around to the beginning of the buffer to get the next character once they've gotten to the end. Finally, the consumers signal the "notFull" condition to let any producers that were waiting for space to be freed up in the buffer to get back on the readyList. The consumer releases the buffer lock and then begins the process over again.
+
+5. Elevator
+
+Running Elevator
+./nachos -P 5 [int #people] [int positiveSeed] [Additional nachos args]
+For example, ./nachos -P 5 15 100 will create an elevator with 15 people waiting for it. The positive seed randomly sets the floors the people are leaving from and going to. All arguments are required. There can be no more than 100 people and there must be more than 0.
+Setup of Elevator
+For the implementation of the Elevator problem several global variables were necessary.
+* 1 Lock was necessary, the elevator lock. In order to request, get on, get off, or move the elevator a thread must be holding the elevator lock.
+* 3 Conditions were necessary: "arrival", "filled", and "waiting"
+There was an "arrival" condition that the elevator would wait on until the a Person calling the ArrivingGoingFromTo(atFloor, toFloor) function would signal that they were the first person to arrive. The elevator only waits for an arrival if there is no one in it and there is no one waiting.
+The "filled" condition was utilized to tell the elevator that everyone who was waiting at the current floor to go the direction the elevator is going has entered the elevator and everyone who was going to the current floor has exited the elevator. The wait for "filled" occurs within a while loop that checks the appropriate buffer for people waiting in a certain direction and checks the buffer tallying everyone still in the elevator going to the current floor so that it waits until both are zero (aka that the people have entered and exited appropriately). "filled" is signaled when the number of people in the appropriate directional buffer is zero, in other words, the last person to enter the elevator and the last person to exit will both signal "filled". Because we wait for "filled" in a while loop, the elevator won't leave until both are zero even if one has already signaled.
+    
+    All people waiting for the elevator wait on the "wating" condition in a while loop. These people wait while the current floor of the elevator is not equal to the floor they are at and they wait while the elevator is not going in the direction they want to go even if the elevator is at their floor. This while loop allows us to have only one condition rather than a bed of conditions because even if a person is signaled, if the elevator is not at their floor, they won't be able to get out of the while loop and will go straight back to sleep. Every time the elevator reaches a new floor or is woken up, it broadcasts to the "waiting" condition to tell all the waiting people that they can get on if their floors and directions match those of the elevator. As soon as it broadcasts, the elevator checks to see if anyone is waiting for it on the current floor or if anyone is trying to leave the elevator at the current floor. If so, it waits on "filled". Otherwise, it begins incrementing the floor by toggling interrupts.
+There are three integer arrays to keep track of the number of people in the elevator going to a specific floor ("going"), the number of people waiting to go up from a specific floor ("uWaiter"), and the number of people waiting to go down from a specific floor ("dWaiter"). Floor serves as the index for all the arrays. Every time a person arrives for the elevator, the direction they are going is determined and then the "uWaiter" or "dWaiter" is incremented appropriately. "going" is incremented based on the floor they are going to and once they arrive, "going" is decremented before they release the lock. Once the elevator arrives at a floor, "uWaiter" or "dWaiter" is decremented appropriately as well.
+Other global integers that are kept include "upWait", "dWait", "peopleWait", and "peopleIn". "upWait" keeps track of the number of people going up so that we don't have to iterate through the "uWaiter" and sum them up each time. "dWait" is similar for "dWaiter". "peopleWait" keeps track of the total number of people waiting. It is used to track if anyone has arrived at the elevator. "peopleIn" keeps track of the number of people in the elevator. It is used in cases when the elevator needs to change direction to pick up people on lower or higher floors (as appropriate).
+    
+    There are also global integers that keep track of the current floor and the current direction the elevator is going as well as the number of floors in the building (assume five).
+    
+    There is also a flag called "moving" that keeps track of whether the elevator is currently moving. It is set to 1 before the interrupts are toggled and back to 0 afterwards.
+    
+    The ArrivingGoingFromTo(atFloor, toFloor) function is a global function that person threads call when they are requesting the elevator. They pass in the floor they are currently at and the floor they are going to which are randomly determined. The function returns the integer of the floor the person got off on and there is an assertion within each person thread that ensures that the floor the person got off on is the floor they wanted to get off on.
+    
+    In addition to calling that function, person threads, when they are forked are given three values. Two of these values are randomly determined floors within the building. There is also a random delay so that all of the people are not requesting the elevator at once. This delay is done by iterating through a for loop that calls yeild() on the current thread the number of times specified by delay.
+    
+    The elevator is in charge of moving itself up and down in an infinite while loop which ends when the elevator is waiting on "arrival" and there are no people threads left to arrive. Assertions are done within the elevator to make sure that the elevator does not try to rise out of the building or sink into the netherworld. The elevator floors are indexed starting at zero.
+    
+    Because of the random number generation, some people threads may think they want to go to the floor they are already on. We allow this (because some people are idiots...), however, these threads never actually call the elevator and instead change their minds and immediately return.
+
+8. Priority Threads
+
+Running Priority Threads
+  ./nachos -P 8 [int #threads] [Additional nachos args]
+  
+  For example, ./nachos -P 8 5 will create five threads. Each thread is randomly assinged a priority. Since we are assuming that there are only two priority levels, threads can only be assigned either 0 or 1 as a priority. 0 is a higher priority than 1. All arguments are required.
+
+The new constructor that accepts a priority for a thread as well as a thread name is essentially a replica of the original constructor that also sets the priority for this thread. This is only used by the scheduler when it makes decisions about which thread should be run next. In the scheduler, we just change the way threads are appended to the list so that it uses the sortedInsert() function instead of just placing them at the end. This is efficient because the scheduler just keeps the sorted list rather than having to search through the entire list of threads for the lowest priority. With the sorted insert, we can just leave the remove method alone because it will take the first thread off of the queue and that will be the one with the highest priority (aka, the lowest priority number).
+
+The priority test that can be run by ./nachos -P 8 creates six new threads. Three of these have priority 0 and the other three have priority 1. They run the same simple thread test that originally came with nachos and just include a print statement when they have completed that just tells the user the number of the thread and its priority. Even with a random seed, all of the threads with priority 0 should finish before the threads with priority 1, suggesting a correct implementation for priority threading.
+
+Questions: Changing the relative priorities of the producer and consumer thread can have some effect on the output. If there are two producers and one consumer with one of the producers at a higher priority than the other, then we can say that the characters the producer with lower priority grabs will be closer to the end of the output. We cannot say exactly where these characters will be because we cannot predict when the threads will be interrupted. However, we know that the thread with higher priority will get to run more often than the thread with lower priority so its characters will end up in the buffer (and thus in the output) generally closer to the front. If the two producers have the same priority and the consumer has higher priority then the output itself shouldn't change. This will mean that the buffer will be empty (or at least less full) more often because the consumer will get to run more often than the two producers. In general, changing the relative priorities should have little affect on the output. With more than one producer, the output will be jumbled. While it will be jumbled in different ways depending on the priorities of the producers and consumers, we can't say exactly how it will be jumbled. We can just make general observations.
+
