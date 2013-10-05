@@ -298,6 +298,7 @@ int ArrivingGoingFromTo(int atFloor, int toFloor)
         // If someone is a fool and tries to get on the elevator
         // to go to the floor they are currently on they just get
         // back off again.
+        printf("%s thought it would be great to get on the elevator at %d, but changed it's mind immediately.\n", currentThread->getName(), atFloor);
         elevatorLock->Release();
         return toFloor;
     }
@@ -339,20 +340,20 @@ int ArrivingGoingFromTo(int atFloor, int toFloor)
        uwaiter[atFloor]--;
        upwait--; 
    }
-   fprintf(stderr, "%s, ", currentThread->getName());
+   printf("%s, ", currentThread->getName());
    
    going[toFloor]++;
    peopleIn++;
 
    /* If no one is waiting on the current floor to go up or down, tell the elevator
    we are ready for it to go */
-   if(uwaiter[atFloor] == 0 && (tempDir == 1 || atFloor == 3))
+   if(uwaiter[atFloor] == 0 && (tempDir == 1 || atFloor == 0))
    {
-        fprintf(stderr, "got on the elevator going up at floor %d.\n", curFloor);
+        printf("got on the elevator going up at floor %d.\n", curFloor);
         filled->Signal(elevatorLock);
    }
-   else if(dwaiter[atFloor] == 0 && (tempDir == -1 || atFloor == 0)){
-        fprintf(stderr, "got on the elevator going down at floor %d.\n", curFloor);
+   else if(dwaiter[atFloor] == 0 && (tempDir == -1 || atFloor == 3)){
+        printf("got on the elevator going down at floor %d.\n", curFloor);
         filled->Signal(elevatorLock);
    }
    /* While the elevator has not reached the person's floor sleep */
@@ -363,12 +364,14 @@ int ArrivingGoingFromTo(int atFloor, int toFloor)
    /*Get off the elevator.*/
    peopleIn--;
    going[toFloor]--;
+   printf("%s, ", currentThread->getName());
    /* If you are the last one to get off tell the elevator it can leave */
    if(going[toFloor]==0){
+        printf("got off at %d.\n", curFloor);
         filled->Signal(elevatorLock);
    }
    int tempVar = curFloor;
-   fprintf(stderr, "Passenger going to floor %d exited.\n", toFloor);
+   // fprintf(stderr, "Passenger going to floor %d exited.\n", toFloor);
    elevatorLock->Release();
    /* Return the value of the floor you got off on. */
    return tempVar;
@@ -399,8 +402,7 @@ void Person(int arg)
     }
 	// fprintf(stderr, "%s waiting at floor %d to go to floor %d\n", currentThread->getName(), pArgs->leaving, pArgs->going);
 	int c = ArrivingGoingFromTo(pArgs->leaving, pArgs->going);
-    ASSERT(c == pArgs->going);
-    fprintf(stderr, "%s got off at %d.\n", currentThread->getName(), c);
+  ASSERT(c == pArgs->going);
 	return;
 }
 
@@ -411,6 +413,8 @@ void Elevator(int)
     elevatorLock->Acquire();
 	while(1)
 	{
+        printf("******************************\n");
+        printf("Elevator has reached floor %d.\n", curFloor);
         // fprintf(stderr, "Elevator at floor %d, waiting upwards %d, waiting downward %d, peopleIn %d, peopleWait %d, direction is %d\n", curFloor, upwait, dwait, peopleIn, peopleWait, dir);
         if(peopleIn == 0 && peopleWait == 0){
 		  arrival->Wait(elevatorLock);  // If no one wants to get on the elevator yet and there is no one in the elevator wait for an arrival.
