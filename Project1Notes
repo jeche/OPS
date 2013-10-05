@@ -77,6 +77,8 @@ Running Elevator
     In addition to calling that function, person threads, when they are forked are given three values.  Two of these values are randomly determined floors within the building.  There is also a random delay so that all of the people are not requesting the elevator at once.  This delay is done by iterating through a for loop that calls yeild() on the current thread the number of times specified by delay.
     
     The elevator is in charge of moving itself up and down in an infinite while loop which ends when the elevator is waiting on "arrival" and there are no people threads left to arrive.  Assertions are done within the elevator to make sure that the elevator does not try to rise out of the building or sink into the netherworld.  The elevator floors are indexed starting at zero.
+    
+    Because of the random number generation, some people threads may think they want to go to the floor they are already on.  We allow this (because some people are idiots...), however, these threads never actually call the elevator and instead change their minds and immediately return.
 
 8.  Priority Threads
 
