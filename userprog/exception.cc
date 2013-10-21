@@ -227,12 +227,27 @@ HandleTLBFault(int vaddr)
 //  are in machine.h.
 //----------------------------------------------------------------------
 
+OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open files allowed at a time****  First two are console input and console output.
+static Console *console;
+// int *fileDescriptors[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+// int start = 0;
+// for(int j = 0; j < 16; j++){
+  // fileDescriptors[j] = start;
+// }
 void
 ExceptionHandler(ExceptionType which)
 {
+    console = new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, 0);
     int type = machine->ReadRegister(2);
+    int whence;
+    int size;
+    char* stringArg;
+    OpenFile* open;
+    int descriptor = -1;
+    int incrementPC;
+    // int *ptr[MAX];
 
-    switch (which) {
+  switch (which) {
       case SyscallException:
   switch (type) {
     case SC_Halt:
@@ -240,33 +255,142 @@ ExceptionHandler(ExceptionType which)
             interrupt->Halt();
             break;
     case SC_Exit:
-            printf("Exit");
+            DEBUG('a', "Exit\n");
             break;
     case SC_Join:
-            printf("Join");
+            DEBUG('a', "Join\n");
             break;
     case SC_Create:
-            printf("Create");
+            DEBUG('a', "Create\n");
+            stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
+            whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
+            DEBUG('a',"String starts at address %d in user VAS\n", whence);
+            for (int i=0; i<127; i++)
+              if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+            stringArg[127]='\0';
+            DEBUG('a', "Argument string is <%s>\n",stringArg);
+            ASSERT(fileSystem->Create(stringArg, 16));
+            delete [] stringArg;
+            incrementPC = machine->ReadRegister(NextPCReg)+4;
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, incrementPC);
             // Needed for checkpoint!
             break;
     case SC_Open:
-            printf("Open");
-            // Needed for checkpoint!
+            DEBUG('a', "Open\n");
+            stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
+            whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
+            DEBUG('a',"String starts at address %d in user VAS\n", whence);
+            for (int i=0; i<127; i++)
+              if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+            stringArg[127]='\0';
+            DEBUG('a', "Argument string is <%s>\n",stringArg);
+            open = fileSystem->Open(stringArg);
+            for(int i = 2; i < 16; i++){
+              if(fileDescriptors[i] == NULL){
+                descriptor = i;
+                fileDescriptors[i] = open; // Bitten in the ass.
+                i = 17;
+              }
+            }
+            machine->WriteRegister(2, descriptor);
+            DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
+            delete [] stringArg;
+            incrementPC=machine->ReadRegister(NextPCReg)+4;
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, incrementPC);            // Needed for checkpoint!
             break;
     case SC_Read:
-            printf("Read");
-            // Needed for checkpoint!
+            DEBUG('a', "Read\n");
+            size = machine->ReadRegister(5);
+            whence = machine->ReadRegister(4);
+            descriptor = machine->ReadRegister(6);
+            stringArg = new (std::nothrow) char[size];
+            if (descriptor != ConsoleInput && descriptor != ConsoleOutput) {
+              open = fileDescriptors[descriptor];
+              size = open->Read(stringArg, size);
+              stringArg[size - 1] = '\0';
+              for(int i=0; i < size; i++){
+                if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
+              }
+              machine->mainMemory[whence++] = '\0';
+              printf("size: %d %s\n", size, stringArg);
+              machine->WriteRegister(2, descriptor);  // Assume user allocates for null byte in char*
+            }
+            //else if (descriptor == ConsoleInput) {
+
+           // }
+
+            
+            incrementPC=machine->ReadRegister(NextPCReg)+4;
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, incrementPC);
+
+            /* Read "size" bytes from the open file into "buffer".  
+             * Return the number of bytes actually read -- if the open file isn't
+             * long enough, or if it is an I/O device, and there aren't enough 
+             * characters to read, return whatever is available (for I/O devices, 
+             * you should always wait until you can return at least one character).
+            */
+            // int Read(char *buffer, int size, OpenFileId id);
+
+          // Needed for checkpoint!
+
+          // File Sys Read
+          //     int Read(char *into, int numBytes); // Read/write bytes from the file,
+          // starting at the implicit position.
+          // Return the # actually read/written,
+          // and increment position in file.
             break;
     case SC_Write:
-            printf("Write");
+            DEBUG('a', "Write\n");
+            size = machine->ReadRegister(5);
+            stringArg = new(std::nothrow) char[size]; // Limit on name is 128 characters****
+            whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
+            descriptor = machine->ReadRegister(6);
+            DEBUG('a',"String starts at address %d in user VAS\n", whence);
+            if (descriptor != ConsoleInput && descriptor != ConsoleOutput) {
+              for (int i=0; i<size; i++)
+                if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+              stringArg[size - 1]='\0';
+              DEBUG('a', "Argument string is <%s>\n",stringArg);
+              open = fileDescriptors[descriptor];
+              open->Write(stringArg, size);
+              // open = fileSystem->Open(stringArg);
+              // for(int i = 2; i < 16; i++){
+              //   if(fileDescriptors[i] == NULL){
+              //     descriptor = i;
+              //     fileDescriptors[i] = open;
+              //     i = 17;
+              //   }
+              // }
+              //machine->WriteRegister(2, descriptor);
+              DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
+              delete [] stringArg; 
+            }
+            else if (descriptor == ConsoleOutput) {
+              for (int i = 0; i < size; i++) {
+
+              }
+            }           
+            incrementPC=machine->ReadRegister(NextPCReg)+4;
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, incrementPC);            
             // Needed for checkpoint!
             break;
     case SC_Close:
-            printf("Close");
+            DEBUG('a', "Close\n");
+            descriptor = machine->ReadRegister(4);
+            open = fileDescriptors[descriptor];
+            fileDescriptors[descriptor] = NULL;
+            delete( open );
+            incrementPC=machine->ReadRegister(NextPCReg)+4;
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, incrementPC);            
             // Needed for checkpoint!
             break;
     case SC_Fork:
-            printf("Fork");
+            DEBUG('a', "Fork\n");
             break;
           default:
       printf("Undefined SYSCALL %d\n", type);
