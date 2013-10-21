@@ -161,6 +161,8 @@ ExceptionHandler(ExceptionType which)
 #include "copyright.h"
 #include "system.h"
 #include "syscall.h"
+#include "console.h"
+#include "synch.h"
 
 #ifdef USE_TLB
 
@@ -229,6 +231,11 @@ HandleTLBFault(int vaddr)
 
 OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open files allowed at a time****  First two are console input and console output.
 static Console *console;
+static Semaphore *readAvail;
+static Semaphore *writeDone;
+static void ReadAvail(int) { readAvail->V(); }
+static void WriteDone(int) { writeDone->V(); }
+
 // int *fileDescriptors[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 // int start = 0;
 // for(int j = 0; j < 16; j++){
@@ -238,6 +245,8 @@ void
 ExceptionHandler(ExceptionType which)
 {
     console = new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, 0);
+    readAvail = new(std::nothrow) Semaphore("read avail", 0);
+    writeDone = new(std::nothrow) Semaphore("write done", 0);
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -343,17 +352,19 @@ ExceptionHandler(ExceptionType which)
           // and increment position in file.
             break;
     case SC_Write:
+            //printf("here");
             DEBUG('a', "Write\n");
             size = machine->ReadRegister(5);
             stringArg = new(std::nothrow) char[size]; // Limit on name is 128 characters****
             whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
             descriptor = machine->ReadRegister(6);
             DEBUG('a',"String starts at address %d in user VAS\n", whence);
-            if (descriptor != ConsoleInput && descriptor != ConsoleOutput) {
-              for (int i=0; i<size; i++)
+            for (int i=0; i<size; i++)
                 if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
-              stringArg[size - 1]='\0';
+              stringArg[size]='\0';
               DEBUG('a', "Argument string is <%s>\n",stringArg);
+            if (descriptor != ConsoleInput && descriptor != ConsoleOutput) {
+              
               open = fileDescriptors[descriptor];
               open->Write(stringArg, size);
               // open = fileSystem->Open(stringArg);
@@ -370,7 +381,10 @@ ExceptionHandler(ExceptionType which)
             }
             else if (descriptor == ConsoleOutput) {
               for (int i = 0; i < size; i++) {
-
+                //readAvail->P();
+                //printf("%s", (char*)stringArg[i]);
+                console->PutChar(stringArg[i]);
+                writeDone->P() ;  
               }
             }           
             incrementPC=machine->ReadRegister(NextPCReg)+4;

@@ -503,7 +503,7 @@ exception.o: ../userprog/exception.cc ../threads/copyright.h \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
  ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
  ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../userprog/syscall.h
+ ../userprog/syscall.h ../machine/console.h ../threads/synch.h
 progtest.o: ../userprog/progtest.cc ../threads/copyright.h \
  ../threads/system.h ../threads/copyright.h ../threads/utility.h \
  ../machine/sysdep.h /usr/include/stdlib.h /usr/include/features.h \
