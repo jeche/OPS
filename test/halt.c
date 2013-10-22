@@ -23,13 +23,12 @@ main()
 	Close(i);
 	i = Open("Wawa");
 	Read(c, 2, i);
-
 	Create("WawaBuffer");
 	j = Open("WawaBuffer");
 	Write(c, 2, j);
 	Close(i);
 	Close(j);
-	/*Write("Hi!", 4, i);*/
+	/* Write("Hi!", 4, i); */
     Halt();
     /* not reached */
 }

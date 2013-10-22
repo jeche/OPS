@@ -315,82 +315,82 @@ ExceptionHandler(ExceptionType which)
             whence = machine->ReadRegister(4);
             descriptor = machine->ReadRegister(6);
             stringArg = new (std::nothrow) char[size];
-            if (descriptor != ConsoleInput && descriptor != ConsoleOutput) {
+            if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
               open = fileDescriptors[descriptor];
+              if(open == NULL){
+                DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
+                // fprintf(stderr, "%d\n", descriptor);
+                interrupt->Halt();
+              }
+              descriptor = 0;
+              // while(descriptor == 0){
               size = open->Read(stringArg, size);
+              // }
+              // fprintf(stderr, "%d\n", descriptor);
               stringArg[size - 1] = '\0';
               for(int i=0; i < size; i++){
                 if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
               }
               machine->mainMemory[whence++] = '\0';
-              printf("size: %d %s\n", size, stringArg);
+              DEBUG('a', "size: %d %s\n", size, stringArg);
               machine->WriteRegister(2, descriptor);  // Assume user allocates for null byte in char*
             }
-            //else if (descriptor == ConsoleInput) {
+            else if (descriptor == ConsoleInput) { // Deals with ConsoleInput
 
-           // }
+            }
+            else if(descriptor == ConsoleOutput){
 
-            
+            }
+            else{ // Deals with out of bounds of the array.
+              DEBUG('a', "Invalid file descriptor.\n");
+              interrupt->Halt();
+            }
             incrementPC=machine->ReadRegister(NextPCReg)+4;
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
             machine->WriteRegister(NextPCReg, incrementPC);
-
-            /* Read "size" bytes from the open file into "buffer".  
-             * Return the number of bytes actually read -- if the open file isn't
-             * long enough, or if it is an I/O device, and there aren't enough 
-             * characters to read, return whatever is available (for I/O devices, 
-             * you should always wait until you can return at least one character).
-            */
-            // int Read(char *buffer, int size, OpenFileId id);
-
-          // Needed for checkpoint!
-
-          // File Sys Read
-          //     int Read(char *into, int numBytes); // Read/write bytes from the file,
-          // starting at the implicit position.
-          // Return the # actually read/written,
-          // and increment position in file.
             break;
     case SC_Write:
-            //printf("here");
             DEBUG('a', "Write\n");
             size = machine->ReadRegister(5);
-            stringArg = new(std::nothrow) char[size]; // Limit on name is 128 characters****
-            whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
-            descriptor = machine->ReadRegister(6);
-            DEBUG('a',"String starts at address %d in user VAS\n", whence);
-            for (int i=0; i<size; i++)
-                if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
-              stringArg[size]='\0';
-              DEBUG('a', "Argument string is <%s>\n",stringArg);
-            if (descriptor != ConsoleInput && descriptor != ConsoleOutput) {
-              
-              open = fileDescriptors[descriptor];
-              open->Write(stringArg, size);
-              // open = fileSystem->Open(stringArg);
-              // for(int i = 2; i < 16; i++){
-              //   if(fileDescriptors[i] == NULL){
-              //     descriptor = i;
-              //     fileDescriptors[i] = open;
-              //     i = 17;
-              //   }
-              // }
-              //machine->WriteRegister(2, descriptor);
-              DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
-              delete [] stringArg; 
-            }
-            else if (descriptor == ConsoleOutput) {
-              for (int i = 0; i < size; i++) {
-                //readAvail->P();
-                //printf("%s", (char*)stringArg[i]);
-                console->PutChar(stringArg[i]);
-                writeDone->P() ;  
+            if (size > 0){
+              stringArg = new(std::nothrow) char[size];
+              whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
+              descriptor = machine->ReadRegister(6);
+              DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
+              for (int i=0; i<size; i++)
+                  if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+                stringArg[size]='\0';
+                DEBUG('a', "Argument string is <%s>\n",stringArg);
+              if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
+                open = fileDescriptors[descriptor];
+                if(open == NULL){
+                  DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
+                  // fprintf(stderr, "%d\n", descriptor);
+                  interrupt->Halt();
+                }                
+                open->Write(stringArg, size);
+                DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
+                delete [] stringArg; 
               }
-            }           
+              else if (descriptor == ConsoleOutput) {
+                for (int i = 0; i < size; i++) {
+                  //readAvail->P();
+                  //printf("%s", (char*)stringArg[i]);
+                  console->PutChar(stringArg[i]);
+                  writeDone->P() ;  
+                }
+              }
+              else if (descriptor == ConsoleInput){
+
+              }
+              else{
+                DEBUG('a', "Invalid file descriptor.\n");
+                interrupt->Halt();
+              }           
+            }
             incrementPC=machine->ReadRegister(NextPCReg)+4;
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
             machine->WriteRegister(NextPCReg, incrementPC);            
-            // Needed for checkpoint!
             break;
     case SC_Close:
             DEBUG('a', "Close\n");
