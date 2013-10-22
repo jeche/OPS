@@ -161,7 +161,6 @@ ExceptionHandler(ExceptionType which)
 #include "copyright.h"
 #include "system.h"
 #include "syscall.h"
-#include "console.h"
 #include "synch.h"
 
 #ifdef USE_TLB
@@ -230,11 +229,11 @@ HandleTLBFault(int vaddr)
 //----------------------------------------------------------------------
 
 OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open files allowed at a time****  First two are console input and console output.
-static Semaphore *readAvail= new(std::nothrow) Semaphore("read avail", 0);
-static Semaphore *writeDone= new(std::nothrow) Semaphore("write done", 0);
-static void ReadAvail(int) { readAvail->V(); }
-static void WriteDone(int) { writeDone->V(); }
-static Console *console;
+// static Semaphore *readAvail= new(std::nothrow) Semaphore("read avail", 0);
+// static Semaphore *writeDone= new(std::nothrow) Semaphore("write done", 0);
+// static void ReadAvail(int) { readAvail->V(); }
+// static void WriteDone(int) { writeDone->V(); }
+// static Console *console;
 
 // int *fileDescriptors[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 // int start = 0;
@@ -244,10 +243,6 @@ static Console *console;
 void
 ExceptionHandler(ExceptionType which)
 {
-    if(console == NULL)
-    console =  new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, 0);
-    // readAvail = new(std::nothrow) Semaphore("read avail", 0);
-    // writeDone = new(std::nothrow) Semaphore("write done", 0);
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -256,13 +251,13 @@ ExceptionHandler(ExceptionType which)
     int descriptor = -1;
     int incrementPC;
     char whee;
-    // int *ptr[MAX];
 
   switch (which) {
       case SyscallException:
   switch (type) {
     case SC_Halt:
             DEBUG('a', "Shutdown, initiated by user program.\n");
+
             interrupt->Halt();
             break;
     case SC_Exit:
@@ -331,6 +326,7 @@ ExceptionHandler(ExceptionType which)
             size = machine->ReadRegister(5);
             whence = machine->ReadRegister(4);
             descriptor = machine->ReadRegister(6);
+            if(size > 0){
             stringArg = new (std::nothrow) char[size];
             if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
               open = fileDescriptors[descriptor];
@@ -357,26 +353,30 @@ ExceptionHandler(ExceptionType which)
               }
             }
             else if (descriptor == ConsoleInput) { // Deals with ConsoleInput
-              readAvail->P();
+              // readAvail->P();
               // fprintf(stderr, "%c", stringArg);
               DEBUG('a', "size: %d %c\n", size, stringArg);
-              whee = console->GetChar();
-              // fprintf(stderr, "read %d", (int) whee);
+              // fprintf(stderr, "Read size: %d\n", size);
+              whee = synchConsole->GetChar();
+              fprintf(stderr, "read %d", (int) whee);
               // fprintf(stderr, "whee %c", whee);
               // for(int i=0; i < size; i++){
               //     if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
               //   }
               // machine->mainMemory[whence++] = console->GetChar();
-              machine->mainMemory[whence] = whee;
+              machine->mainMemory[whence++] = whee;
+              // machine->mainMemory[whence++] = '\0';
+              DEBUG('a', "size: %d %c\n", size, stringArg);
               // DEBUG('a', "size: %d %c\n", size, stringArg);
               // fprintf(stderr, "%c", stringArg);
               machine->WriteRegister(2, 1);
-              DEBUG('a', "pew pew pew size: %d %c\n", size, stringArg);
             }
             else{ // Deals with out of bounds of the array.
               DEBUG('a', "Invalid file descriptor.\n");
               // interrupt->Halt();
               machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
+            }
+            delete stringArg;
             }
             incrementPC=machine->ReadRegister(NextPCReg)+4;
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -390,9 +390,10 @@ ExceptionHandler(ExceptionType which)
               whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
               descriptor = machine->ReadRegister(6);
               DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
+              if(size != 1 && descriptor != ConsoleOutput){
               for (int i=0; i<size; i++)
                   if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
-              if(size != 1){
+              
                 stringArg[size]='\0';
               }
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
@@ -405,15 +406,20 @@ ExceptionHandler(ExceptionType which)
                 }                
                 open->Write(stringArg, size);
                 DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
-                delete [] stringArg; 
+                
               }
               else if (descriptor == ConsoleOutput) {
                 for (int i = 0; i < size; i++) {
                   //readAvail->P();
                   // fprintf(stderr, "%d", (int)stringArg[i]);
-                  console->PutChar(stringArg[i]);
-                  writeDone->P() ;  
+                  // fprintf(stderr, "Wrote size %d %c\n",size,  stringArg[i]);
+                  // whee = stringArg[i];
+                  whee = machine->mainMemory[whence++];
+                  synchConsole->PutChar(whee);
+                  fprintf(stderr, "Wrote size %d %d %c\n",size, (int)whee,  whee);
+                  // writeDone->P() ;
                 }
+                // synchConsole->PutChar('\0');
               }
               else if (descriptor == ConsoleInput){
                   fprintf(stderr, "I should never be here\n.");
@@ -421,7 +427,8 @@ ExceptionHandler(ExceptionType which)
               else{
                 DEBUG('a', "Invalid file descriptor.\n");
                 interrupt->Halt();
-              }           
+              } 
+              delete [] stringArg;           
             }
             incrementPC=machine->ReadRegister(NextPCReg)+4;
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
