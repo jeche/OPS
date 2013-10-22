@@ -230,11 +230,11 @@ HandleTLBFault(int vaddr)
 //----------------------------------------------------------------------
 
 OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open files allowed at a time****  First two are console input and console output.
-static Console *console;
-static Semaphore *readAvail;
-static Semaphore *writeDone;
+static Semaphore *readAvail= new(std::nothrow) Semaphore("read avail", 0);
+static Semaphore *writeDone= new(std::nothrow) Semaphore("write done", 0);
 static void ReadAvail(int) { readAvail->V(); }
 static void WriteDone(int) { writeDone->V(); }
+static Console *console;
 
 // int *fileDescriptors[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 // int start = 0;
@@ -244,9 +244,10 @@ static void WriteDone(int) { writeDone->V(); }
 void
 ExceptionHandler(ExceptionType which)
 {
-    console = new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, 0);
-    readAvail = new(std::nothrow) Semaphore("read avail", 0);
-    writeDone = new(std::nothrow) Semaphore("write done", 0);
+    if(console == NULL)
+    console =  new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, 0);
+    // readAvail = new(std::nothrow) Semaphore("read avail", 0);
+    // writeDone = new(std::nothrow) Semaphore("write done", 0);
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -254,6 +255,7 @@ ExceptionHandler(ExceptionType which)
     OpenFile* open;
     int descriptor = -1;
     int incrementPC;
+    char whee;
     // int *ptr[MAX];
 
   switch (which) {
@@ -298,6 +300,7 @@ ExceptionHandler(ExceptionType which)
             stringArg[127]='\0';
             DEBUG('a', "Argument string is <%s>\n",stringArg);
             open = fileSystem->Open(stringArg);
+            fprintf(stderr, "%s\n", stringArg);
             if(open==NULL){
               DEBUG('a', "File Could not be Found, -1 returned"); 
               descriptor=-1;
@@ -334,30 +337,46 @@ ExceptionHandler(ExceptionType which)
               if(open == NULL){
                 DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                 // fprintf(stderr, "%d\n", descriptor);
-                interrupt->Halt();
+                machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
               }
-              descriptor = 0;
-              // while(descriptor == 0){
-              size = open->Read(stringArg, size);
-              // }
-              // fprintf(stderr, "%d\n", descriptor);
-              stringArg[size - 1] = '\0';
-              for(int i=0; i < size; i++){
-                if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
+              else{
+                descriptor = 0;
+                // while(descriptor == 0){
+                size = open->Read(stringArg, size);
+                // }
+                // fprintf(stderr, "%d\n", descriptor);
+                if(size != 1){
+                  stringArg[size - 1] = '\0';
+                }
+                for(int i=0; i < size; i++){
+                  if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
+                }
+                machine->mainMemory[whence++] = '\0';
+                DEBUG('a', "size: %d %s\n", size, stringArg);
+                machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
               }
-              machine->mainMemory[whence++] = '\0';
-              DEBUG('a', "size: %d %s\n", size, stringArg);
-              machine->WriteRegister(2, descriptor);  // Assume user allocates for null byte in char*
             }
             else if (descriptor == ConsoleInput) { // Deals with ConsoleInput
-
-            }
-            else if(descriptor == ConsoleOutput){
-
+              readAvail->P();
+              // fprintf(stderr, "%c", stringArg);
+              DEBUG('a', "size: %d %c\n", size, stringArg);
+              whee = console->GetChar();
+              // fprintf(stderr, "read %d", (int) whee);
+              // fprintf(stderr, "whee %c", whee);
+              // for(int i=0; i < size; i++){
+              //     if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
+              //   }
+              // machine->mainMemory[whence++] = console->GetChar();
+              machine->mainMemory[whence] = whee;
+              // DEBUG('a', "size: %d %c\n", size, stringArg);
+              // fprintf(stderr, "%c", stringArg);
+              machine->WriteRegister(2, 1);
+              DEBUG('a', "pew pew pew size: %d %c\n", size, stringArg);
             }
             else{ // Deals with out of bounds of the array.
               DEBUG('a', "Invalid file descriptor.\n");
-              interrupt->Halt();
+              // interrupt->Halt();
+              machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
             }
             incrementPC=machine->ReadRegister(NextPCReg)+4;
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -373,7 +392,9 @@ ExceptionHandler(ExceptionType which)
               DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
               for (int i=0; i<size; i++)
                   if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+              if(size != 1){
                 stringArg[size]='\0';
+              }
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
               if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
                 open = fileDescriptors[descriptor];
@@ -389,13 +410,13 @@ ExceptionHandler(ExceptionType which)
               else if (descriptor == ConsoleOutput) {
                 for (int i = 0; i < size; i++) {
                   //readAvail->P();
-                  //printf("%s", (char*)stringArg[i]);
+                  // fprintf(stderr, "%d", (int)stringArg[i]);
                   console->PutChar(stringArg[i]);
                   writeDone->P() ;  
                 }
               }
               else if (descriptor == ConsoleInput){
-
+                  fprintf(stderr, "I should never be here\n.");
               }
               else{
                 DEBUG('a', "Invalid file descriptor.\n");
