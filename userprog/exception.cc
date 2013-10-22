@@ -269,32 +269,46 @@ ExceptionHandler(ExceptionType which)
     case SC_Join:
             DEBUG('a', "Join\n");
             break;
-    case SC_Create:
+    case SC_Create:/*Checks for -> Filename given is a single \0*/
             DEBUG('a', "Create\n");
             stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
             whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
             DEBUG('a',"String starts at address %d in user VAS\n", whence);
-            for (int i=0; i<127; i++)
+            int i;
+            for (i=0; i<127; i++)
               if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+            if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//User puts a single \0 for the string name of the file, this should not be allowed
             stringArg[127]='\0';
             DEBUG('a', "Argument string is <%s>\n",stringArg);
-            ASSERT(fileSystem->Create(stringArg, 16));
+            if(!fileSystem->Create(stringArg, 16)){DEBUG('a', "Create Failed\n");interrupt->Halt();}
             delete [] stringArg;
             incrementPC = machine->ReadRegister(NextPCReg)+4;
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
             machine->WriteRegister(NextPCReg, incrementPC);
             // Needed for checkpoint!
             break;
-    case SC_Open:
+    case SC_Open:/*Checks for -> */
             DEBUG('a', "Open\n");
             stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
             whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
             DEBUG('a',"String starts at address %d in user VAS\n", whence);
             for (int i=0; i<127; i++)
               if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+            if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//Cannot have a file with 'no name'
             stringArg[127]='\0';
             DEBUG('a', "Argument string is <%s>\n",stringArg);
             open = fileSystem->Open(stringArg);
+            if(open==NULL){
+              DEBUG('a', "File Could not be Found, -1 returned"); 
+              descriptor=-1;
+              machine->WriteRegister(2, descriptor);
+              
+              delete [] stringArg;
+              incrementPC=machine->ReadRegister(NextPCReg)+4;
+              machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+              machine->WriteRegister(NextPCReg, incrementPC);            // Needed for checkpoint!
+              break;
+            }
             for(int i = 2; i < 16; i++){
               if(fileDescriptors[i] == NULL){
                 descriptor = i;
@@ -392,10 +406,17 @@ ExceptionHandler(ExceptionType which)
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
             machine->WriteRegister(NextPCReg, incrementPC);            
             break;
-    case SC_Close:
+    case SC_Close:/*Cases Handled -> invalid openfileid, and no file associated with the openfileid*/
             DEBUG('a', "Close\n");
             descriptor = machine->ReadRegister(4);
+            if(descriptor<0||descriptor>15){DEBUG('a', "Invalid OpenFileId"); interrupt->Halt();}//invalid openfileid
             open = fileDescriptors[descriptor];
+            if(open==NULL){//no file is associated with the openfileid
+              DEBUG('a', "No OpenFile is associated with the given OpenFileId");
+              incrementPC=machine->ReadRegister(NextPCReg)+4;
+              machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+              machine->WriteRegister(NextPCReg, incrementPC);
+            }
             fileDescriptors[descriptor] = NULL;
             delete( open );
             incrementPC=machine->ReadRegister(NextPCReg)+4;
