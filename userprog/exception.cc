@@ -251,6 +251,8 @@ ExceptionHandler(ExceptionType which)
     int descriptor = -1;
     int incrementPC;
     char whee;
+    int i;
+
 
   switch (which) {
       case SyscallException:
@@ -271,7 +273,6 @@ ExceptionHandler(ExceptionType which)
             stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
             whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
             DEBUG('a',"String starts at address %d in user VAS\n", whence);
-            int i;
             for (i=0; i<127; i++)
               if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
             if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//User puts a single \0 for the string name of the file, this should not be allowed
@@ -289,13 +290,13 @@ ExceptionHandler(ExceptionType which)
             stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
             whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
             DEBUG('a',"String starts at address %d in user VAS\n", whence);
-            for (int i=0; i<127; i++)
+            for (i=0; i<127; i++)
               if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
             if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//Cannot have a file with 'no name'
             stringArg[127]='\0';
             DEBUG('a', "Argument string is <%s>\n",stringArg);
             open = fileSystem->Open(stringArg);
-            fprintf(stderr, "%s\n", stringArg);
+            // fprintf(stderr, "%s\n", stringArg);
             if(open==NULL){
               DEBUG('a', "File Could not be Found, -1 returned"); 
               descriptor=-1;
@@ -307,7 +308,7 @@ ExceptionHandler(ExceptionType which)
               machine->WriteRegister(NextPCReg, incrementPC);            // Needed for checkpoint!
               break;
             }
-            for(int i = 2; i < 16; i++){
+            for(i = 2; i < 16; i++){
               if(fileDescriptors[i] == NULL){
                 descriptor = i;
                 fileDescriptors[i] = open; // Bitten in the ass.
@@ -344,7 +345,7 @@ ExceptionHandler(ExceptionType which)
                 if(size != 1){
                   stringArg[size - 1] = '\0';
                 }
-                for(int i=0; i < size; i++){
+                for(i=0; i < size; i++){
                   if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
                 }
                 machine->mainMemory[whence++] = '\0';
@@ -358,7 +359,7 @@ ExceptionHandler(ExceptionType which)
               DEBUG('a', "size: %d %c\n", size, stringArg);
               // fprintf(stderr, "Read size: %d\n", size);
               whee = synchConsole->GetChar();
-              fprintf(stderr, "read %d", (int) whee);
+              // fprintf(stderr, "read %d", (int) whee);
               // fprintf(stderr, "whee %c", whee);
               // for(int i=0; i < size; i++){
               //     if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
@@ -391,7 +392,7 @@ ExceptionHandler(ExceptionType which)
               descriptor = machine->ReadRegister(6);
               DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
               if(size != 1 && descriptor != ConsoleOutput){
-              for (int i=0; i<size; i++)
+              for (i=0; i<size; i++)
                   if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
               
                 stringArg[size]='\0';
@@ -409,14 +410,14 @@ ExceptionHandler(ExceptionType which)
                 
               }
               else if (descriptor == ConsoleOutput) {
-                for (int i = 0; i < size; i++) {
+                for (i = 0; i < size; i++) {
                   //readAvail->P();
                   // fprintf(stderr, "%d", (int)stringArg[i]);
                   // fprintf(stderr, "Wrote size %d %c\n",size,  stringArg[i]);
                   // whee = stringArg[i];
                   whee = machine->mainMemory[whence++];
                   synchConsole->PutChar(whee);
-                  fprintf(stderr, "Wrote size %d %d %c\n",size, (int)whee,  whee);
+                  //fprintf(stderr, "Wrote size %d %d %c\n",size, (int)whee,  whee);
                   // writeDone->P() ;
                 }
                 // synchConsole->PutChar('\0');
