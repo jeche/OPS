@@ -307,7 +307,7 @@ ExceptionHandler(ExceptionType which)
               machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
               machine->WriteRegister(NextPCReg, incrementPC);            // Needed for checkpoint!
               break;
-            }
+            }else{
             for(i = 2; i < 16; i++){
               if(fileDescriptors[i] == NULL){
                 descriptor = i;
@@ -321,7 +321,8 @@ ExceptionHandler(ExceptionType which)
             incrementPC=machine->ReadRegister(NextPCReg)+4;
             machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
             machine->WriteRegister(NextPCReg, incrementPC);            // Needed for checkpoint!
-            break;
+            break;}
+	    break;
     case SC_Read:
             DEBUG('a', "Read\n");
             size = machine->ReadRegister(5);
