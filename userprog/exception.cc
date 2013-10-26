@@ -324,7 +324,7 @@ ExceptionHandler(ExceptionType which)
             break;}
 	    break;
     case SC_Read:
-            DEBUG('a', "Read\n");
+            DEBUG('a', "Read\n"); // Please fix.
             size = machine->ReadRegister(5);
             whence = machine->ReadRegister(4);
             descriptor = machine->ReadRegister(6);
@@ -385,7 +385,7 @@ ExceptionHandler(ExceptionType which)
             machine->WriteRegister(NextPCReg, incrementPC);
             break;
     case SC_Write:
-            DEBUG('a', "Write\n");
+            DEBUG('a', "Write\n"); // Please fix.
             size = machine->ReadRegister(5);
             if (size > 0){
               stringArg = new(std::nothrow) char[size];
