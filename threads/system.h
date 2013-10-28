@@ -72,6 +72,7 @@ extern PostOffice* postOffice;
 #include "timer.h"
 #include "console.h"
 #include "synch.h"
+#include "bitmap.h"
 #include <new>
 
 class SynchConsole {
@@ -153,6 +154,8 @@ extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
 extern SynchConsole *synchConsole;
+
+extern BitMap *bitMap;
 
 #ifdef USER_PROGRAM
 #include "machine.h"

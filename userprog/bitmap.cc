@@ -211,6 +211,7 @@ BitMap::BitMap(int nitems)
 { 
     monitor = new(std::nothrow) Semaphore("bitmap monitor", 1);
     numBits = nitems;
+    fprintf(stderr, "%d\n", numBits);
     numWords = divRoundUp(numBits, BitsInWord);
     map = new(std::nothrow) unsigned int[numWords];
     for (int i = 0; i < numBits; i++) 
@@ -238,10 +239,12 @@ BitMap::~BitMap()
 void
 BitMap::Mark(int which) 
 { 
+    fprintf(stderr, "I is here\n");
     monitor->P();
     ASSERT(which >= 0 && which < numBits);
     map[which / BitsInWord] |= 1 << (which % BitsInWord);
     monitor->V();
+    fprintf(stderr, "i now here\n");
 }
     
 //----------------------------------------------------------------------
@@ -296,11 +299,15 @@ int
 BitMap::Find() 
 {
     monitor->P();
-    for (int i = 0; i < numBits; i++)
-    if (!Test(i)) {
-        Mark(i);
-        monitor->V();
-        return i;
+    for (int i = 0; i < numBits; i++){
+        ASSERT(i >= 0 && i < numBits);
+        if (!(map[i / BitsInWord] & (1 << (i % BitsInWord)))) {
+
+            ASSERT(i >= 0 && i < numBits);
+            map[i / BitsInWord] |= 1 << (i % BitsInWord);
+            monitor->V();
+            return i;
+        }
     }
     monitor->V();
     return -1;
@@ -318,8 +325,10 @@ BitMap::NumClear()
     monitor->P();
     int count = 0;
 
-    for (int i = 0; i < numBits; i++)
-    if (!Test(i)) count++;
+    for (int i = 0; i < numBits; i++){
+        ASSERT(i >= 0 && i < numBits);
+        if (!(map[i / BitsInWord] & (1 << (i % BitsInWord)))) count++;
+    }
     monitor->V();
     return count;
 }
@@ -337,9 +346,11 @@ BitMap::Print()
 {
     monitor->P();
     printf("Bitmap set:\n"); 
-    for (int i = 0; i < numBits; i++)
-    if (Test(i))
-        printf("%d, ", i);
+    for (int i = 0; i < numBits; i++){
+        ASSERT(i >= 0 && i < numBits);
+        if ( map[i / BitsInWord] & (1 << (i % BitsInWord)) )
+            printf("%d, ", i);
+    }
     printf("\n"); 
     monitor->V();
 }
