@@ -316,22 +316,25 @@ AddrSpace::AddrSpace(OpenFile *executable)
     
     //fprintf(stderr, "fudge\n");
     
-    // for(int j = 0; j<5; j++)
-    //     bitMap->Mark(j);
-
+     // for(int j = 0; j<5; j++)
+     //     bitMap->Mark(j);
+     // bitMap->Mark(13);
+     // bitMap->Mark(31);
 
     fprintf(stderr, "numPages:%d\n", numPages);
     bitMap->Print();
     unsigned int spaceAvailCount = 0;
     unsigned int candIndex = 0;
     for(i = 0; i<NumPhysPages; i++){
-        fprintf(stderr, "Iter: %d\n", i);
+        fprintf(stderr, "Iter: %d spaceAvailCount: %d\n", i, spaceAvailCount);
         if(spaceAvailCount==0){candIndex=i;}
-        if(spaceAvailCount==0 && candIndex+numPages>NumPhysPages){fprintf(stderr, "Didn't find an open spot");}
+        ASSERT(!(spaceAvailCount==0 && candIndex+numPages>NumPhysPages));//{fprintf(stderr, "Didn't find an open spot");}
         if(!bitMap->Test(i)){
+            //fprintf(stderr, "%s\n", );
             spaceAvailCount++;
         }
         else{ //filled with stuff
+            fprintf(stderr, "oh hey\n");
             spaceAvailCount=0;
         }
         if(spaceAvailCount==numPages){break;}
@@ -345,6 +348,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
         // }
         // if(k==numPages){fprintf(stderr, "fuckity\n");break;}
     }
+    ASSERT(spaceAvailCount!=0);
     printf("candIndex %d\n", candIndex);
 #ifndef USE_TLB
 // first, set up the translation 
