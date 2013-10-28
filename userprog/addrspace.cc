@@ -315,32 +315,45 @@ AddrSpace::AddrSpace(OpenFile *executable)
     //fprintf(stderr, "hellol\n");
     
     //fprintf(stderr, "fudge\n");
+    
+    // for(int j = 0; j<5; j++)
+    //     bitMap->Mark(j);
+
+
     fprintf(stderr, "numPages:%d\n", numPages);
     bitMap->Print();
-//    for(i = 0; i<NumPhysPages; i++){
-//        fprintf(stderr, "Iter: %d\n", i);
-//        if()
+    unsigned int spaceAvailCount = 0;
+    unsigned int candIndex = 0;
+    for(i = 0; i<NumPhysPages; i++){
+        fprintf(stderr, "Iter: %d\n", i);
+        if(spaceAvailCount==0){candIndex=i;}
+        if(spaceAvailCount==0 && candIndex+numPages>NumPhysPages){fprintf(stderr, "Didn't find an open spot");}
+        if(!bitMap->Test(i)){
+            spaceAvailCount++;
+        }
+        else{ //filled with stuff
+            spaceAvailCount=0;
+        }
+        if(spaceAvailCount==numPages){break;}
         
         // if(!bitMap->Test(i) && i+numPages<NumPhysPages){
         //     k=0;
         //     while(k<numPages && k != -1){
-        //         fprintf(stderr, "%d\n", i);
-        //         if(bitMap->Test(i))
-        //             {k++;i++;}
         //         else{k=-1;}
         //     }
             
         // }
         // if(k==numPages){fprintf(stderr, "fuckity\n");break;}
-//    }
-
+    }
+    printf("candIndex %d\n", candIndex);
 #ifndef USE_TLB
 // first, set up the translation 
     pageTable = new(std::nothrow) TranslationEntry[numPages];
-    for (i=0; i < numPages; i++) {
+    for (i=candIndex; i < numPages+candIndex; i++) {
+    fprintf(stderr, "%d\n", i);
     pageTable[i].virtualPage = i;   // for now, virtual page # = phys page # /**************LOOK HERE************/
     pageTable[i].physicalPage = i;
-    //bitMap->Mark(i);
+    bitMap->Mark(i);
     pageTable[i].valid = true;
     pageTable[i].use = false;
     pageTable[i].dirty = false;
@@ -368,6 +381,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
         executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]),
             noffH.initData.size, noffH.initData.inFileAddr);
     }
+    fprintf(stderr, "HI i iz here\n");
 
 }
 

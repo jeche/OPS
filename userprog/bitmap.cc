@@ -239,12 +239,12 @@ BitMap::~BitMap()
 void
 BitMap::Mark(int which) 
 { 
-    fprintf(stderr, "I is here\n");
+    
     monitor->P();
     ASSERT(which >= 0 && which < numBits);
     map[which / BitsInWord] |= 1 << (which % BitsInWord);
     monitor->V();
-    fprintf(stderr, "i now here\n");
+
 }
     
 //----------------------------------------------------------------------
