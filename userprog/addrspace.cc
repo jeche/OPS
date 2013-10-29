@@ -283,6 +283,7 @@ SwapHeader (NoffHeader *noffH)
 AddrSpace::AddrSpace(OpenFile *executable)
 {
     fprintf(stderr, "fuck\n");
+    fprintf(stderr, "well then\n");
     NoffHeader noffH;
     unsigned int size;
 #ifndef USE_TLB
@@ -299,8 +300,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
             + UserStackSize;    // we need to increase the size
                         // to leave room for the stack
+    
+    fprintf(stderr, "FUDGE: %d\n", size);
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
+    
 
     ASSERT(numPages <= NumPhysPages);       // check we're not trying
                         // to run anything too big --
@@ -316,7 +320,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
     
     //fprintf(stderr, "fudge\n");
     
-     // for(int j = 0; j<5; j++)
+   //   for(int j = 0; j<5; j++)
      //     bitMap->Mark(j);
      // bitMap->Mark(13);
      // bitMap->Mark(31);
@@ -370,7 +374,8 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
-    bzero(machine->mainMemory, size); /* MUST CHANGE IN ORDER TO DEAL WITH MULTIPROGRAMMING THIS WILL ZERO OUT THE ADDR SPACE OF WHATEVER IS CURRENTLY RUNNING */
+    int zeroSpot = (int)machine->mainMemory + candIndex*PageSize;
+    bzero((char*)zeroSpot, size); /* MUST CHANGE IN ORDER TO DEAL WITH MULTIPROGRAMMING THIS WILL ZERO OUT THE ADDR SPACE OF WHATEVER IS CURRENTLY RUNNING */
 
 // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
