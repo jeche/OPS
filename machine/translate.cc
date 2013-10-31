@@ -94,7 +94,6 @@ Machine::ReadMem(int addr, int size, int *value)
     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
     
     Exception = Translate(addr, &physicalAddress, size, false);
-    fprintf(stderr, "hey hey hey\n");
     if (Exception != NoException) {
 	machine->RaiseException(Exception, addr);
 	return false;
@@ -144,7 +143,6 @@ Machine::WriteMem(int addr, int size, int value)
     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
     Exception = Translate(addr, &physicalAddress, size, true);
-    fprintf(stderr, "listen listen listen\n");
     if (Exception != NoException) {
 	machine->RaiseException(Exception, addr);
 	return false;

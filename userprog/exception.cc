@@ -244,81 +244,81 @@ OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open f
   // fileDescriptors[j] = start;
 // }
 
-ExceptionType
-Translate(int virtAddr, int* physAddr, int size, bool writing) 
-{
-    int i;
-    unsigned int vpn, offset;
-    TranslationEntry *entry;
-    unsigned int pageFrame;
+// ExceptionType
+// Translate(int virtAddr, int* physAddr, int size, bool writing) 
+// {
+//     int i;
+//     unsigned int vpn, offset;
+//     TranslationEntry *entry;
+//     unsigned int pageFrame;
 
-    DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
+//     DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
 
-// check for alignment errors
-    if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
-  DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
-  return AddressErrorException;
-    }
+// // check for alignment errors
+//     if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
+//   DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
+//   return AddressErrorException;
+//     }
     
-    // we must have either a TLB or a page table, but not both!
-    ASSERT(machine->tlb == NULL || machine->pageTable == NULL); 
-    ASSERT(machine->tlb != NULL || machine->pageTable != NULL); 
+//     // we must have either a TLB or a page table, but not both!
+//     ASSERT(machine->tlb == NULL || machine->pageTable == NULL); 
+//     ASSERT(machine->tlb != NULL || machine->pageTable != NULL); 
 
-// calculate the virtual page number, and offset within the page,
-// from the virtual address
-    vpn = (unsigned) virtAddr / PageSize;
-    offset = (unsigned) virtAddr % PageSize;
+// // calculate the virtual page number, and offset within the page,
+// // from the virtual address
+//     vpn = (unsigned) virtAddr / PageSize;
+//     offset = (unsigned) virtAddr % PageSize;
     
-    if (machine->tlb == NULL) {    // => page table => vpn is index into table
-  if (vpn >= machine->pageTableSize) {
-      DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
-      virtAddr, machine->pageTableSize);
-      return AddressErrorException;
-  } else if (!machine->pageTable[vpn].valid) {
-      DEBUG('a', "Page table miss, virtual address  %d!\n", 
-      virtAddr);
-      return PageFaultException;
-  }
-  entry = &machine->pageTable[vpn];
-    } else {
-        for (entry = NULL, i = 0; i < TLBSize; i++)
-          if (machine->tlb[i].valid && ((unsigned)machine->tlb[i].virtualPage == vpn)) {
-    entry = &machine->tlb[i];      // FOUND!
-    break;
-      }
-  if (entry == NULL) {        // not found
-          DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
-          return PageFaultException;    // really, this is a TLB fault,
-            // the page may be in memory,
-            // but not in the TLB
-  }
-    }
+//     if (machine->tlb == NULL) {    // => page table => vpn is index into table
+//   if (vpn >= machine->pageTableSize) {
+//       DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
+//       virtAddr, machine->pageTableSize);
+//       return AddressErrorException;
+//   } else if (!machine->pageTable[vpn].valid) {
+//       DEBUG('a', "Page table miss, virtual address  %d!\n", 
+//       virtAddr);
+//       return PageFaultException;
+//   }
+//   entry = &machine->pageTable[vpn];
+//     } else {
+//         for (entry = NULL, i = 0; i < TLBSize; i++)
+//           if (machine->tlb[i].valid && ((unsigned)machine->tlb[i].virtualPage == vpn)) {
+//     entry = &machine->tlb[i];      // FOUND!
+//     break;
+//       }
+//   if (entry == NULL) {        // not found
+//           DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
+//           return PageFaultException;    // really, this is a TLB fault,
+//             // the page may be in memory,
+//             // but not in the TLB
+//   }
+//     }
 
-    if (entry->readOnly && writing) { // trying to write to a read-only page
-  DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
-  return ReadOnlyException;
-    }
-    pageFrame = entry->physicalPage;
+//     if (entry->readOnly && writing) { // trying to write to a read-only page
+//   DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
+//   return ReadOnlyException;
+//     }
+//     pageFrame = entry->physicalPage;
 
-    // if the pageFrame is too big, there is something really wrong! 
-    // An invalid translation was loaded into the page table or TLB. 
-    if (pageFrame >= NumPhysPages) { 
-  DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
-  return BusErrorException;
-    }
-    entry->use = false;   // set the use, dirty bits
-    if (writing)
-  entry->dirty = true;
-    *physAddr = pageFrame * PageSize + offset;
-    ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
-    DEBUG('a', "phys addr = 0x%x\n", *physAddr);
-    return NoException;
-}
+//     // if the pageFrame is too big, there is something really wrong! 
+//     // An invalid translation was loaded into the page table or TLB. 
+//     if (pageFrame >= NumPhysPages) { 
+//   DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
+//   return BusErrorException;
+//     }
+//     entry->use = false;   // set the use, dirty bits
+//     if (writing)
+//   entry->dirty = true;
+//     *physAddr = pageFrame * PageSize + offset;
+//     ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
+//     DEBUG('a', "phys addr = 0x%x\n", *physAddr);
+//     return NoException;
+// }
 
 void
 ExceptionHandler(ExceptionType which)
 {
-    fprintf(stderr, "EXCEPTION INCEPTION\n");
+    // fprintf(stderr, "EXCEPTION INCEPTION\n");
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -328,15 +328,16 @@ ExceptionHandler(ExceptionType which)
     int incrementPC;
     char whee;
     int i;
-    fprintf(stderr, "which: %d type: %d\n", (int)which, type);
+    fprintf(stderr, "which: %d type: %d %d\n", (int)which, type, SyscallException);
+    // fprintf(stderr, "ohohohoh\n");
     //interrupt->Halt();
 
-  switch (which) {
+  switch (type) {
+
       case SyscallException:
-      switch (type) {
+      switch (which) {
         case SC_Halt:
                 DEBUG('a', "Shutdown, initiated by user program.\n");
-
                 interrupt->Halt();
                 break;
         case SC_Exit:
@@ -349,11 +350,9 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Create\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
-                //int newWhence;
-                //int err = Translate(whence, &newWhence, )
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
                 for (i=0; i<127; i++)
-                  if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+                  // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                 if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//User puts a single \0 for the string name of the file, this should not be allowed
                 stringArg[127]='\0';
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
@@ -363,20 +362,19 @@ ExceptionHandler(ExceptionType which)
                 incrementPC = machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);
-                // Needed for checkpoint!
                 break;
         case SC_Open:/*Checks for -> */
+                fprintf(stderr, "ohohohoh\n");
                 DEBUG('a', "Open\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
                 for (i=0; i<127; i++)
-                  if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+                  // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                 if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//Cannot have a file with 'no name'
                 stringArg[127]='\0';
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
                 open = fileSystem->Open(stringArg);
-                // fprintf(stderr, "%s\n", stringArg);
                 if(open==NULL){
                   DEBUG('a', "File Could not be Found, -1 returned"); 
                   descriptor=-1;
@@ -427,35 +425,22 @@ ExceptionHandler(ExceptionType which)
                       stringArg[size - 1] = '\0';
                     }
                     for(i=0; i < size; i++){
-                      if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
+                      // if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break; *****
                     }
-                    machine->mainMemory[whence++] = '\0';
+                    // machine->mainMemory[whence++] = '\0'; *****
                     DEBUG('a', "size: %d %s\n", size, stringArg);
                     machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
                   }
                 }
                 else if (descriptor == ConsoleInput) { // Deals with ConsoleInput
-                  // readAvail->P();
-                  // fprintf(stderr, "%c", stringArg);
                   DEBUG('a', "size: %d %c\n", size, stringArg);
-                  // fprintf(stderr, "Read size: %d\n", size);
                   whee = synchConsole->GetChar();
-                  // fprintf(stderr, "read %d", (int) whee);
-                  // fprintf(stderr, "whee %c", whee);
-                  // for(int i=0; i < size; i++){
-                  //     if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break;
-                  //   }
-                  // machine->mainMemory[whence++] = console->GetChar();
-                  machine->mainMemory[whence++] = whee;
-                  // machine->mainMemory[whence++] = '\0';
+                  // machine->mainMemory[whence++] = whee; *****
                   DEBUG('a', "size: %d %c\n", size, stringArg);
-                  // DEBUG('a', "size: %d %c\n", size, stringArg);
-                  // fprintf(stderr, "%c", stringArg);
                   machine->WriteRegister(2, 1);
                 }
                 else{ // Deals with out of bounds of the array.
                   DEBUG('a', "Invalid file descriptor.\n");
-                  // interrupt->Halt();
                   machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
                 }
                 delete stringArg;
@@ -474,7 +459,7 @@ ExceptionHandler(ExceptionType which)
                   DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
                   if(size != 1 && descriptor != ConsoleOutput){
                   for (i=0; i<size; i++)
-                      if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break;
+                      // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                   
                     stringArg[size]='\0';
                   }
@@ -492,14 +477,11 @@ ExceptionHandler(ExceptionType which)
                   }
                   else if (descriptor == ConsoleOutput) {
                     for (i = 0; i < size; i++) {
-                      //readAvail->P();
-                      // fprintf(stderr, "%d", (int)stringArg[i]);
-                      // fprintf(stderr, "Wrote size %d %c\n",size,  stringArg[i]);
-                      // whee = stringArg[i];
-                      whee = machine->mainMemory[whence++];
+
+                      currentThread->space->ReadMem(whence++, 4, (int *)whee);
+                      // whee = machine->mainMemory[whence++];
                       synchConsole->PutChar(whee);
-                      //fprintf(stderr, "Wrote size %d %d %c\n",size, (int)whee,  whee);
-                      // writeDone->P() ;
+
                     }
                     // synchConsole->PutChar('\0');
                   }
@@ -537,16 +519,16 @@ ExceptionHandler(ExceptionType which)
         case SC_Fork:
                 DEBUG('a', "Fork\n");
                 break;
-              default:
-          printf("Undefined SYSCALL %d\n", type);
-          ASSERT(false);
+        default:
+                printf("Undefined SYSCALL %d\n", type);
+                ASSERT(false);
       }
       #ifdef USE_TLB
-            case PageFaultException:
+        case PageFaultException:
         HandleTLBFault(machine->ReadRegister(BadVAddrReg));
         break;
       #endif
-      default: fprintf(stderr, "Fuck the World\n");
+      default: interrupt->Halt();
     }
 }
 

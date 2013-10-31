@@ -30,6 +30,9 @@ class AddrSpace {
 
     void SaveState();			// Save/restore address space-specific
     void RestoreState();		// info on a context switch 
+    bool ReadMem(int addr, int size, int *value);
+    bool WriteMem(int addr, int size, int value);
+    ExceptionType Translate(int virtAddr, int* physAddr, int size, bool writing);
 
   private:
 #ifndef USE_TLB
