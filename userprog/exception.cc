@@ -318,7 +318,6 @@ OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open f
 void
 ExceptionHandler(ExceptionType which)
 {
-    // fprintf(stderr, "EXCEPTION INCEPTION\n");
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -328,14 +327,10 @@ ExceptionHandler(ExceptionType which)
     int incrementPC;
     char whee;
     int i;
-    fprintf(stderr, "which: %d type: %d %d\n", (int)which, type, SyscallException);
-    // fprintf(stderr, "ohohohoh\n");
-    //interrupt->Halt();
-
-  switch (type) {
-
+    fprintf(stderr, "which: %d type: %d\n", (int)which, type);
+  switch (which) {
       case SyscallException:
-      switch (which) {
+      switch (type) {
         case SC_Halt:
                 DEBUG('a', "Shutdown, initiated by user program.\n");
                 interrupt->Halt();

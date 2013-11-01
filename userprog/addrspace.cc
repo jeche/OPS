@@ -299,11 +299,12 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
 // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size
-                        + UserStackSize;        // we need to increase the size
+                        + UserStackSize ;        // we need to increase the size
                                                 // to leave room for the stack
     numPages = divRoundUp(size, PageSize);
+    // size = numPages * PageSize;
+    // numPages = 32;
     size = numPages * PageSize;
-
     ASSERT(numPages <= NumPhysPages);                // check we're not trying
                                                 // to run anything too big --
                                                 // at least until we have
@@ -315,21 +316,22 @@ AddrSpace::AddrSpace(OpenFile *executable)
     bitMap->Mark(0);
     bitMap->Mark(2);
     bitMap->Mark(3);
+    bitMap->Mark(9);
 #ifndef USE_TLB
 // first, set up the translation
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     int found = 0;
+
     for (i = 0; i < numPages; i++) {
         
         found = bitMap->Find();
-        fprintf(stderr, "%d\n", found);
+        fprintf(stderr, "found %d\n", found);
         if(found == -1){
-            fprintf(stderr, "stuff");
-            i = NumPhysPages + 1;
+            i = numPages + 1;
         }
         else{
-            bzero( &machine->mainMemory[found], PageSize);
-            pageTable[i].virtualPage = i;        // for now, virtual page # = phys page #
+            bzero( &machine->mainMemory[found*PageSize], PageSize); // If things are funky this is a potential screw up.
+            pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
             
             pageTable[i].physicalPage = found;
             pageTable[i].valid = true;
@@ -339,28 +341,36 @@ AddrSpace::AddrSpace(OpenFile *executable)
                                         // a separate page, we could set its
                                         // pages to be read-only
             bitMap->Mark(found);
-            DEBUG('a', "Initializing address space, num page %d, size %d\n",
-                                        numPages, size);
-            fprintf(stderr, "stuff");
+            DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
+                                        i*PageSize,i, found*PageSize, found);
         }
     }
+DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, final space is 0x%x\n",
+                                        (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
 #endif
 
 // zero out the entire address space, to zero the unitialized data segment
 // and the stack segment
     // bzero(machine->mainMemory, size);
-
+    // machine->pageTable = pageTable;
+    // machine->pageTableSize = numPages;
+    int babyAddr = 0;
+    // int virtAddr, int* physAddr, int size, bool writing
+    // int offset;
 // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
+        Translate(noffH.code.virtualAddr, &babyAddr, noffH.code.size, false);
+        // offset = (unsigned) noff.code.virtualAddr % PageSize;
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
                         noffH.code.virtualAddr, noffH.code.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.code.virtualAddr]),
+        executable->ReadAt(&(machine->mainMemory[babyAddr]),
                         noffH.code.size, noffH.code.inFileAddr);
     }
     if (noffH.initData.size > 0) {
+        Translate(noffH.initData.virtualAddr, &babyAddr, noffH.initData.size, false);
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
                         noffH.initData.virtualAddr, noffH.initData.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]),
+        executable->ReadAt(&(machine->mainMemory[babyAddr]),
                         noffH.initData.size, noffH.initData.inFileAddr);
     }
 
@@ -449,72 +459,72 @@ bool
 AddrSpace::ReadMem(int addr, int size, int *value)
 {
 
-    int data;
-    ExceptionType Exception;
-    int physicalAddress;
+//     int data;
+//     ExceptionType Exception;
+//     int physicalAddress;
     
-    DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
+//     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
     
-    Exception = Translate(addr, &physicalAddress, size, false);
-    if (Exception != NoException) {
-    machine->RaiseException(Exception, addr);
-    return false;
-    }
-    switch (size) {
-      case 1:
-    data = machine->mainMemory[physicalAddress];
-    *value = data;
-    break;
+//     Exception = Translate(addr, &physicalAddress, size, false);
+//     if (Exception != NoException) {
+//     machine->RaiseException(Exception, addr);
+//     return false;
+//     }
+//     switch (size) {
+//       case 1:
+//     data = machine->mainMemory[physicalAddress];
+//     *value = data;
+//     break;
     
-      case 2:
-    data = *(unsigned short *) &machine->mainMemory[physicalAddress];
-    *value = ShortToHost(data);
-    break;
+//       case 2:
+//     data = *(unsigned short *) &machine->mainMemory[physicalAddress];
+//     *value = ShortToHost(data);
+//     break;
     
-      case 4:
-    data = *(unsigned int *) &machine->mainMemory[physicalAddress];
-    *value = WordToHost(data);
-    break;
+//       case 4:
+//     data = *(unsigned int *) &machine->mainMemory[physicalAddress];
+//     *value = WordToHost(data);
+//     break;
 
-      default: ASSERT(false);
-    }
+//       default: ASSERT(false);
+//     }
     
-    DEBUG('a', "\tvalue read = %8.8x\n", *value);
-    return (true);
+//     DEBUG('a', "\tvalue read = %8.8x\n", *value);
+//     return (true);
 }
 
 bool
 AddrSpace::WriteMem(int addr, int size, int value)
 {
-    ExceptionType Exception;
-    int physicalAddress;
+//     ExceptionType Exception;
+//     int physicalAddress;
      
-    DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
+//     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
-    Exception = Translate(addr, &physicalAddress, size, true);
-    if (Exception != NoException) {
-    machine->RaiseException(Exception, addr);
-    return false;
-    }
-    switch (size) {
-      case 1:
-    machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
-    break;
+//     Exception = Translate(addr, &physicalAddress, size, true);
+//     if (Exception != NoException) {
+//     machine->RaiseException(Exception, addr);
+//     return false;
+//     }
+//     switch (size) {
+//       case 1:
+//     machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
+//     break;
 
-      case 2:
-    *(unsigned short *) &machine->mainMemory[physicalAddress]
-        = ShortToMachine((unsigned short) (value & 0xffff));
-    break;
+//       case 2:
+//     *(unsigned short *) &machine->mainMemory[physicalAddress]
+//         = ShortToMachine((unsigned short) (value & 0xffff));
+//     break;
       
-      case 4:
-    *(unsigned int *) &machine->mainMemory[physicalAddress]
-        = WordToMachine((unsigned int) value);
-    break;
+//       case 4:
+//     *(unsigned int *) &machine->mainMemory[physicalAddress]
+//         = WordToMachine((unsigned int) value);
+//     break;
     
-      default: ASSERT(false);
-    }
+//       default: ASSERT(false);
+//     }
     
-    return true;
+//     return true;
 }
 
 ExceptionType
@@ -546,6 +556,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     if (vpn >= numPages * PageSize) {
         fprintf(stderr, "virtual page # %d, %d too large for page table size %d!\n", 
             virtAddr, virtAddr, numPages * PageSize);
+        // fprintf(stderr, "hohoho");
         return AddressErrorException;
     } else if (!pageTable[vpn].valid) {
         DEBUG('a', "Page table miss, virtual address  %d!\n", 
