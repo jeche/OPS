@@ -325,6 +325,7 @@ ExceptionHandler(ExceptionType which)
     OpenFile* open;
     int descriptor = -1;
     int incrementPC;
+    // int size2;
     char whee;
     int i;
     fprintf(stderr, "which: %d type: %d\n", (int)which, type);
@@ -347,19 +348,19 @@ ExceptionHandler(ExceptionType which)
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
                 for (i=0; i<127; i++)
+                  currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
                   // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                 if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//User puts a single \0 for the string name of the file, this should not be allowed
                 stringArg[127]='\0';
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
                 if(!fileSystem->Create(stringArg, 16)){DEBUG('a', "Create Failed\n");interrupt->Halt();}
                 delete [] stringArg;
-                interrupt->Halt();
+                // interrupt->Halt();
                 incrementPC = machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         case SC_Open:/*Checks for -> */
-                fprintf(stderr, "ohohohoh\n");
                 DEBUG('a', "Open\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
@@ -420,6 +421,9 @@ ExceptionHandler(ExceptionType which)
                       stringArg[size - 1] = '\0';
                     }
                     for(i=0; i < size; i++){
+                      // int addr, int size, int value
+                      currentThread->space->WriteMem(whence++, sizeof(char), stringArg[i]);
+                      if(stringArg[i] == '\0') break;
                       // if((machine->mainMemory[whence++] = stringArg[i]) == '\0') break; *****
                     }
                     // machine->mainMemory[whence++] = '\0'; *****
@@ -430,6 +434,7 @@ ExceptionHandler(ExceptionType which)
                 else if (descriptor == ConsoleInput) { // Deals with ConsoleInput
                   DEBUG('a', "size: %d %c\n", size, stringArg);
                   whee = synchConsole->GetChar();
+                  currentThread->space->WriteMem(whence++, sizeof(char), whee);
                   // machine->mainMemory[whence++] = whee; *****
                   DEBUG('a', "size: %d %c\n", size, stringArg);
                   machine->WriteRegister(2, 1);
@@ -446,6 +451,10 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Write:
                 DEBUG('a', "Write\n"); // Please fix.
+                // Issue name: Oh God Why?
+                // For some ungodly reason size decides to be 0 immediately after the for loop.  Why?  No idea.  If we have a different size
+                // it for some reason then works and sets the other different size to 0.  Another fix we found... was to just reset size every
+                // time we need to use it.
                 size = machine->ReadRegister(5);
                 if (size > 0){
                   stringArg = new(std::nothrow) char[size];
@@ -453,8 +462,9 @@ ExceptionHandler(ExceptionType which)
                   descriptor = machine->ReadRegister(6);
                   DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
                   if(size != 1 && descriptor != ConsoleOutput){
-                  for (i=0; i<size; i++)
-                      // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
+                  for (i=0; i<size; i++)                      
+                    if(currentThread->space->ReadMem(whence++, sizeof(char), (int *)&whee)) break;
+                  // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                   
                     stringArg[size]='\0';
                   }
@@ -471,13 +481,26 @@ ExceptionHandler(ExceptionType which)
                     
                   }
                   else if (descriptor == ConsoleOutput) {
+                    // fprintf(stderr, "SIZEABLE %d\n", size);
+                    // size2 = size;
                     for (i = 0; i < size; i++) {
-
-                      currentThread->space->ReadMem(whence++, 4, (int *)whee);
-                      // whee = machine->mainMemory[whence++];
+                      size = machine->ReadRegister(5);
+                      // fprintf(stderr, "for loop: %d\n", size);
+                      // fprintf(stderr, "for loop: %d\n", i);
+                      if(currentThread->space->ReadMem(whence++, sizeof(char), (int *)&whee)){
+                        // fprintf(stderr, "truth! %d\n", whence);
+                        // fprintf(stderr, "i %d", size);
+                      }
+                      // whee = machine->mainMemory[whence++]; *****
                       synchConsole->PutChar(whee);
+                      // fprintf(stderr, "%c", whee);
+                      // size = size2;
+                      // fprintf(stderr, "sizeable %d\n", size);
 
                     }
+                    // fprintf(stderr, "%c", whee);
+                    // fprintf(stderr, "i %d", size);
+
                     // synchConsole->PutChar('\0');
                   }
                   else if (descriptor == ConsoleInput){
@@ -523,7 +546,7 @@ ExceptionHandler(ExceptionType which)
         HandleTLBFault(machine->ReadRegister(BadVAddrReg));
         break;
       #endif
-      default: interrupt->Halt();
+      default: ;
     }
 }
 

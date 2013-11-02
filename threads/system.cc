@@ -370,7 +370,7 @@ Initialize(int argc, char **argv)
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
-    bitMap->Print();
+    // bitMap->Print();
 #endif
 
 #ifdef FILESYS

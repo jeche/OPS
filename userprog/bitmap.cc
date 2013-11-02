@@ -211,7 +211,7 @@ BitMap::BitMap(int nitems)
 { 
     monitor = new(std::nothrow) Semaphore("bitmap monitor", 1);
     numBits = nitems;
-    fprintf(stderr, "%d\n", numBits);
+    // fprintf(stderr, "%d\n", numBits);
     numWords = divRoundUp(numBits, BitsInWord);
     map = new(std::nothrow) unsigned int[numWords];
     for (int i = 0; i < numBits; i++) 

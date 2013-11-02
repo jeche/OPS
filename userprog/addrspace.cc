@@ -434,7 +434,8 @@ AddrSpace::InitRegisters()
 
 void AddrSpace::SaveState() 
 {
-
+    // currentThread->SaveUserState();
+    // fprintf(stderr, "ohshoot\n");
 }
 
 //----------------------------------------------------------------------
@@ -452,79 +453,82 @@ void AddrSpace::RestoreState()
 #ifndef USE_TLB
     machine->pageTable = pageTable;
     machine->pageTableSize = numPages;
+    // fprintf(stderr, "so amaze\n");
+    // currentThread->RestoreUserState();
 #endif
 }
 
 bool
 AddrSpace::ReadMem(int addr, int size, int *value)
 {
+    // fprintf(stderr, "Memory read: %d", addr);
+    int data;
+    ExceptionType Exception;
+    int physicalAddress;
+    
+    DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
+    // fprintf(stderr, "ohshit %d\n", size);
+    
+    Exception = Translate(addr, &physicalAddress, size, false);
+    if (Exception != NoException) {
+    machine->RaiseException(Exception, addr);
+    return false;
+    }
+    switch (size) {
+      case 1:
+    data = machine->mainMemory[physicalAddress];
+    *value = data;
+    break;
+    
+      case 2:
+    data = *(unsigned short *) &machine->mainMemory[physicalAddress];
+    *value = ShortToHost(data);
+    break;
+    
+      case 4:
+    data = *(unsigned int *) &machine->mainMemory[physicalAddress];
+    *value = WordToHost(data);
+    break;
 
-//     int data;
-//     ExceptionType Exception;
-//     int physicalAddress;
+      default: ASSERT(false);
+    }
     
-//     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
-    
-//     Exception = Translate(addr, &physicalAddress, size, false);
-//     if (Exception != NoException) {
-//     machine->RaiseException(Exception, addr);
-//     return false;
-//     }
-//     switch (size) {
-//       case 1:
-//     data = machine->mainMemory[physicalAddress];
-//     *value = data;
-//     break;
-    
-//       case 2:
-//     data = *(unsigned short *) &machine->mainMemory[physicalAddress];
-//     *value = ShortToHost(data);
-//     break;
-    
-//       case 4:
-//     data = *(unsigned int *) &machine->mainMemory[physicalAddress];
-//     *value = WordToHost(data);
-//     break;
-
-//       default: ASSERT(false);
-//     }
-    
-//     DEBUG('a', "\tvalue read = %8.8x\n", *value);
-//     return (true);
+    DEBUG('a', "\tvalue read = %8.8x\n", *value);
+    return (true);
 }
 
 bool
 AddrSpace::WriteMem(int addr, int size, int value)
 {
-//     ExceptionType Exception;
-//     int physicalAddress;
+    ExceptionType Exception;
+    int physicalAddress;
      
-//     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
+    DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
-//     Exception = Translate(addr, &physicalAddress, size, true);
-//     if (Exception != NoException) {
-//     machine->RaiseException(Exception, addr);
-//     return false;
-//     }
-//     switch (size) {
-//       case 1:
-//     machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
-//     break;
+    Exception = Translate(addr, &physicalAddress, size, true);
+    if (Exception != NoException) {
+    machine->RaiseException(Exception, addr);
+    return false;
+    }
+    switch (size) {
+      case 1:
+    machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
+    break;
 
-//       case 2:
-//     *(unsigned short *) &machine->mainMemory[physicalAddress]
-//         = ShortToMachine((unsigned short) (value & 0xffff));
-//     break;
+      case 2:
+    *(unsigned short *) &machine->mainMemory[physicalAddress]
+        = ShortToMachine((unsigned short) (value & 0xffff));
+    break;
       
-//       case 4:
-//     *(unsigned int *) &machine->mainMemory[physicalAddress]
-//         = WordToMachine((unsigned int) value);
-//     break;
+      case 4:
+    *(unsigned int *) &machine->mainMemory[physicalAddress]
+        = WordToMachine((unsigned int) value);
+    break;
     
-//       default: ASSERT(false);
-//     }
+      default: ASSERT(false);
+    }
     
-//     return true;
+    return true;
 }
 
 ExceptionType
@@ -534,6 +538,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     unsigned int vpn, offset;
     TranslationEntry *entry;
     unsigned int pageFrame;
+    // fprintf(stderr, "oh shittttttaki\n");
 
     DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
 
