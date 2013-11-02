@@ -328,6 +328,8 @@ ExceptionHandler(ExceptionType which)
     // int size2;
     char whee;
     int i;
+    AddrSpace *newSpacer;
+    Thread *t;
     fprintf(stderr, "which: %d type: %d\n", (int)which, type);
   switch (which) {
       case SyscallException:
@@ -385,6 +387,7 @@ ExceptionHandler(ExceptionType which)
                 for(i = 2; i < 16; i++){
                   if(currentThread->space->fileDescriptors[i]->file == NULL){
                     descriptor = i;
+                    currentThread->space->fileDescriptors[i] = new FileShield();
                     currentThread->space->fileDescriptors[i]->file = open; // Bitten in the ass.
                     currentThread->space->fileDescriptors[i]->CopyFile();
                     i = 17;
@@ -540,7 +543,18 @@ ExceptionHandler(ExceptionType which)
                 // Needed for checkpoint!
                 break;
         case SC_Fork:
+        /* Fork creates a clone (the child) of the calling user process (the
+ * parent). The parent gets the SpaceId of the child as the return value
+ * of the Fork; the child gets a 0 return value. If there is an error that
+ * prevents the creation of the child, the parent gets a -1 return value.
+ */
                 DEBUG('a', "Fork\n");
+                t = new(std::nothrow) Thread("clone");
+                newSpacer = currentThread->space->newSpace();
+                t->space = newSpacer;
+                t->space->parent = (int)currentThread;
+                currentThread->space->child = (int)t;
+
                 break;
         default:
                 printf("Undefined SYSCALL %d\n", type);

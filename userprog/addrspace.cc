@@ -312,11 +312,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n",
                                         numPages, size);
-    bitMap->Mark(1);
-    bitMap->Mark(0);
-    bitMap->Mark(2);
-    bitMap->Mark(3);
-    bitMap->Mark(9);
+    // bitMap->Mark(1);
+    // bitMap->Mark(0);
+    // bitMap->Mark(2);
+    // bitMap->Mark(3);
+    // bitMap->Mark(9);
 #ifndef USE_TLB
 // first, set up the translation
     pageTable = new(std::nothrow) TranslationEntry[numPages];
@@ -378,6 +378,45 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 
 
 
+}
+
+//----------------------------------------------------------------------
+// AddrSpace::~AddrSpace
+//  Dealloate an address space.  Nothing for now!
+//----------------------------------------------------------------------
+AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages){
+    numPages = newNumPages;
+    pageTable = newPageTable;
+    fileDescriptors = avengers;
+    // // pageTable = new(std::nothrow) TranslationEntry[numPages];
+    // int found = 0;
+    // int i;
+    // for (i = 0; i < numPagesNeeded; i++) {
+        
+    //     found = bitMap->Find();
+    //     fprintf(stderr, "found %d\n", found);
+    //     if(found == -1){
+    //         i = numPages + 1;
+    //     }
+    //     else{
+    //         bzero( &machine->mainMemory[found*PageSize], PageSize); // If things are funky this is a potential screw up.
+    //         pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
+            
+    //         pageTable[i].physicalPage = found;
+    //         pageTable[i].valid = true;
+    //         pageTable[i].use = false;
+    //         pageTable[i].dirty = false;
+    //         pageTable[i].readOnly = false; // if the code segment was entirely on
+    //                                     // a separate page, we could set its
+    //                                     // pages to be read-only
+    //         bitMap->Mark(found);
+    //         DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
+    //                                     i*PageSize,i, found*PageSize, found);
+    //     }
+    // }
+    // DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, final space is 0x%x\n",
+    //                                     (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
+    // fileDescriptors = new (std::nothrow) FileShield*[16];
 }
 
 //----------------------------------------------------------------------
@@ -504,7 +543,6 @@ AddrSpace::ReadMem(int addr, int size, int *value)
 bool
 AddrSpace::WriteMem(int addr, int size, int value)
 {
-<<<<<<< HEAD
     ExceptionType Exception;
     int physicalAddress;
      
@@ -534,37 +572,6 @@ AddrSpace::WriteMem(int addr, int size, int value)
     }
     
     return true;
-=======
-//     ExceptionType Exception;
-//     int physicalAddress;
-     
-//     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
-
-//     Exception = Translate(addr, &physicalAddress, size, true);
-//     if (Exception != NoException) {
-//     machine->RaiseException(Exception, addr);
-//     return false;
-//     }
-//     switch (size) {
-//       case 1:
-//     machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
-//     break;
-
-//       case 2:
-//     *(unsigned short *) &machine->mainMemory[physicalAddress]
-//         = ShortToMachine((unsigned short) (value & 0xffff));
-//     break;
-      
-//       case 4:
-//     *(unsigned int *) &machine->mainMemory[physicalAddress]
-//         = WordToMachine((unsigned int) value);
-//     break;
-    
-//       default: ASSERT(false);
-//     }
-    
-//     return true;
->>>>>>> 42f5d8e53b1901504929a85d194ec8cb243b5d51
 }
 
 ExceptionType
@@ -574,10 +581,6 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     unsigned int vpn, offset;
     TranslationEntry *entry;
     unsigned int pageFrame;
-<<<<<<< HEAD
-    // fprintf(stderr, "oh shittttttaki\n");
-=======
->>>>>>> 42f5d8e53b1901504929a85d194ec8cb243b5d51
 
     DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
 
@@ -637,9 +640,51 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     DEBUG('a', "phys addr = 0x%x\n", *physAddr);
     return NoException;
 }
+unsigned int AddrSpace::getNumPages(){
+    return numPages;
+}
 
-<<<<<<< HEAD
+AddrSpace* AddrSpace::newSpace(){
+    TranslationEntry *pageTable2 = new(std::nothrow) TranslationEntry[numPages];
+    int found = 0;
+    int i;
+    // TODO: Check to make sure enough pages.
+    for (i = 0; i < numPages; i++) {
+        
+        found = bitMap->Find();
+        fprintf(stderr, "found %d\n", found);
+        if(found == -1){
+            i = numPages + 1;
+        }
+        else{
+            bzero( &machine->mainMemory[found*PageSize], PageSize); // If things are funky this is a potential screw up.
+            pageTable2[i].virtualPage = i;        // for now, virtual page # != phys page #
+            
+            pageTable2[i].physicalPage = found;
+            for(int j = 0; j < PageSize; j ++){
+                machine->mainMemory[pageTable2[i].physicalPage * PageSize + j] = machine->mainMemory[pageTable[i].physicalPage * PageSize + j];
+            }
+            pageTable2[i].valid = true;
+            pageTable2[i].use = false;
+            pageTable2[i].dirty = false;
+            pageTable2[i].readOnly = false; // if the code segment was entirely on
+                                        // a separate page, we could set its
+                                        // pages to be read-only
+            bitMap->Mark(found);
+            DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
+                                        i*PageSize,i, found*PageSize, found);
+        }
+    }
+    DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, final space is 0x%x\n",
+                                        (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
+    FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
+    for(int k = 0; k < 16; k++){
+        if(fileDescriptors[k] != NULL){
+            fileDescriptors2[k] = fileDescriptors[k];
+        }
+    }
+    return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors, numPages);
+
+}
+
 #endif // CHANGED
-=======
-#endif // CHANGED
->>>>>>> 42f5d8e53b1901504929a85d194ec8cb243b5d51

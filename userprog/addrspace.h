@@ -114,20 +114,31 @@ class FileShield {
 
 class AddrSpace {
   public:
+    // Thread *parent;
+    // Thread *child;
+    // Thread *sibling;
+    int child;
+    int parent;
+    int sibling;
     FileShield** fileDescriptors;
     AddrSpace(OpenFile *executable);  // Create an address space,
           // initializing it with the program
           // stored in the file "executable"
+    AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages); //Only use if you are forking a new 
+          //process and you know the pages needed
+          //and are going to copy in the physical pages
     ~AddrSpace();     // De-allocate an address space
 
     void InitRegisters();   // Initialize user-level CPU registers,
           // before jumping to user code
-
+    void CopySpace();
     void SaveState();     // Save/restore address space-specific
     void RestoreState();    // info on a context switch 
     bool ReadMem(int addr, int size, int *value);
     bool WriteMem(int addr, int size, int value);
     ExceptionType Translate(int virtAddr, int* physAddr, int size, bool writing);
+    unsigned int getNumPages();
+    AddrSpace* newSpace();
 
   private:
 #ifndef USE_TLB
