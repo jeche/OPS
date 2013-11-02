@@ -355,6 +355,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     // machine->pageTable = pageTable;
     // machine->pageTableSize = numPages;
     fileDescriptors = new (std::nothrow) FileShield*[16];
+
     int babyAddr = 0;
     // int virtAddr, int* physAddr, int size, bool writing
     // int offset;
@@ -438,6 +439,7 @@ void AddrSpace::SaveState()
 {
     // currentThread->SaveUserState();
     // fprintf(stderr, "ohshoot\n");
+
 }
 
 //----------------------------------------------------------------------
@@ -502,6 +504,7 @@ AddrSpace::ReadMem(int addr, int size, int *value)
 bool
 AddrSpace::WriteMem(int addr, int size, int value)
 {
+<<<<<<< HEAD
     ExceptionType Exception;
     int physicalAddress;
      
@@ -531,6 +534,37 @@ AddrSpace::WriteMem(int addr, int size, int value)
     }
     
     return true;
+=======
+//     ExceptionType Exception;
+//     int physicalAddress;
+     
+//     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
+
+//     Exception = Translate(addr, &physicalAddress, size, true);
+//     if (Exception != NoException) {
+//     machine->RaiseException(Exception, addr);
+//     return false;
+//     }
+//     switch (size) {
+//       case 1:
+//     machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
+//     break;
+
+//       case 2:
+//     *(unsigned short *) &machine->mainMemory[physicalAddress]
+//         = ShortToMachine((unsigned short) (value & 0xffff));
+//     break;
+      
+//       case 4:
+//     *(unsigned int *) &machine->mainMemory[physicalAddress]
+//         = WordToMachine((unsigned int) value);
+//     break;
+    
+//       default: ASSERT(false);
+//     }
+    
+//     return true;
+>>>>>>> 42f5d8e53b1901504929a85d194ec8cb243b5d51
 }
 
 ExceptionType
@@ -540,7 +574,10 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     unsigned int vpn, offset;
     TranslationEntry *entry;
     unsigned int pageFrame;
+<<<<<<< HEAD
     // fprintf(stderr, "oh shittttttaki\n");
+=======
+>>>>>>> 42f5d8e53b1901504929a85d194ec8cb243b5d51
 
     DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
 
@@ -601,4 +638,8 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     return NoException;
 }
 
+<<<<<<< HEAD
 #endif // CHANGED
+=======
+#endif // CHANGED
+>>>>>>> 42f5d8e53b1901504929a85d194ec8cb243b5d51
