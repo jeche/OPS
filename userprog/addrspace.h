@@ -84,8 +84,37 @@ class AddrSpace {
 
 #define UserStackSize   1024  // increase this as necessary!
 
+class FileShield {
+    public:         // Raw console
+    int refcount;                    // with the interrupt handler
+    OpenFile *file;
+
+    FileShield(){
+      refcount = 0;
+    }
+
+    void CopyFile(){
+      refcount++;
+    };
+
+    int CloseFile(){
+      refcount--;
+      if(refcount == 0){
+        delete file;
+      }
+      return refcount;
+    }
+
+    ~FileShield(){
+      delete file;
+    }
+    //Lock *lock;               // Only one read/write request
+                    // can be sent to the disk at a time
+};
+
 class AddrSpace {
   public:
+    FileShield** fileDescriptors;
     AddrSpace(OpenFile *executable);  // Create an address space,
           // initializing it with the program
           // stored in the file "executable"

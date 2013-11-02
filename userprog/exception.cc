@@ -231,7 +231,7 @@ HandleTLBFault(int vaddr)
 //  are in machine.h.
 //----------------------------------------------------------------------
 
-OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open files allowed at a time****  First two are console input and console output.
+// OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open files allowed at a time****  First two are console input and console output.
 // static Semaphore *readAvail= new(std::nothrow) Semaphore("read avail", 0);
 // static Semaphore *writeDone= new(std::nothrow) Semaphore("write done", 0);
 // static void ReadAvail(int) { readAvail->V(); }
@@ -383,9 +383,10 @@ ExceptionHandler(ExceptionType which)
                   break;
                 }else{
                 for(i = 2; i < 16; i++){
-                  if(fileDescriptors[i] == NULL){
+                  if(currentThread->space->fileDescriptors[i]->file == NULL){
                     descriptor = i;
-                    fileDescriptors[i] = open; // Bitten in the ass.
+                    currentThread->space->fileDescriptors[i]->file = open; // Bitten in the ass.
+                    currentThread->space->fileDescriptors[i]->CopyFile();
                     i = 17;
                   }
                 }
@@ -405,7 +406,7 @@ ExceptionHandler(ExceptionType which)
                 if(size > 0){
                 stringArg = new (std::nothrow) char[size];
                 if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
-                  open = fileDescriptors[descriptor];
+                  open = currentThread->space->fileDescriptors[descriptor]->file;
                   if(open == NULL){
                     DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                     // fprintf(stderr, "%d\n", descriptor);
@@ -470,7 +471,7 @@ ExceptionHandler(ExceptionType which)
                   }
                     DEBUG('a', "Argument string is <%s>\n",stringArg);
                   if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
-                    open = fileDescriptors[descriptor];
+                    open = currentThread->space->fileDescriptors[descriptor]->file;
                     if(open == NULL){
                       DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                       // fprintf(stderr, "%d\n", descriptor);
@@ -520,15 +521,19 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Close\n");
                 descriptor = machine->ReadRegister(4);
                 if(descriptor<0||descriptor>15){DEBUG('a', "Invalid OpenFileId"); interrupt->Halt();}//invalid openfileid
-                open = fileDescriptors[descriptor];
-                if(open==NULL){//no file is associated with the openfileid
+                whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
+                if(whence < 0){//no file is associated with the openfileid
                   DEBUG('a', "No OpenFile is associated with the given OpenFileId");
                   incrementPC=machine->ReadRegister(NextPCReg)+4;
                   machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                   machine->WriteRegister(NextPCReg, incrementPC);
                 }
-                fileDescriptors[descriptor] = NULL;
-                delete( open );
+                if(whence == 0){
+                  delete currentThread->space->fileDescriptors[descriptor];
+                }
+                currentThread->space->fileDescriptors[descriptor] = new FileShield();
+                // fileDescriptors[descriptor] = NULL;
+                // delete( open );
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);            

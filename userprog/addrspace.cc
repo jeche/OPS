@@ -354,6 +354,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     // bzero(machine->mainMemory, size);
     // machine->pageTable = pageTable;
     // machine->pageTableSize = numPages;
+    fileDescriptors = new (std::nothrow) FileShield*[16];
     int babyAddr = 0;
     // int virtAddr, int* physAddr, int size, bool writing
     // int offset;
@@ -386,6 +387,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
+    delete fileDescriptors;
    delete pageTable;
 #endif
 }
