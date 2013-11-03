@@ -12,15 +12,39 @@
 
 #include "syscall.h"
 
-int X[3];
 
-char *t2 = "global string";
+
+/* char *t2 = "global string"; */
 
 int
 main()
 {
-   char * s1 = "This is a string";
-
-    Halt();
+	char *s = "Hello, console.\n";
+	/*int x;*/
+	prints(s, ConsoleOutput);
+	/*x = 2    */
+    
+   /*char * s1 = "This is a string";*/
+	/*if(x == 2){
+		prints(s, ConsoleOutput);
+	}
+	prints(s, ConsoleOutput);*/
+	
+    
     /* not reached */
 }
+
+prints(s,file)
+char *s;
+OpenFileId file;
+
+{
+  int count = 0;
+  char *p;
+
+  p = s;
+  while (*p++ != '\0') count++;
+  Write(s, count, file);  
+
+}
+

@@ -97,10 +97,14 @@ extern PostOffice* postOffice;
 class SynchConsole {
     private:
     Console *console;   
+    bool used;
+    Condition* notBusy;
     public:         // Raw console
     Semaphore *readAvail;       // To synchronize requesting thread 
                     // with the interrupt handler
     Semaphore *writeDone;
+    // Semaphore *busy;
+    Lock *busy;
     //Lock *lock;               // Only one read/write request
                     // can be sent to the disk at a time
 
@@ -121,30 +125,55 @@ class SynchConsole {
         console = new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, (int) this);
         readAvail = new(std::nothrow) Semaphore("read avail", 0);
         writeDone = new(std::nothrow) Semaphore("write done", 0);
+        // busy = new(std::nothrow) Semaphore("busy", 1);
+        busy = new(std::nothrow) Lock("busyLock");
+        notBusy = new(std::nothrow) Condition("notBusy");
+
+        used = false; 
 
     }; 
     ~SynchConsole(){
         delete console;
         delete readAvail;
         delete writeDone;
+        delete busy;
         //delete lock;
         //delete semaphore;
     };          
     
     void PutChar(char ch){
-        //lock->Acquire();          
+        //lock->Acquire();
+        busy->Acquire();
+        while(used){
+            notBusy->Wait(busy);
+        }
+        used = true;
         console->PutChar(ch);
         //semaphore->P();           // wait for interrupt
         writeDone->P();
+        // busy->V();
+        notBusy->Broadcast(busy);
+        used = false;
+        busy->Release();
         //lock->Release();
     };
                         //output ch on console; delay if busy
     char GetChar(){
         //lock->Acquire();          // only one disk I/O at a time
+        // busy->P();
+        busy->Acquire();
+        while(used){
+            notBusy->Wait(busy);
+        }
+        used = true;
         readAvail->P();
         char c = console->GetChar();
         //semaphore->P();           // wait for interrupt
         //lock->Release();
+        // busy->V();
+        notBusy->Broadcast(busy);
+        used = false;
+        busy->Release();
         return c;
     };
                         //return character input on console; if none avaliable, delay until it is input

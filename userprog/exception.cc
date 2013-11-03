@@ -1,19 +1,19 @@
 #ifndef CHANGED
 // exception.cc 
-//	Entry point into the Nachos kernel from user programs.
-//	There are two kinds of things that can cause control to
-//	transfer back to here from user code:
+//  Entry point into the Nachos kernel from user programs.
+//  There are two kinds of things that can cause control to
+//  transfer back to here from user code:
 //
-//	syscall -- The user code explicitly requests to call a procedure
-//	in the Nachos kernel.  Right now, the only function we support is
-//	"Halt".
+//  syscall -- The user code explicitly requests to call a procedure
+//  in the Nachos kernel.  Right now, the only function we support is
+//  "Halt".
 //
-//	exceptions -- The user code does something that the CPU can't handle.
-//	For instance, accessing memory that doesn't exist, arithmetic errors,
-//	etc.  
+//  exceptions -- The user code does something that the CPU can't handle.
+//  For instance, accessing memory that doesn't exist, arithmetic errors,
+//  etc.  
 //
-//	Interrupts (which can also cause control to transfer from user
-//	code into the Nachos kernel) are handled elsewhere.
+//  Interrupts (which can also cause control to transfer from user
+//  code into the Nachos kernel) are handled elsewhere.
 //
 // For now, this only handles the Halt() system call.
 // Everything else core dumps.
@@ -70,25 +70,25 @@ HandleTLBFault(int vaddr)
 
 //----------------------------------------------------------------------
 // ExceptionHandler
-// 	Entry point into the Nachos kernel.  Called when a user program
-//	is executing, and either does a syscall, or generates an addressing
-//	or arithmetic exception.
+//  Entry point into the Nachos kernel.  Called when a user program
+//  is executing, and either does a syscall, or generates an addressing
+//  or arithmetic exception.
 //
-// 	For system calls, the following is the calling convention:
+//  For system calls, the following is the calling convention:
 //
-// 	system call code -- r2
-//		arg1 -- r4
-//		arg2 -- r5
-//		arg3 -- r6
-//		arg4 -- r7
+//  system call code -- r2
+//    arg1 -- r4
+//    arg2 -- r5
+//    arg3 -- r6
+//    arg4 -- r7
 //
-//	The result of the system call, if any, must be put back into r2. 
+//  The result of the system call, if any, must be put back into r2. 
 //
 // And don't forget to increment the pc before returning. (Or else you'll
 // loop making the same system call forever!
 //
-//	"which" is the kind of exception.  The list of possible exceptions 
-//	are in machine.h.
+//  "which" is the kind of exception.  The list of possible exceptions 
+//  are in machine.h.
 //----------------------------------------------------------------------
 
 void
@@ -98,18 +98,18 @@ ExceptionHandler(ExceptionType which)
 
     switch (which) {
       case SyscallException:
-	switch (type) {
-	  case SC_Halt:
+  switch (type) {
+    case SC_Halt:
             DEBUG('a', "Shutdown, initiated by user program.\n");
             interrupt->Halt();
           default:
-	    printf("Undefined SYSCALL %d\n", type);
-	    ASSERT(false);
-	}
+      printf("Undefined SYSCALL %d\n", type);
+      ASSERT(false);
+  }
 #ifdef USE_TLB
       case PageFaultException:
-	HandleTLBFault(machine->ReadRegister(BadVAddrReg));
-	break;
+  HandleTLBFault(machine->ReadRegister(BadVAddrReg));
+  break;
 #endif
       default: ;
     }
@@ -315,6 +315,25 @@ HandleTLBFault(int vaddr)
 //     return NoException;
 // }
 
+void CopyRegs(int k){
+  // // fprintf(stderr, "Oh noes %d\n", (int) currentThread);
+  // // fprintcurrentThrea
+  // // currentThread->SaveUserState();
+  // currentThread->RestoreUserState();
+  // machine->WriteRegister(2, 0);
+  // // t->SaveUserState();
+  // // fprintf(stderr, "oh hey there\n");
+  // // t->RestoreUserState();
+  int incrementPC;
+  currentThread->RestoreUserState();
+  machine->WriteRegister(2, 0);
+  // fprintf(stderr, "oh hey there\n");
+  incrementPC=machine->ReadRegister(NextPCReg)+4;
+  machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+  machine->WriteRegister(NextPCReg, incrementPC);            // Needed for checkpoint!
+  machine->Run();
+}
+
 void
 ExceptionHandler(ExceptionType which)
 {
@@ -330,10 +349,7 @@ ExceptionHandler(ExceptionType which)
     int i;
     AddrSpace *newSpacer;
     Thread *t;
-    fprintf(stderr, "which: %d type: %d\n", (int)which, type);
-    if(type == 7603747){
-      interrupt->Halt();
-    }
+    // fprintf(stderr, "which: %d type: %d\n", (int)which, type);
   switch (which) {
       case SyscallException:
       switch (type) {
@@ -343,9 +359,18 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exit:
                 DEBUG('a', "Exit\n");
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         case SC_Join:
                 DEBUG('a', "Join\n");
+                currentThread->Yield();
+                /*incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);*/       
                 break;
         case SC_Create:/*Checks for -> Filename given is a single \0*/
                 DEBUG('a', "Create\n");
@@ -370,8 +395,11 @@ ExceptionHandler(ExceptionType which)
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
-                for (i=0; i<127; i++)
-                  // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
+                for (i=0; i<127; i++){
+                  currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+                  if(stringArg[i] == '\0') break;
+                }
+                // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                 if(i==0){DEBUG('a', "Invalid File Name: Must be longer than 0\n");interrupt->Halt();}//Cannot have a file with 'no name'
                 stringArg[127]='\0';
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
@@ -386,9 +414,9 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                   machine->WriteRegister(NextPCReg, incrementPC);            // Needed for checkpoint!
                   break;
-                }else{
+                }else{                  
                 for(i = 2; i < 16; i++){
-                  if(currentThread->space->fileDescriptors[i]->file == NULL){
+                  if(currentThread->space->fileDescriptors[i] == NULL){
                     descriptor = i;
                     currentThread->space->fileDescriptors[i] = new FileShield();
                     currentThread->space->fileDescriptors[i]->file = open; // Bitten in the ass.
@@ -412,6 +440,11 @@ ExceptionHandler(ExceptionType which)
                 if(size > 0){
                 stringArg = new (std::nothrow) char[size];
                 if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
+                  if(currentThread->space->fileDescriptors[descriptor] == NULL){
+                    DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
+                    // fprintf(stderr, "%d\n", descriptor);
+                    machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
+                  }else{
                   open = currentThread->space->fileDescriptors[descriptor]->file;
                   if(open == NULL){
                     DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
@@ -438,6 +471,7 @@ ExceptionHandler(ExceptionType which)
                     machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
                   }
                 }
+                }
                 else if (descriptor == ConsoleInput) { // Deals with ConsoleInput
                   DEBUG('a', "size: %d %c\n", size, stringArg);
                   whee = synchConsole->GetChar();
@@ -453,7 +487,6 @@ ExceptionHandler(ExceptionType which)
                 delete stringArg;
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
-                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
@@ -470,11 +503,17 @@ ExceptionHandler(ExceptionType which)
                   descriptor = machine->ReadRegister(6);
                   DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
                   if(size != 1 && descriptor != ConsoleOutput){
-                  for (i=0; i<size; i++)                      
-                    if(currentThread->space->ReadMem(whence++, sizeof(char), (int *)&whee)) break;
+                  for (i=0; i<size; i++){
+                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
+                    // fprintf(stderr, "DOPE %c\", stringArg[i]);
+                    if(stringArg[i] == '\0')break;
+                  }
                   // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                   
                     stringArg[size]='\0';
+                  }
+                  else if(size == 1&& descriptor != ConsoleOutput){
+                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[0]);
                   }
                     DEBUG('a', "Argument string is <%s>\n",stringArg);
                   if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
@@ -485,6 +524,7 @@ ExceptionHandler(ExceptionType which)
                       interrupt->Halt();
                     }                
                     open->Write(stringArg, size);
+                    if(size == 1)
                     DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
                     
                   }
@@ -496,20 +536,18 @@ ExceptionHandler(ExceptionType which)
                       // fprintf(stderr, "for loop: %d\n", size);
                       // fprintf(stderr, "for loop: %d\n", i);
                       if(currentThread->space->ReadMem(whence++, sizeof(char), (int *)&whee)){
-                        // fprintf(stderr, "truth! %d\n", whence);
+                        // fprintf(stderr, "truth! %c\n", whee);
                         // fprintf(stderr, "i %d", size);
-                        synchConsole->PutChar(whee);
                       }
-                      if(whee == '\0') break;
                       // whee = machine->mainMemory[whence++]; *****
-                      
-                      fprintf(stderr, "%c\n", whee);
+                      synchConsole->PutChar(whee);
+                      // fprintf(stderr, "%c", whee);
                       // size = size2;
                       // fprintf(stderr, "sizeable %d\n", size);
 
                     }
                     // fprintf(stderr, "%c", whee);
-                    fprintf(stderr, "i %d\n", size);
+                    // fprintf(stderr, "i %d", size);
 
                     synchConsole->PutChar('\0');
                   }
@@ -523,7 +561,6 @@ ExceptionHandler(ExceptionType which)
                   delete [] stringArg;           
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
-                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);            
                 break;
@@ -534,16 +571,20 @@ ExceptionHandler(ExceptionType which)
                 whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
                 if(whence < 0){//no file is associated with the openfileid
                   DEBUG('a', "No OpenFile is associated with the given OpenFileId");
-                  incrementPC=machine->ReadRegister(NextPCReg)+4;
-                  machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-                  machine->WriteRegister(NextPCReg, incrementPC);
+                  // incrementPC=machine->ReadRegister(NextPCReg)+4;
+                  // machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                  // machine->WriteRegister(NextPCReg, incrementPC);
                 }
+                // if(whence == 0){
+                  // delete currentThread->space->fileDescriptors[descriptor];
+                // }
+                // currentThread->space->fileDescriptors[descriptor] = NULL;
                 if(whence == 0){
-                  delete currentThread->space->fileDescriptors[descriptor];
-                }
-                currentThread->space->fileDescriptors[descriptor] = new FileShield();
-                // fileDescriptors[descriptor] = NULL;
+                // delete
+                delete (currentThread->space->fileDescriptors[descriptor]->file);
                 // delete( open );
+                }
+                currentThread->space->fileDescriptors[descriptor] = NULL;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);            
@@ -561,7 +602,14 @@ ExceptionHandler(ExceptionType which)
                 t->space = newSpacer;
                 t->space->parent = (int)currentThread;
                 currentThread->space->child = (int)t;
-
+                // machine->WriteRegister(2, 0);
+                t->SaveUserState();
+                machine->WriteRegister(2, (int)t);
+                t->Fork(CopyRegs, 0);
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);    
                 break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
