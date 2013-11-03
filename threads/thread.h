@@ -248,6 +248,7 @@ class Thread {
   public:
     Thread(const char* debugName);      // initialize a Thread 
     Thread(const char* debugName, int prio); // initialize a Thread with a priority
+    Thread(const char* debugName, int* stackTopi, int* stacki);
     ~Thread();              // deallocate a Thread
                     // NOTE -- thread being deleted
                     // must not be running when delete 
@@ -268,6 +269,7 @@ class Thread {
     const char* getName() { return (name); }
     int getPriority() {return (priority); }
     void Print() { printf("%s, ", name); }
+    Thread* copyThread();
 
   private:
     // some of the private data for this class is listed above

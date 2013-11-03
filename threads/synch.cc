@@ -198,6 +198,7 @@ Semaphore::~Semaphore()
 void
 Semaphore::P()
 {
+
     IntStatus oldLevel = interrupt->SetLevel(IntOff);   // disable interrupts
     
     while (value == 0) {            // semaphore not available

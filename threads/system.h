@@ -172,7 +172,10 @@ extern Scheduler *scheduler;			// the ready list
 extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
+extern Timer *timer2;
 extern SynchConsole *synchConsole;
+extern Semaphore *forking;
+extern Semaphore *deadKid;
 
 extern BitMap *bitMap;
 

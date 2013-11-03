@@ -406,6 +406,26 @@ Thread::Thread(const char* threadName, int prio)
 }
 
 //----------------------------------------------------------------------
+// Thread::Thread(int priority)
+//  Initializes a thread with a given priority to insure that threads 
+//  with higher priority run before those with lower priority.  Higher 
+//  priority in this case refers to a lower number.
+//
+//  "threadName" is an arbitrary string, useful for debugging.
+//----------------------------------------------------------------------
+
+Thread::Thread(const char* threadName, int* stackTopi, int* stacki)
+{
+    name = threadName;
+    stackTop = stackTopi;
+    stack = stack;
+    status = JUST_CREATED;
+#ifdef USER_PROGRAM
+    space = NULL;
+#endif
+}
+
+//----------------------------------------------------------------------
 // Thread::~Thread
 //  De-allocate a thread.
 //
@@ -661,6 +681,11 @@ Thread::SaveUserState()
 {
     for (int i = 0; i < NumTotalRegs; i++)
     userRegisters[i] = machine->ReadRegister(i);
+}
+
+Thread* Thread::copyThread(){
+    Thread* t = new(std::nothrow) Thread("copy thread", stackTop, stack);
+    return t;
 }
 
 //----------------------------------------------------------------------

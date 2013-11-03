@@ -235,7 +235,10 @@ Scheduler *scheduler;           // the ready list
 Interrupt *interrupt;           // interrupt status
 Statistics *stats;          // performance metrics
 Timer *timer;               // the hardware timer device,
+Timer *timer2;
                     // for invoking context switches
+Semaphore *forking;
+Semaphore *deadKid;
 SynchConsole *synchConsole;
 BitMap *bitMap;
 
@@ -281,6 +284,31 @@ extern void Cleanup();
 static void
 TimerInterruptHandler(int )
 {
+    if (interrupt->getStatus() != IdleMode)
+    interrupt->YieldOnReturn();
+}
+
+//----------------------------------------------------------------------
+// TimerInterruptHandler
+//  Interrupt handler for the timer device.  The timer device is
+//  set up to interrupt the CPU periodically (once every TimerTicks).
+//  This routine is called each time there is a timer interrupt,
+//  with interrupts disabled.
+//
+//  Note that instead of calling Yield() directly (which would
+//  suspend the interrupt handler, not the interrupted thread
+//  which is what we wanted to context switch), we set a flag
+//  so that once the interrupt handler is done, it will appear as 
+//  if the interrupted thread called Yield at the point it is 
+//  was interrupted.
+//
+//  "dummy" is because every interrupt handler takes one argument,
+//      whether it needs it or not.
+//----------------------------------------------------------------------
+static void
+TimerInterruptHandler2(int )
+{
+    // currentThread->Yield();
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
 }
@@ -355,6 +383,7 @@ Initialize(int argc, char **argv)
     scheduler = new(std::nothrow) Scheduler();      // initialize the ready queue
     if (randomYield)                // start the timer (if needed)
     timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
+    // timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
     threadToBeDestroyed = NULL;
 
     // We didn't explicitly allocate the current thread we are running in.
@@ -370,6 +399,8 @@ Initialize(int argc, char **argv)
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
+    forking = new(std::nothrow) Semaphore("forking", 0);
+    deadKid = new(std::nothrow) Semaphore("dead kid", 0);
     // bitMap->Print();
 #endif
 
@@ -401,6 +432,7 @@ Cleanup()
 #ifdef USER_PROGRAM
     delete machine;
     delete synchConsole;
+    delete forking;
 #endif
 
 #ifdef FILESYS_NEEDED

@@ -99,14 +99,13 @@ class FileShield {
 
     int CloseFile(){
       refcount--;
-      if(refcount == 0){
-        delete file;
-      }
       return refcount;
     }
 
     ~FileShield(){
-      delete file;
+      if(file != NULL){
+        delete file;
+      }
     }
     //Lock *lock;               // Only one read/write request
                     // can be sent to the disk at a time

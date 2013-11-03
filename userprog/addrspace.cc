@@ -325,7 +325,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
     for (i = 0; i < numPages; i++) {
         
         found = bitMap->Find();
-        fprintf(stderr, "found %d\n", found);
+        // fprintf(stderr, "found %d\n", found);
         if(found == -1){
             i = numPages + 1;
         }
@@ -428,7 +428,7 @@ AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
     delete fileDescriptors;
-   delete pageTable;
+    delete pageTable;
 #endif
 }
 
@@ -649,10 +649,11 @@ AddrSpace* AddrSpace::newSpace(){
     int found = 0;
     int i;
     // TODO: Check to make sure enough pages.
+    // currentThread->SaveState();
     for (i = 0; i < numPages; i++) {
         
         found = bitMap->Find();
-        fprintf(stderr, "found %d\n", found);
+        // fprintf(stderr, "found %d\n", found);
         if(found == -1){
             i = numPages + 1;
         }
