@@ -24,8 +24,8 @@ main()
     joinval = Join(kid);
     /*Read(&c, 1, ConsoleInput);*/
     
-    /* prints("PARENT off Join with value of ", ConsoleOutput);
-    printd(joinval, ConsoleOutput);
+    prints("PARENT off Join with value of ", ConsoleOutput);
+    /*printd(joinval, ConsoleOutput);
     prints("\n", ConsoleOutput);*/
     /* Halt();*/
   /* not reached */

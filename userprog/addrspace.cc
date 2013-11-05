@@ -362,55 +362,55 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     // then, copy in the code and data segments into memory
 
 
-    // if (noffH.code.size > 0) {
-    //     Translate(noffH.code.virtualAddr, &babyAddr, 1, false);
-    //     // offset = (unsigned) noff.code.virtualAddr % PageSize;
-    //     DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
-    //                     noffH.code.virtualAddr, noffH.code.size);
-    //     for(i = 0; i < noffH.code.size; i++){
-    //         // if(j % PageSize == 0){
-    //         //     j = 0;
-    //         //     Translate(noffH.code.virtualAddr + PageSize * (i / PageSize), &(babyAddr), 1, false);
-
-    //         // }
-    //         Translate(noffH.code.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
-    //         executable->ReadAt(&(machine->mainMemory[babyAddr]),
-    //                     sizeof(char), noffH.code.inFileAddr+i*sizeof(char));
-
-    //     }
-    // }
-    // if (noffH.initData.size > 0) {
-    //     Translate(noffH.initData.virtualAddr, &babyAddr, sizeof(char), false);
-    //     DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
-    //                     noffH.initData.virtualAddr, noffH.initData.size);
-    //     for(i = 0; i < noffH.initData.size; i++){
-            
-    //         Translate(noffH.initData.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
-    //         executable->ReadAt(&(machine->mainMemory[babyAddr]),
-    //                     sizeof(char), noffH.initData.inFileAddr+i*sizeof(char));
-    //     }
-    // }
-
     if (noffH.code.size > 0) {
-        Translate(noffH.code.virtualAddr, &babyAddr, noffH.code.size, false);
+        Translate(noffH.code.virtualAddr, &babyAddr, 1, false);
         // offset = (unsigned) noff.code.virtualAddr % PageSize;
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
                         noffH.code.virtualAddr, noffH.code.size);
-        executable->ReadAt(&(machine->mainMemory[babyAddr]),
-                        noffH.code.size, noffH.code.inFileAddr);
+        for(i = 0; i < noffH.code.size; i++){
+            // if(j % PageSize == 0){
+            //     j = 0;
+            //     Translate(noffH.code.virtualAddr + PageSize * (i / PageSize), &(babyAddr), 1, false);
+
+            // }
+            Translate(noffH.code.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
+            executable->ReadAt(&(machine->mainMemory[babyAddr]),
+                        sizeof(char), noffH.code.inFileAddr+i*sizeof(char));
+
+        }
     }
     if (noffH.initData.size > 0) {
-        Translate(noffH.initData.virtualAddr, &babyAddr, noffH.initData.size, false);
+        Translate(noffH.initData.virtualAddr, &babyAddr, sizeof(char), false);
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
                         noffH.initData.virtualAddr, noffH.initData.size);
-        executable->ReadAt(&(machine->mainMemory[babyAddr]),
-                        noffH.initData.size, noffH.initData.inFileAddr);
+        for(i = 0; i < noffH.initData.size; i++){
+            
+            Translate(noffH.initData.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
+            executable->ReadAt(&(machine->mainMemory[babyAddr]),
+                        sizeof(char), noffH.initData.inFileAddr+i*sizeof(char));
+        }
     }
+
+    // if (noffH.code.size > 0) {
+    //     Translate(noffH.code.virtualAddr, &babyAddr, noffH.code.size, false);
+    //     // offset = (unsigned) noff.code.virtualAddr % PageSize;
+    //     DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
+    //                     noffH.code.virtualAddr, noffH.code.size);
+    //     executable->ReadAt(&(machine->mainMemory[babyAddr]),
+    //                     noffH.code.size, noffH.code.inFileAddr);
+    // }
+    // if (noffH.initData.size > 0) {
+    //     Translate(noffH.initData.virtualAddr, &babyAddr, noffH.initData.size, false);
+    //     DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
+    //                     noffH.initData.virtualAddr, noffH.initData.size);
+    //     executable->ReadAt(&(machine->mainMemory[babyAddr]),
+    //                     noffH.initData.size, noffH.initData.inFileAddr);
+    // }
 
 
 
     
-    // death = new(std::nothrow) Semaphore("death", 0);
+    death = (int)new(std::nothrow) Semaphore("death", 0);
 
 }
 
@@ -422,6 +422,7 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int 
     numPages = newNumPages;
     pageTable = newPageTable;
     fileDescriptors = avengers;
+    death = (int)new(std::nothrow) Semaphore("death", 0);
     // // pageTable = new(std::nothrow) TranslationEntry[numPages];
     // int found = 0;
     // int i;
@@ -718,7 +719,7 @@ AddrSpace* AddrSpace::newSpace(){
             fileDescriptors2[k] = fileDescriptors[k];
         }
     }
-    return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors, numPages);
+    return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages);
 
 }
 

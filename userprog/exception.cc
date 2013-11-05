@@ -324,8 +324,12 @@ void CopyRegs(int k){
   // // t->SaveUserState();
   // // fprintf(stderr, "oh hey there\n");
   // // t->RestoreUserState();
+  // Thread* t = (Thread*)k;
+  // t->SaveUserState();
+  fprintf(stderr, "\nCOPYREGS %d\n", (int)currentThread);
   int incrementPC;
   currentThread->RestoreUserState();
+  currentThread->space->RestoreState();
   machine->WriteRegister(2, 0);
   // fprintf(stderr, "oh hey there\n");
   incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -350,6 +354,8 @@ ExceptionHandler(ExceptionType which)
     int i;
     AddrSpace *newSpacer;
     Thread *t;
+    Thread *prev;
+    Semaphore* die;
     // fprintf(stderr, "which: %d type: %d\n", (int)which, type);
   switch (which) {
       case SyscallException:
@@ -360,18 +366,43 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exit:
                 DEBUG('a', "Exit\n");
+                die = (Semaphore*)currentThread->space->death;
+                die->V();
+                // currentThread->Yield();
+
+                // incrementPC=machine->ReadRegister(NextPCReg)+4;
+                // machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                // machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                // machine->WriteRegister(NextPCReg, incrementPC);
+                break;
+        case SC_Join:
+                DEBUG('a', "Join\n");
+                if(currentThread->space->child != NULL){
+                  t = (Thread*)currentThread->space->child;
+                  prev = currentThread;
+                  whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
+                  // fprintf(stderr, "JOIN:::  %d\n", whence);
+                  // interrupt->Halt();
+                  if(whence != (int)t){
+                    while(t->space->sibling != NULL){
+                      t = (Thread*)t->space->sibling;
+                      if((int)t == whence) break;
+                    }
+                    ASSERT((int)t == whence); // Make sure t is the correct thread
+                  }
+                  // Ensures t is the correct thread.
+
+                  die = (Semaphore*)t->space->death;
+                  die->P();
+
+                }else{
+                  ASSERT(false);
+                }
+                // currentThread->Yield();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);
-                break;
-        case SC_Join:
-                DEBUG('a', "Join\n");
-                currentThread->Yield();
-                /*incrementPC=machine->ReadRegister(NextPCReg)+4;
-                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-                machine->WriteRegister(NextPCReg, incrementPC);*/       
                 break;
         case SC_Create:/*Checks for -> Filename given is a single \0*/
                 DEBUG('a', "Create\n");
@@ -492,6 +523,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Write:
                 DEBUG('a', "Write\n"); // Please fix.
+                fprintf(stderr, "\nTHREAD WRITING IS: %d\n", (int) currentThread);
                 // Issue name: Oh God Why?
                 // For some ungodly reason size decides to be 0 immediately after the for loop.  Why?  No idea.  If we have a different size
                 // it for some reason then works and sets the other different size to 0.  Another fix we found... was to just reset size every
@@ -539,6 +571,7 @@ ExceptionHandler(ExceptionType which)
                         // fprintf(stderr, "truth! %c\n", whee);
                         // fprintf(stderr, "i %d", size);
                       }
+                      // fprintf(stderr, "\nTHREAD WRITING IS: %d\n", (int) currentThread);
                       // whee = machine->mainMemory[whence++]; *****
                       synchConsole->PutChar(whee);
                       // fprintf(stderr, "%c", whee);
@@ -599,15 +632,20 @@ ExceptionHandler(ExceptionType which)
  * prevents the creation of the child, the parent gets a -1 return value.
  */
                 DEBUG('a', "Fork\n");
+
                 t = new(std::nothrow) Thread("clone");
+                fprintf(stderr, "\nPARENT: %d, CHILD %d\n", (int) currentThread, (int)t);
                 newSpacer = currentThread->space->newSpace();
                 t->space = newSpacer;
                 t->space->parent = (int)currentThread;
                 currentThread->space->child = (int)t;
                 // machine->WriteRegister(2, 0);
                 t->SaveUserState();
+                currentThread->SaveUserState();
+                t->Fork(CopyRegs, (int)currentThread);
+                // fprintf(stderr, "\nPOST FORK\n");
                 machine->WriteRegister(2, (int)t);
-                t->Fork(CopyRegs, 0);
+                currentThread->SaveUserState();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));

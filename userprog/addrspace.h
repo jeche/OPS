@@ -81,8 +81,10 @@ class AddrSpace {
 
 #include "copyright.h"
 #include "filesys.h"
+// #include "system.h"
+// #include "synch.h"
 
-#define UserStackSize   1024  // increase this as necessary!
+#define UserStackSize   1024*2*2  // increase this as necessary!
 
 class FileShield {
     public:         // Raw console
@@ -120,6 +122,7 @@ class AddrSpace {
     int parent;
     int sibling;
     int exit;
+    int death;
     // Semaphore* death;
     FileShield** fileDescriptors;
     AddrSpace(OpenFile *executable);  // Create an address space,
