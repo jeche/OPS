@@ -462,6 +462,9 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int 
 AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
+    for(int i = 0; i < numPages; i++){
+        bitMap->Clear(pageTable[i].physicalPage);
+    }
     delete fileDescriptors;
     delete pageTable;
 #endif

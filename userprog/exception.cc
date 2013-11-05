@@ -326,7 +326,7 @@ void CopyRegs(int k){
   // // t->RestoreUserState();
   // Thread* t = (Thread*)k;
   // t->SaveUserState();
-  fprintf(stderr, "\nCOPYREGS %d\n", (int)currentThread);
+  // fprintf(stderr, "\nCOPYREGS %d\n", (int)currentThread);
   int incrementPC;
   currentThread->RestoreUserState();
   currentThread->space->RestoreState();
@@ -356,6 +356,7 @@ ExceptionHandler(ExceptionType which)
     Thread *t;
     Thread *prev;
     Semaphore* die;
+    IntStatus oldLevel;
     // fprintf(stderr, "which: %d type: %d\n", (int)which, type);
   switch (which) {
       case SyscallException:
@@ -367,8 +368,15 @@ ExceptionHandler(ExceptionType which)
         case SC_Exit:
                 DEBUG('a', "Exit\n");
                 die = (Semaphore*)currentThread->space->death;
+                whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
+                currentThread->space->exit2 = whence;
                 die->V();
-                // currentThread->Yield();
+                // fprintf(stderr, "hello current thread is %d\n", (int)currentThread);
+
+                // currentThread->space->c();
+                oldLevel = interrupt->SetLevel(IntOff);
+                currentThread->Sleep();
+                (void) interrupt->SetLevel(oldLevel);
 
                 // incrementPC=machine->ReadRegister(NextPCReg)+4;
                 // machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
@@ -377,7 +385,9 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Join:
                 DEBUG('a', "Join\n");
+                // bitMap->Print();
                 if(currentThread->space->child != NULL){
+                  // fprintf(stderr, "\nwaiting\n");
                   t = (Thread*)currentThread->space->child;
                   prev = currentThread;
                   whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
@@ -385,15 +395,36 @@ ExceptionHandler(ExceptionType which)
                   // interrupt->Halt();
                   if(whence != (int)t){
                     while(t->space->sibling != NULL){
+                      prev = t;
                       t = (Thread*)t->space->sibling;
                       if((int)t == whence) break;
                     }
                     ASSERT((int)t == whence); // Make sure t is the correct thread
                   }
                   // Ensures t is the correct thread.
-
+                  // fprintf(stderr, "\nwaiting\n");
                   die = (Semaphore*)t->space->death;
+                  // fprintf(stderr, "hello current thread is %d\n waiting for %d to die\n", (int)currentThread, (int)t);
                   die->P();
+                  // fprintf(stderr, "\nwaiting\n");
+                  if(t->space->sibling != NULL && prev != currentThread){
+                    prev->space->sibling = t->space->sibling;
+                  }
+                  else if(t->space->sibling != NULL && prev == currentThread){
+                    prev->space->child = t->space->sibling;
+                  }
+                  else if(t->space->sibling == NULL && prev == currentThread){
+                    ;
+                  }
+                  else{
+                    fprintf(stderr, "CurrentThread: %d, T: %d\n", (int)currentThread, (int)t);
+                    ASSERT(false);
+                  }
+                  machine->WriteRegister(2, t->space->exit2);
+                  // t->Finish();
+                  delete t->space;
+                  delete t;
+                  // bitMap->Print();
 
                 }else{
                   ASSERT(false);
@@ -523,7 +554,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Write:
                 DEBUG('a', "Write\n"); // Please fix.
-                fprintf(stderr, "\nTHREAD WRITING IS: %d\n", (int) currentThread);
+                // fprintf(stderr, "\nTHREAD WRITING IS: %d\n", (int) currentThread);
                 // Issue name: Oh God Why?
                 // For some ungodly reason size decides to be 0 immediately after the for loop.  Why?  No idea.  If we have a different size
                 // it for some reason then works and sets the other different size to 0.  Another fix we found... was to just reset size every
@@ -634,7 +665,7 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Fork\n");
 
                 t = new(std::nothrow) Thread("clone");
-                fprintf(stderr, "\nPARENT: %d, CHILD %d\n", (int) currentThread, (int)t);
+                // fprintf(stderr, "\nPARENT: %d, CHILD %d\n", (int) currentThread, (int)t);
                 newSpacer = currentThread->space->newSpace();
                 t->space = newSpacer;
                 t->space->parent = (int)currentThread;
@@ -655,9 +686,10 @@ ExceptionHandler(ExceptionType which)
         /* Run the executable, stored in the Nachos file "name", in the context
  * of the current address space. Should not return unless there is an
  * error, in which case a -1 is returned.
- */
+ */   
                 DEBUG('a', "Exec\n");
-                t = new(std::nothrow) Thread("clone");
+                // fprintf(stderr, "exec");
+                // t = new(std::nothrow) Thread("clone");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters****
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
@@ -670,23 +702,35 @@ ExceptionHandler(ExceptionType which)
                 stringArg[127]='\0';
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
                 open = fileSystem->Open(stringArg);
+                ASSERT(open !=NULL);
                 newSpacer = new AddrSpace(open);
                 for(i = 0; i < 16; i++){
                   if(currentThread->space->fileDescriptors[i]!= NULL){
                     newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
                   }
                 }
+                delete open;
+                delete currentThread->space;
+                currentThread->space = newSpacer;
+                newSpacer->InitRegisters();
+                // currentThread->SaveUserState();
+                newSpacer->RestoreState();
+                // newSpacer->InitRegisters();
+                // currentThread->RestoreUserState();
+                // fprintf(stderr," out");
+                machine->Run();
+                // machine->Run();
                 // t->space = newSpacer;
                 // t->space->parent = (int)currentThread;
                 // currentThread->space->child = (int)t;
                 // machine->WriteRegister(2, 0);
-                t->SaveUserState();
-                machine->WriteRegister(2, (int)t);
-                t->Fork(CopyRegs, 0);
-                incrementPC=machine->ReadRegister(NextPCReg)+4;
-                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-                machine->WriteRegister(NextPCReg, incrementPC);
+                // t->SaveUserState();
+                // machine->WriteRegister(2, (int)t);
+                // t->Fork(CopyRegs, 0);
+                // incrementPC=machine->ReadRegister(NextPCReg)+4;
+                // machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                // machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                // machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         default:
                 printf("Undefined SYSCALL %d\n", type);

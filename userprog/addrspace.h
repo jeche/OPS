@@ -84,7 +84,7 @@ class AddrSpace {
 // #include "system.h"
 // #include "synch.h"
 
-#define UserStackSize   1024*2*2  // increase this as necessary!
+#define UserStackSize   1024*2*2*2  // increase this as necessary!
 
 class FileShield {
     public:         // Raw console
@@ -121,7 +121,7 @@ class AddrSpace {
     int child;
     int parent;
     int sibling;
-    int exit;
+    int exit2;
     int death;
     // Semaphore* death;
     FileShield** fileDescriptors;
