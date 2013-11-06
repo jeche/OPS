@@ -409,7 +409,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 
 
 
-    
+    clean = false;
     death = (int)new(std::nothrow) Semaphore("death", 0);
 
 }
@@ -423,6 +423,7 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int 
     pageTable = newPageTable;
     fileDescriptors = avengers;
     death = (int)new(std::nothrow) Semaphore("death", 0);
+    clean = false;
     // // pageTable = new(std::nothrow) TranslationEntry[numPages];
     // int found = 0;
     // int i;
@@ -462,12 +463,22 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int 
 AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
-    for(int i = 0; i < numPages; i++){
-        bitMap->Clear(pageTable[i].physicalPage);
+    if(!clean){
+        for(int i = 0; i < numPages; i++){
+            bitMap->Clear(pageTable[i].physicalPage);
+        }
     }
     delete fileDescriptors;
     delete pageTable;
 #endif
+}
+
+void AddrSpace::Clean()
+{
+    clean = true;
+    for(int i = 0; i < numPages; i++){
+        bitMap->Clear(pageTable[i].physicalPage);
+    }
 }
 
 //----------------------------------------------------------------------
@@ -719,6 +730,7 @@ AddrSpace* AddrSpace::newSpace(){
     FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
     for(int k = 0; k < 16; k++){
         if(fileDescriptors[k] != NULL){
+            fileDescriptors[k]->CopyFile();
             fileDescriptors2[k] = fileDescriptors[k];
         }
     }

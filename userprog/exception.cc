@@ -370,6 +370,7 @@ ExceptionHandler(ExceptionType which)
                 die = (Semaphore*)currentThread->space->death;
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
                 currentThread->space->exit2 = whence;
+                currentThread->space->Clean();
                 die->V();
                 // fprintf(stderr, "hello current thread is %d\n", (int)currentThread);
 
@@ -580,7 +581,9 @@ ExceptionHandler(ExceptionType which)
                   }
                     DEBUG('a', "Argument string is <%s>\n",stringArg);
                   if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
+                    // fprintf(stderr, "Yayyyy\n");
                     open = currentThread->space->fileDescriptors[descriptor]->file;
+                    // fprintf(stderr, "Yayyyy\n");
                     if(open == NULL){
                       DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                       // fprintf(stderr, "%d\n", descriptor);
@@ -634,6 +637,7 @@ ExceptionHandler(ExceptionType which)
                 descriptor = machine->ReadRegister(4);
                 if(descriptor<0||descriptor>15){DEBUG('a', "Invalid OpenFileId"); interrupt->Halt();}//invalid openfileid
                 whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
+
                 if(whence < 0){//no file is associated with the openfileid
                   DEBUG('a', "No OpenFile is associated with the given OpenFileId");
                   // incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -650,6 +654,7 @@ ExceptionHandler(ExceptionType which)
                 // delete( open );
                 }
                 currentThread->space->fileDescriptors[descriptor] = NULL;
+
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -715,22 +720,8 @@ ExceptionHandler(ExceptionType which)
                 newSpacer->InitRegisters();
                 // currentThread->SaveUserState();
                 newSpacer->RestoreState();
-                // newSpacer->InitRegisters();
-                // currentThread->RestoreUserState();
-                // fprintf(stderr," out");
+
                 machine->Run();
-                // machine->Run();
-                // t->space = newSpacer;
-                // t->space->parent = (int)currentThread;
-                // currentThread->space->child = (int)t;
-                // machine->WriteRegister(2, 0);
-                // t->SaveUserState();
-                // machine->WriteRegister(2, (int)t);
-                // t->Fork(CopyRegs, 0);
-                // incrementPC=machine->ReadRegister(NextPCReg)+4;
-                // machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-                // machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-                // machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         default:
                 printf("Undefined SYSCALL %d\n", type);

@@ -123,6 +123,7 @@ class AddrSpace {
     int sibling;
     int exit2;
     int death;
+    bool clean;
     // Semaphore* death;
     FileShield** fileDescriptors;
     AddrSpace(OpenFile *executable);  // Create an address space,
@@ -136,6 +137,7 @@ class AddrSpace {
     void InitRegisters();   // Initialize user-level CPU registers,
           // before jumping to user code
     void CopySpace();
+    void Clean();
     void SaveState();     // Save/restore address space-specific
     void RestoreState();    // info on a context switch 
     bool ReadMem(int addr, int size, int *value);
