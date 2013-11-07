@@ -375,9 +375,9 @@ ExceptionHandler(ExceptionType which)
                 // fprintf(stderr, "hello current thread is %d\n", (int)currentThread);
 
                 // currentThread->space->c();
-                oldLevel = interrupt->SetLevel(IntOff);
-                currentThread->Sleep();
-                (void) interrupt->SetLevel(oldLevel);
+                // oldLevel = interrupt->SetLevel(IntOff);
+                currentThread->Finish();
+                // (void) interrupt->SetLevel(oldLevel);
 
                 // incrementPC=machine->ReadRegister(NextPCReg)+4;
                 // machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
