@@ -351,7 +351,7 @@ ExceptionHandler(ExceptionType which)
     int incrementPC;
     // int size2;
     char whee;
-    int i;
+    int i, j;
     AddrSpace *newSpacer;
     Thread *t;
     Thread *prev;
@@ -359,8 +359,9 @@ ExceptionHandler(ExceptionType which)
     IntStatus oldLevel;
 
     //Exec w/ args variables
-    int sp, len;
-    
+    int sp, len, argcount, herece;
+    int argvAddr[16];
+
 
     // fprintf(stderr, "which: %d type: %d\n", (int)which, type);
   switch (which) {
@@ -429,7 +430,7 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, t->space->exit2);
                   // t->Finish();
                   delete t->space;
-                  delete t;
+                  //delete t;
                   // bitMap->Print();
 
                 }else{
@@ -719,19 +720,75 @@ ExceptionHandler(ExceptionType which)
                     newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
                   }
                 }
+                fprintf(stderr, "derpaderp\n");
+                //Get the Stack Pointer and keep the virtual version, then translate to then get the Physical
+                sp = machine->ReadRegister(StackReg);
+                //currentThread->space->Translate(sp, &sp, 4, false);
+
+                len = strlen(stringArg) + 1;
+                sp -= len;
+                fprintf(stderr, "fudge\n");
+                for(i = 0; i < len; i++){
+                  //machine->mainMemory[sp+i] = stringArg[i];
+                  currentThread->space->WriteMem(sp++, sizeof(char), stringArg[i]);
+                }
+                argvAddr[0] = sp;
+
+                whence = machine->ReadRegister(5);
+
+                fprintf(stderr, "hi\n");
+                for(i = 1; i < 16; i++){
+                  fprintf(stderr, "hingadinga\n");
+                  memset(stringArg, 0, sizeof(stringArg));
+                  currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                  for(j = 0; j < 127; j++){
+                    currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);  // Pretending this works.
+                    if(stringArg[i] == '\0') break;
+                  }
+                  fprintf(stderr, "%s\n", stringArg);
+                  if(stringArg[0] == '\0'){
+                    argcount = i-1;
+                    break;
+                  }
+                  fprintf(stderr, "hippie\n");
+                  //REFACTOR ME PLEEEEEZE
+                  len = strlen(stringArg) + 1;
+                  sp -= len;
+
+                  for(j = 0; j < len; j++){
+                    //machine->mainMemory[sp+i] = stringArg[i];
+                    currentThread->space->WriteMem(sp++, sizeof(char), stringArg[j]);
+                  }
+                  fprintf(stderr, "herp\n");
+                  argvAddr[i] = sp;
+
+                }
+
+                sp = sp & ~3; // this supposedly aligns the stack on 4 byte boundary for integer values. Do. Not. Trust.
+
+                sp -= sizeof(int) * argcount;
+
+                for(i = 0; i < argcount; i++){
+                   currentThread->space->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
+                }
+
+
+
+
+                
+ //               delete currentThread->space;
                 delete open;
-                delete currentThread->space;
                 currentThread->space = newSpacer;
                 newSpacer->InitRegisters();
                 // currentThread->SaveUserState();
                 newSpacer->RestoreState();
 
-
-
                 machine->WriteRegister(4, argcount);
-                machine->WriteRegister(5, sp)
+                machine->WriteRegister(5, sp);
 
-                machine->Run();
+                machine->WriteRegister(StackReg, sp - argcount*4);
+ 
+                machine->Run();//pretending this works
                 break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
