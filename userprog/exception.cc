@@ -357,6 +357,11 @@ ExceptionHandler(ExceptionType which)
     Thread *prev;
     Semaphore* die;
     IntStatus oldLevel;
+
+    //Exec w/ args variables
+    int sp, len;
+    
+
     // fprintf(stderr, "which: %d type: %d\n", (int)which, type);
   switch (which) {
       case SyscallException:
@@ -720,6 +725,11 @@ ExceptionHandler(ExceptionType which)
                 newSpacer->InitRegisters();
                 // currentThread->SaveUserState();
                 newSpacer->RestoreState();
+
+
+
+                machine->WriteRegister(4, argcount);
+                machine->WriteRegister(5, sp)
 
                 machine->Run();
                 break;
