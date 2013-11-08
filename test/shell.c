@@ -46,10 +46,11 @@ main()
     SpaceId newProc;
     OpenFileId input = ConsoleInput;
     OpenFileId output = ConsoleOutput;
+    OpenFileId curFile;
     OpenFileId from, to;
     char execBuffer[60][128];
     char prompt[2], ch, buffer[60], fileBuffer[128], file2Buffer[128];
-    int i, j, k, execCount, outputFile = 0;
+    int i, j, k, m, execCount, outputFile = 0;
     int size, l = 0;
 
     prompt[0] = '-';
@@ -85,12 +86,10 @@ main()
                         outputFile = 1;
                         i++;
                         i++;
-                        execBuffer[execCount][j] = '\0';
-                        execCount++;
                     }
 
                     if (buffer[i] == ' ') {
-                        execBuffer[execCount][--j] = '\0';
+                        execBuffer[execCount][j] = '\0';
                         execCount++;
                         j = 0;
                         i++;
@@ -105,17 +104,32 @@ main()
                 execBuffer[execCount][j] =  '\0';
                 
                 if (!outputFile) { 
-                	/*Need to put something as the last position in the exec buffer to represent ConsoleOutput*/
-                    execBuffer[execCount++][0] = '\0';
+                    execCount++;
+                    execBuffer[execCount][0] = '\0';
                 }
 
-                if (execBuffer[2][0] != '\0') {
-                    Write("here", 4, output);
-                    to = Open(&execBuffer[2][0]);
+                if (execBuffer[3][0] != '\0') {
+                    to = Open(&execBuffer[3][0]);
+                    if (to == -1) {
+                        Create(&execBuffer[3][0]);
+                        to = Open(&execBuffer[3][0]);
+                    }
                 }
                 else {
                     to = output;
-                    Write("hah!", 4, output);
+                }
+
+                for (m = 1; m <= execCount - 1; m++) {
+                    curFile = Open(&execBuffer[m][0]);
+                    if (curFile == -1) {
+                        Write("Could not open file", 19, output);
+                        break;
+                        /*Exit(1);*/
+                    }
+                    while(Read(&ch, 1, curFile) == 1) {
+                        Write(&ch, 1, to);
+                    }
+                    Close(curFile);
                 }
 
             }
@@ -137,4 +151,3 @@ main()
 }
 
 #endif
-
