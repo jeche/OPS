@@ -1,6 +1,6 @@
-/* newfork.c
+/* fork.c
  *
- * Simple parent/child system without an Exec()
+ * Simple parent/child system with an Exec()
  *
  */
 
@@ -28,11 +28,8 @@ main()
 
     Halt();
   /* not reached */
-  } else {
-    prints("KID running, about to Exit()\n", ConsoleOutput);
-    /* You may want to put some real code here */
-    Exit(17);
-  }
+  } else 
+    Exec("kid");
 }
 
 /* Print a null-terminated string "s" on open file descriptor "file". */

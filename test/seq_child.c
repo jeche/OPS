@@ -1,38 +1,44 @@
-/* newfork.c
+/* fork.c
  *
- * Simple parent/child system without an Exec()
+ * Simple parent/child system with a sequence of Fork/Execs
  *
+ * Note that there is only a single live child at any time.
  */
 
 #include "syscall.h"
+
+#define NUMKIDS 10
 
 int
 main()
 {
 
   SpaceId kid;
-  int joinval;
+  int joinval, i;
 
   prints("PARENT exists\n", ConsoleOutput);
-  kid = Fork();
-  if (kid != 0) {
-    prints("PARENT after fork; kid pid is ", ConsoleOutput);
-    printd((int)kid, ConsoleOutput);
-    prints("\n", ConsoleOutput);
+  
+  for(i=0; i<NUMKIDS; i++) {
+    kid = Fork();
+    if (kid != 0) {
+      prints("PARENT after fork; kid pid is ", ConsoleOutput);
+      printd((int)kid, ConsoleOutput);
+      prints("\n", ConsoleOutput);
     
-    joinval = Join(kid);
+      joinval = Join(kid);
     
-    prints("PARENT off Join with value of ", ConsoleOutput);
-    printd(joinval, ConsoleOutput);
-    prints("\n", ConsoleOutput);
+      prints("PARENT off Join with value of ", ConsoleOutput);
+      printd(joinval, ConsoleOutput);
+      prints("\n", ConsoleOutput);
 
-    Halt();
-  /* not reached */
-  } else {
-    prints("KID running, about to Exit()\n", ConsoleOutput);
-    /* You may want to put some real code here */
-    Exit(17);
+    }
+    else {
+      Exec("kid");
+      prints("ERROR: Exec failure\n", ConsoleOutput);
+      Halt();
+    }
   }
+  Halt();
 }
 
 /* Print a null-terminated string "s" on open file descriptor "file". */

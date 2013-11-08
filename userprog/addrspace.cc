@@ -297,13 +297,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
             SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
 
-// how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size
                         + UserStackSize ;        // we need to increase the size
                                                 // to leave room for the stack
     numPages = divRoundUp(size, PageSize);
-    // size = numPages * PageSize;
-    // numPages = 32;
     size = numPages * PageSize;
     ASSERT(numPages <= NumPhysPages);                // check we're not trying
                                                 // to run anything too big --
@@ -312,11 +309,6 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n",
                                         numPages, size);
-    // bitMap->Mark(1);
-    // bitMap->Mark(0);
-    // bitMap->Mark(2);
-    // bitMap->Mark(3);
-    // bitMap->Mark(9);
 #ifndef USE_TLB
 // first, set up the translation
     pageTable = new(std::nothrow) TranslationEntry[numPages];
@@ -325,7 +317,6 @@ AddrSpace::AddrSpace(OpenFile *executable)
     for (i = 0; i < numPages; i++) {
         
         found = bitMap->Find();
-        // fprintf(stderr, "found %d\n", found);
         if(found == -1){
             i = numPages + 1;
         }
@@ -349,30 +340,17 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                                         (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
 #endif
 
-// zero out the entire address space, to zero the unitialized data segment
-// and the stack segment
-    // bzero(machine->mainMemory, size);
-    // machine->pageTable = pageTable;
-    // machine->pageTableSize = numPages;
     fileDescriptors = new (std::nothrow) FileShield*[16];
 
     int babyAddr = 0;
-    // int virtAddr, int* physAddr, int size, bool writing
-    // int offset;
     // then, copy in the code and data segments into memory
 
 
     if (noffH.code.size > 0) {
         Translate(noffH.code.virtualAddr, &babyAddr, 1, false);
-        // offset = (unsigned) noff.code.virtualAddr % PageSize;
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
                         noffH.code.virtualAddr, noffH.code.size);
         for(i = 0; i < noffH.code.size; i++){
-            // if(j % PageSize == 0){
-            //     j = 0;
-            //     Translate(noffH.code.virtualAddr + PageSize * (i / PageSize), &(babyAddr), 1, false);
-
-            // }
             Translate(noffH.code.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
             executable->ReadAt(&(machine->mainMemory[babyAddr]),
                         sizeof(char), noffH.code.inFileAddr+i*sizeof(char));
@@ -390,25 +368,6 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                         sizeof(char), noffH.initData.inFileAddr+i*sizeof(char));
         }
     }
-
-    // if (noffH.code.size > 0) {
-    //     Translate(noffH.code.virtualAddr, &babyAddr, noffH.code.size, false);
-    //     // offset = (unsigned) noff.code.virtualAddr % PageSize;
-    //     DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
-    //                     noffH.code.virtualAddr, noffH.code.size);
-    //     executable->ReadAt(&(machine->mainMemory[babyAddr]),
-    //                     noffH.code.size, noffH.code.inFileAddr);
-    // }
-    // if (noffH.initData.size > 0) {
-    //     Translate(noffH.initData.virtualAddr, &babyAddr, noffH.initData.size, false);
-    //     DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
-    //                     noffH.initData.virtualAddr, noffH.initData.size);
-    //     executable->ReadAt(&(machine->mainMemory[babyAddr]),
-    //                     noffH.initData.size, noffH.initData.inFileAddr);
-    // }
-
-
-
     clean = false;
     death = (int)new(std::nothrow) Semaphore("death", 0);
 
@@ -424,35 +383,6 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int 
     fileDescriptors = avengers;
     death = (int)new(std::nothrow) Semaphore("death", 0);
     clean = false;
-    // // pageTable = new(std::nothrow) TranslationEntry[numPages];
-    // int found = 0;
-    // int i;
-    // for (i = 0; i < numPagesNeeded; i++) {
-        
-    //     found = bitMap->Find();
-    //     fprintf(stderr, "found %d\n", found);
-    //     if(found == -1){
-    //         i = numPages + 1;
-    //     }
-    //     else{
-    //         bzero( &machine->mainMemory[found*PageSize], PageSize); // If things are funky this is a potential screw up.
-    //         pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
-            
-    //         pageTable[i].physicalPage = found;
-    //         pageTable[i].valid = true;
-    //         pageTable[i].use = false;
-    //         pageTable[i].dirty = false;
-    //         pageTable[i].readOnly = false; // if the code segment was entirely on
-    //                                     // a separate page, we could set its
-    //                                     // pages to be read-only
-    //         bitMap->Mark(found);
-    //         DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
-    //                                     i*PageSize,i, found*PageSize, found);
-    //     }
-    // }
-    // DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, final space is 0x%x\n",
-    //                                     (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
-    // fileDescriptors = new (std::nothrow) FileShield*[16];
 }
 
 //----------------------------------------------------------------------

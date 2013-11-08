@@ -1,6 +1,6 @@
-/* newfork.c
+/* deepfork.c
  *
- * Simple parent/child system without an Exec()
+ * Parent fork/exec/joins kid who fork/exec/joins kid.
  *
  */
 
@@ -13,27 +13,25 @@ main()
   SpaceId kid;
   int joinval;
 
-  prints("PARENT exists\n", ConsoleOutput);
-  kid = Fork();
-  if (kid != 0) {
-    prints("PARENT after fork; kid pid is ", ConsoleOutput);
-    printd((int)kid, ConsoleOutput);
-    prints("\n", ConsoleOutput);
-    
-    joinval = Join(kid);
-    
-    prints("PARENT off Join with value of ", ConsoleOutput);
-    printd(joinval, ConsoleOutput);
-    prints("\n", ConsoleOutput);
-
+  print("PARENT exists\n");
+  if ((kid=Fork()) == 0) {
+    Exec("deepkid1");
+    print("ERROR: exec failed\n");
     Halt();
-  /* not reached */
-  } else {
-    prints("KID running, about to Exit()\n", ConsoleOutput);
-    /* You may want to put some real code here */
-    Exit(17);
   }
+  print("PARENT after fork/exec; kid pid is "); printd((int)kid, ConsoleOutput);
+  print("\n");
+
+  print("PARENT about to Join kid\n");
+  joinval = Join(kid);
+  print("PARENT off Join with value of ");
+  printd(joinval, ConsoleOutput);
+  print("\n");
+
+  Halt();
+  /* not reached */
 }
+
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
 
@@ -87,7 +85,13 @@ OpenFileId file;
   Write(buffer,pos,file);
 }
 
+/* Print a null-terminated string "s" on ConsoleOutput. */
 
+print(s)
+char *s;
 
+{
+  prints(s, ConsoleOutput);
+}
 
 
