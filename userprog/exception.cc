@@ -777,6 +777,8 @@ ExceptionHandler(ExceptionType which)
  
                 machine->Run();//pretending this works
                 break;
+        case SC_Dup:
+                break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
                 ASSERT(false);
@@ -801,3 +803,4 @@ ExceptionHandler(ExceptionType which)
 #define SC_Write  7
 #define SC_Close  8
 #define SC_Fork   9
+#define SC_Dup    10
