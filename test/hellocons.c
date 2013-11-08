@@ -14,15 +14,8 @@ main()
 {
 
     char *s = "Hello, console.\n";
-    char *d = "Snap.\n";
-    int x;
-    x = 2;
-    if(x != 2){
+    
     prints(s, ConsoleOutput);
-    }
-    else{
-    	prints(d, ConsoleOutput);
-    }
 
     Halt();
     /* not reached */

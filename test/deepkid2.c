@@ -1,6 +1,6 @@
-/* newfork.c
+/* deepkid2.c
  *
- * Simple parent/child system without an Exec()
+ * Second-level child in the deepfork system.
  *
  */
 
@@ -9,30 +9,15 @@
 int
 main()
 {
-
-  SpaceId kid;
-  int joinval;
-
-  prints("PARENT exists\n", ConsoleOutput);
-  kid = Fork();
-  if (kid != 0) {
-    prints("PARENT after fork; kid pid is ", ConsoleOutput);
-    printd((int)kid, ConsoleOutput);
-    prints("\n", ConsoleOutput);
-    
-    joinval = Join(kid);
-    
-    prints("PARENT off Join with value of ", ConsoleOutput);
-    printd(joinval, ConsoleOutput);
-    prints("\n", ConsoleOutput);
-
-    Halt();
-  /* not reached */
-  } else {
-    prints("KID running, about to Exit()\n", ConsoleOutput);
-    /* You may want to put some real code here */
-    Exit(17);
-  }
+  int i, tmp;
+  
+  for (i=0; i<10000; i++) tmp++;
+  /* loop to delay kid initially */
+  Exit(2);
+  /* Should not get past here */
+  print("ERROR: KID2 after Exit()\n");
+  Halt();
+    /* not reached */
 }
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
@@ -87,7 +72,11 @@ OpenFileId file;
   Write(buffer,pos,file);
 }
 
+/* Print a null-terminated string "s" on ConsoleOutput. */
 
+print(s)
+char *s;
 
-
-
+{
+  prints(s, ConsoleOutput);
+}

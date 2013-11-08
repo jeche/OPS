@@ -1,4 +1,4 @@
-/* newfork.c
+/* fork.c
  *
  * Simple parent/child system without an Exec()
  *
@@ -30,7 +30,6 @@ main()
   /* not reached */
   } else {
     prints("KID running, about to Exit()\n", ConsoleOutput);
-    /* You may want to put some real code here */
     Exit(17);
   }
 }

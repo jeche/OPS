@@ -115,15 +115,13 @@ class FileShield {
 
 class AddrSpace {
   public:
-    // Thread *parent;
-    // Thread *child;
-    // Thread *sibling;
     int child;
     int parent;
     int sibling;
     int exit2;
     int death;
     bool clean;
+    bool dead;
     // Semaphore* death;
     FileShield** fileDescriptors;
     AddrSpace(OpenFile *executable);  // Create an address space,

@@ -1,6 +1,6 @@
-/* newfork.c
+/* deepkid1.c
  *
- * Simple parent/child system without an Exec()
+ * First-level child in the deepfork system.
  *
  */
 
@@ -9,31 +9,39 @@
 int
 main()
 {
-
+  int i, joinval, tmp;
   SpaceId kid;
-  int joinval;
 
-  prints("PARENT exists\n", ConsoleOutput);
-  kid = Fork();
-  if (kid != 0) {
-    prints("PARENT after fork; kid pid is ", ConsoleOutput);
-    printd((int)kid, ConsoleOutput);
-    prints("\n", ConsoleOutput);
-    
-    joinval = Join(kid);
-    
-    prints("PARENT off Join with value of ", ConsoleOutput);
-    printd(joinval, ConsoleOutput);
-    prints("\n", ConsoleOutput);
+  for (i=0; i<100000; i++) tmp++;
 
-    Halt();
-  /* not reached */
-  } else {
-    prints("KID running, about to Exit()\n", ConsoleOutput);
-    /* You may want to put some real code here */
-    Exit(17);
+  /* loop to delay kid initially */
+
+  if ((kid=Fork()) == 0) {
+      Exec("deepkid2");
+      print("ERROR: exec failed in kid\n");
+      Exit(100);
   }
+
+  print("KID1 after exec; kid1 pid is ");
+  printd((int)kid, ConsoleOutput);
+  print("\n");
+
+  print("KID1 about to Join kid2\n");
+  joinval = Join(kid);
+  print("KID1 off Join with value of ");
+  printd(joinval, ConsoleOutput);
+  print("\n");
+
+  Exit(1);
+  /* Should not get past here */
+  print("ERROR: KID1 after Exit()\n");
+  Halt();
+    /* not reached */
 }
+
+
+
+
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
 
@@ -87,7 +95,11 @@ OpenFileId file;
   Write(buffer,pos,file);
 }
 
+/* Print a null-terminated string "s" on ConsoleOutput. */
 
+print(s)
+char *s;
 
-
-
+{
+  prints(s, ConsoleOutput);
+}
