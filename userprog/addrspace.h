@@ -84,7 +84,7 @@ class AddrSpace {
 // #include "system.h"
 // #include "synch.h"
 
-#define UserStackSize   1024*2*2*2  // increase this as necessary!
+#define UserStackSize   1024*2*2  // increase this as necessary!
 
 class FileShield {
     public:         // Raw console

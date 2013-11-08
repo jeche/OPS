@@ -19,7 +19,7 @@ main()
 
   for (i=0; i<NUMKIDS; i++) {
     if ((kid[i] = Fork()) == 0) {
-      Exec("kid");
+      /*Exec("kid");*/
     } else {
       print("Kid ");
       printd(i, ConsoleOutput);

@@ -137,7 +137,7 @@ main()
             else {
                 newProc = Fork();
                 if (newProc == 0) {
-                    Exec(buffer);
+                    /*Exec(buffer);*/
                 }
                 else {
                     Join(newProc);

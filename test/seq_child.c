@@ -33,7 +33,7 @@ main()
 
     }
     else {
-      Exec("kid");
+      /*Exec("kid");*/
       prints("ERROR: Exec failure\n", ConsoleOutput);
       Halt();
     }

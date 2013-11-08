@@ -12,15 +12,16 @@ main()
 
   SpaceId kid;
   int joinval;
-  char *args[3];
+  char *args[4];
 
   args[0] = "argument1";
   args[1] = "argument2";
-  args[2] = (char *)0;
+  args[2] = "argument3";
+  args[3] = (char *)0;
 
   prints("PARENT exists\n", ConsoleOutput);
   if ((kid = Fork()) == 0) {
-/*    Exec("argkid",args);*/
+    Exec("argkid",args);
     Halt();
   }
 

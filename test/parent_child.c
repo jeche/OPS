@@ -11,7 +11,7 @@ main()
 {
 
   SpaceId kid;
-  int joinval;
+  int joinval, i;
 
   prints("PARENT exists\n", ConsoleOutput);
   kid = Fork();
@@ -29,7 +29,8 @@ main()
     Halt();
   /* not reached */
   } else 
-    Exec("kid");
+    i = 1; /*added to make compiler happy.  Remove later*/
+    /*Exec("kid");*/
 }
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
