@@ -733,15 +733,15 @@ ExceptionHandler(ExceptionType which)
                 for(i = 1; i < 16; i++){
                   memset(stringArg, 0, sizeof(stringArg));
                   currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                  if (herece == 0){
+                    break;
+                  }
                   for(j = 0; j < 127; j++){
                     currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);  // Pretending this works.
                     if(stringArg[j] == '\0') break;
                   }
                   DEBUG('a', "STRINGARG %s\n",stringArg);
-                  if(stringArg[0] == '0'){
-                    argcount = i;
-                    break;
-                  }
+
                   len = strlen(stringArg) + 1;
                   sp -= len;
 
@@ -752,7 +752,7 @@ ExceptionHandler(ExceptionType which)
                   whence = whence + sizeof(int);
 
                 }
-
+                argcount = i;
                 sp = sp & ~3; // this supposedly aligns the stack on 4 byte boundary for integer values. Do. Not. Trust.
                 DEBUG('a', "argcount %d\n", argcount);
                 sp -= sizeof(int) * argcount;
