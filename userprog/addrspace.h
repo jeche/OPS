@@ -88,11 +88,13 @@ class AddrSpace {
 
 class FileShield {
     public:         // Raw console
-    int refcount;                    // with the interrupt handler
+    int refcount; 
+    int inOut;                   // with the interrupt handler
     OpenFile *file;
 
     FileShield(){
       refcount = 0;
+      inOut = 0;
     }
 
     void CopyFile(){

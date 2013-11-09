@@ -341,6 +341,12 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 #endif
 
     fileDescriptors = new (std::nothrow) FileShield*[16];
+    fileDescriptors[0] = new FileShield();
+    fileDescriptors[1] = new FileShield();
+    fileDescriptors[0]->inOut = -1;
+    fileDescriptors[1]->inOut = -1; 
+    fileDescriptors[0]->CopyFile();
+    fileDescriptors[1]->CopyFile();
 
     int babyAddr = 0;
     // then, copy in the code and data segments into memory
@@ -662,6 +668,7 @@ AddrSpace* AddrSpace::newSpace(){
         if(fileDescriptors[k] != NULL){
             fileDescriptors[k]->CopyFile();
             fileDescriptors2[k] = fileDescriptors[k];
+            fileDescriptors2[k]->inOut = fileDescriptors[k]->inOut;
         }
     }
     return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages);

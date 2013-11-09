@@ -345,6 +345,8 @@ ExceptionHandler(ExceptionType which)
     int type = machine->ReadRegister(2);
     int whence;
     int size;
+    int toOutput = 0;
+    int fromInput = 0;
     char* stringArg;
     OpenFile* open;
     int descriptor = -1;
@@ -511,48 +513,53 @@ ExceptionHandler(ExceptionType which)
                 whence = machine->ReadRegister(4);
                 descriptor = machine->ReadRegister(6);
                 if(size > 0){
-                stringArg = new (std::nothrow) char[size];
-                if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
-                  if(currentThread->space->fileDescriptors[descriptor] == NULL){
-                    DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
-                    // fprintf(stderr, "%d\n", descriptor);
-                    machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
-                  }else{
-                  open = currentThread->space->fileDescriptors[descriptor]->file;
-                  if(open == NULL){
-                    DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
-                    // fprintf(stderr, "%d\n", descriptor);
+                  stringArg = new (std::nothrow) char[size];
+                  if (descriptor == ConsoleInput) {
+                    if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
+                      fromInput = 1;
+                  }
+                  if (!fromInput && descriptor != ConsoleOutput && descriptor < 16) {
+                    if(currentThread->space->fileDescriptors[descriptor] == NULL){
+                      DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
+                      // fprintf(stderr, "%d\n", descriptor);
+                      machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
+                    }
+                    else{
+                      open = currentThread->space->fileDescriptors[descriptor]->file;
+                      if(open == NULL){
+                        DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
+                        // fprintf(stderr, "%d\n", descriptor);
+                        machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
+                      }
+                      else{
+                        descriptor = 0;
+                        size = open->Read(stringArg, size);
+                        if(size != 1){
+                          stringArg[size - 1] = '\0';
+                        }
+                        for(i=0; i < size; i++){
+                          currentThread->space->WriteMem(whence++, sizeof(char), stringArg[i]);
+                          if(stringArg[i] == '\0') break;
+                        }
+                        // machine->mainMemory[whence++] = '\0'; *****
+                        DEBUG('a', "size: %d %s\n", size, stringArg);
+                        machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
+                      }
+                    }
+                  }
+                  else if (fromInput) { // Deals with ConsoleInput
+                    DEBUG('a', "size: %d %c\n", size, stringArg);
+                    whee = synchConsole->GetChar();
+                    currentThread->space->WriteMem(whence++, sizeof(char), whee);
+                    // machine->mainMemory[whence++] = whee; *****
+                    DEBUG('a', "size: %d %c\n", size, stringArg);
+                    machine->WriteRegister(2, 1);
+                  }
+                  else{ // Deals with out of bounds of the array.
+                    DEBUG('a', "Invalid file descriptor.\n");
                     machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
                   }
-                  else{
-                    descriptor = 0;
-                    size = open->Read(stringArg, size);
-                    if(size != 1){
-                      stringArg[size - 1] = '\0';
-                    }
-                    for(i=0; i < size; i++){
-                      currentThread->space->WriteMem(whence++, sizeof(char), stringArg[i]);
-                      if(stringArg[i] == '\0') break;
-                    }
-                    // machine->mainMemory[whence++] = '\0'; *****
-                    DEBUG('a', "size: %d %s\n", size, stringArg);
-                    machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
-                  }
-                }
-                }
-                else if (descriptor == ConsoleInput) { // Deals with ConsoleInput
-                  DEBUG('a', "size: %d %c\n", size, stringArg);
-                  whee = synchConsole->GetChar();
-                  currentThread->space->WriteMem(whence++, sizeof(char), whee);
-                  // machine->mainMemory[whence++] = whee; *****
-                  DEBUG('a', "size: %d %c\n", size, stringArg);
-                  machine->WriteRegister(2, 1);
-                }
-                else{ // Deals with out of bounds of the array.
-                  DEBUG('a', "Invalid file descriptor.\n");
-                  machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
-                }
-                delete stringArg;
+                  delete stringArg;
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
@@ -572,21 +579,27 @@ ExceptionHandler(ExceptionType which)
                   whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
                   descriptor = machine->ReadRegister(6);
                   DEBUG('a',"String starts at address %d in user VAS\n", whence); // Translation should go somewhere around here.
-                  if(size != 1 && descriptor != ConsoleOutput){
-                  for (i=0; i<size; i++){
-                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
-                    // fprintf(stderr, "DOPE %c\", stringArg[i]);
-                    if(stringArg[i] == '\0')break;
+                  //Deals with the case when output has been closed and a file has been duped there.
+                  if (descriptor == ConsoleOutput) {
+                    if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
+                      toOutput = 1;
                   }
-                  // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
+                  fprintf(stderr, "%d\n", toOutput);
+                  if(size != 1 && !toOutput){
+                    for (i=0; i<size; i++){
+                      currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
+                      // fprintf(stderr, "DOPE %c\", stringArg[i]);
+                      if(stringArg[i] == '\0')break;
+                    }
+                    // if ((stringArg[i]=machine->mainMemory[whence++]) == '\0') break; *****
                   
-                    stringArg[size]='\0';
+                      stringArg[size]='\0';
                   }
-                  else if(size == 1&& descriptor != ConsoleOutput){
+                  else if(size == 1 && !toOutput){
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[0]);
                   }
                     DEBUG('a', "Argument string is <%s>\n",stringArg);
-                  if (descriptor != ConsoleInput && descriptor != ConsoleOutput && descriptor < 16 && descriptor > ConsoleOutput) {
+                  if (descriptor != ConsoleInput && !toOutput && descriptor < 16) {
                     // fprintf(stderr, "Yayyyy\n");
                     open = currentThread->space->fileDescriptors[descriptor]->file;
                     // fprintf(stderr, "Yayyyy\n");
@@ -600,7 +613,7 @@ ExceptionHandler(ExceptionType which)
                     DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
                     
                   }
-                  else if (descriptor == ConsoleOutput) {
+                  else if (toOutput) {
                     // fprintf(stderr, "SIZEABLE %d\n", size);
                     // size2 = size;
                     for (i = 0; i < size; i++) {
@@ -778,6 +791,28 @@ ExceptionHandler(ExceptionType which)
                 machine->Run();//pretending this works
                 break;
         case SC_Dup:
+                fprintf(stdin, "here?\n" );
+                descriptor = machine->ReadRegister(4);
+                if(descriptor<0||descriptor>15){DEBUG('a', "Invalid OpenFileId"); interrupt->Halt();}//invalid openfileid //!!!!!!!!!!!!!!!!!!!!!!!!!!!!NO HALTING REMOVE THIS!!!!!!!!!!!!!!!!
+                if(currentThread->space->fileDescriptors[descriptor] == NULL){DEBUG('a', "No OpenFile is associated with the given OpenFileId"); interrupt->Halt();}
+                else{currentThread->space->fileDescriptors[descriptor]->CopyFile();}
+                for (i = 0; i < 16; i++) {
+                  if (currentThread->space->fileDescriptors[i] == NULL) {
+                    currentThread->space->fileDescriptors[i] = currentThread->space->fileDescriptors[descriptor];
+                    currentThread->space->fileDescriptors[i]->inOut = 0;
+                    break;
+                  }
+                }
+                if (i == 16) {
+                  //There's no open space.  Cry.
+                  interrupt->Halt();
+                }
+                fprintf(stderr, "i = %d\n", i);
+                machine->WriteRegister(2, i);
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
