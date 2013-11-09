@@ -359,6 +359,7 @@ ExceptionHandler(ExceptionType which)
     Thread *prev;
     Semaphore* die;
     IntStatus oldLevel;
+    FamilyNode *curr;
 
     //Exec w/ args variables
     int sp, len, argcount, herece;
@@ -375,15 +376,23 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exit:
                 DEBUG('a', "Exit\n");
-                die = (Semaphore*)currentThread->space->death;
+                curr = root;
+                while(curr->child != (int) currentThread&& curr->next !=NULL){
+                  curr = curr->next;
+                  // fprintf(stderr, "joined %d, %d\n", curr->parent , curr->child);
+                }
+                // die = (Semaphore*)currentThread->space->death;
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
-                currentThread->space->exit2 = whence;
-                currentThread->space->Clean();
-                die->V();
+                curr->exit = whence;
+                // currentThread->space->exit2 = whence;
+                // currentThread->space->Clean();
+                // fprintf(stderr, "joined %d, %d\n", curr->parent , curr->child);
+                curr->death->V();
                 // fprintf(stderr, "hello current thread is %d\n", (int)currentThread);
 
                 // currentThread->space->c();
                 // oldLevel = interrupt->SetLevel(IntOff);
+                delete currentThread->space;
                 currentThread->Finish();
                 // (void) interrupt->SetLevel(oldLevel);
 
@@ -395,50 +404,21 @@ ExceptionHandler(ExceptionType which)
         case SC_Join:
                 DEBUG('a', "Join\n");
                 // bitMap->Print();
-                if(currentThread->space->child != NULL){
-                  // fprintf(stderr, "\nwaiting\n");
-                  t = (Thread*)currentThread->space->child;
-                  prev = currentThread;
-                  whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
-                  // fprintf(stderr, "JOIN:::  %d\n", whence);
-                  // interrupt->Halt();
-                  if(whence != (int)t){
-                    while(t->space->sibling != NULL){
-                      prev = t;
-                      t = (Thread*)t->space->sibling;
-                      if((int)t == whence) break;
-                    }
-                    ASSERT((int)t == whence); // Make sure t is the correct thread
-                  }
-                  // Ensures t is the correct thread.
-                  // fprintf(stderr, "\nwaiting\n");
-                  die = (Semaphore*)t->space->death;
-                  // fprintf(stderr, "hello current thread is %d\n waiting for %d to die\n", (int)currentThread, (int)t);
-                  die->P();
-                  // fprintf(stderr, "\nwaiting\n");
-                  if(t->space->sibling != NULL && prev != currentThread){
-                    prev->space->sibling = t->space->sibling;
-                  }
-                  else if(t->space->sibling != NULL && prev == currentThread){
-                    prev->space->child = t->space->sibling;
-                  }
-                  else if(t->space->sibling == NULL && prev == currentThread){
-                    ;
-                  }
-                  else{
-                    fprintf(stderr, "CurrentThread: %d, T: %d\n", (int)currentThread, (int)t);
-                    ASSERT(false);
-                  }
-                  machine->WriteRegister(2, t->space->exit2);
-                  // t->Finish();
-                  delete t->space;
-                  //delete t;
-                  // bitMap->Print();
-
-                }else{
-                  ASSERT(false);
+                whence = machine->ReadRegister(4);
+                curr = root;
+                // fprintf(stderr, "whence %d\n", whence);
+                while(( curr->child != whence ||curr->parent != (int)currentThread) && curr->next != NULL){
+                  curr = curr->next;
+                  // fprintf(stderr, "done join %d, %d\n", curr->parent , curr->child);
                 }
-                // currentThread->Yield();
+                if(curr->parent != (int)currentThread && curr->child !=whence){
+                  machine->WriteRegister(2, -1);
+                }
+                else{
+                  // fprintf(stderr, "done join %d, %d\n", curr->parent , curr->child);
+                  curr->death->P();
+                  machine->WriteRegister(2, curr->exit);
+                }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -688,13 +668,17 @@ ExceptionHandler(ExceptionType which)
  * prevents the creation of the child, the parent gets a -1 return value.
  */
                 DEBUG('a', "Fork\n");
-
+                curr = root;
+                while(curr->next != NULL){
+                  curr = curr->next;
+                }
                 t = new(std::nothrow) Thread("clone");
+                curr->next = new(std::nothrow) FamilyNode(t);
                 // fprintf(stderr, "\nPARENT: %d, CHILD %d\n", (int) currentThread, (int)t);
                 newSpacer = currentThread->space->newSpace();
                 t->space = newSpacer;
-                t->space->parent = (int)currentThread;
-                currentThread->space->child = (int)t;
+                // t->space->parent = (int)currentThread;
+                // currentThread->space->child = (int)t;
                 // machine->WriteRegister(2, 0);
                 t->SaveUserState();
                 currentThread->SaveUserState();
@@ -749,15 +733,15 @@ ExceptionHandler(ExceptionType which)
                 for(i = 1; i < 16; i++){
                   memset(stringArg, 0, sizeof(stringArg));
                   currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                  if (herece == 0){
+                    break;
+                  }
                   for(j = 0; j < 127; j++){
                     currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);  // Pretending this works.
                     if(stringArg[j] == '\0') break;
                   }
                   DEBUG('a', "STRINGARG %s\n",stringArg);
-                  if(stringArg[0] == '0'){
-                    argcount = i;
-                    break;
-                  }
+
                   len = strlen(stringArg) + 1;
                   sp -= len;
 
@@ -768,7 +752,7 @@ ExceptionHandler(ExceptionType which)
                   whence = whence + sizeof(int);
 
                 }
-
+                argcount = i;
                 sp = sp & ~3; // this supposedly aligns the stack on 4 byte boundary for integer values. Do. Not. Trust.
                 DEBUG('a', "argcount %d\n", argcount);
                 sp -= sizeof(int) * argcount;

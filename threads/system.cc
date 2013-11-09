@@ -238,9 +238,9 @@ Timer *timer;               // the hardware timer device,
 Timer *timer2;
                     // for invoking context switches
 Semaphore *forking;
-Semaphore *deadKid;
 SynchConsole *synchConsole;
 BitMap *bitMap;
+FamilyNode* root;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -394,13 +394,13 @@ Initialize(int argc, char **argv)
 
     interrupt->Enable();
     CallOnUserAbort(Cleanup);           // if user hits ctl-C
-    
+    root = new(std::nothrow) FamilyNode(currentThread);
 #ifdef USER_PROGRAM
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
     forking = new(std::nothrow) Semaphore("forking", 0);
-    deadKid = new(std::nothrow) Semaphore("dead kid", 0);
+    
     // bitMap->Print();
 #endif
 

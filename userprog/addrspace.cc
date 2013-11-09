@@ -375,7 +375,6 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         }
     }
     clean = false;
-    death = (int)new(std::nothrow) Semaphore("death", 0);
 
 }
 
@@ -387,7 +386,6 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int 
     numPages = newNumPages;
     pageTable = newPageTable;
     fileDescriptors = avengers;
-    death = (int)new(std::nothrow) Semaphore("death", 0);
     clean = false;
 }
 
