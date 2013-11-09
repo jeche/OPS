@@ -204,9 +204,36 @@ extern Timer *timer;				// the hardware alarm clock
 extern Timer *timer2;
 extern SynchConsole *synchConsole;
 extern Semaphore *forking;
-extern Semaphore *deadKid;
 
 extern BitMap *bitMap;
+
+
+class FamilyNode{
+public:
+    int parent;
+    bool parentAlive;
+    int child;
+    bool childAlive;
+    int exit;
+    Semaphore* death;
+    FamilyNode* next;
+
+    FamilyNode(Thread* t){
+        death = new(std::nothrow) Semaphore("deadKid", 0);
+        parent = (int) currentThread;
+        child = (int) t;
+        childAlive = true;
+        parentAlive = true;
+    };
+
+    ~FamilyNode(){
+        delete death;
+        if(next != NULL){
+            delete next;
+        }
+    };
+};
+extern FamilyNode* root;
 
 #ifdef USER_PROGRAM
 #include "machine.h"
