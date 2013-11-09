@@ -542,6 +542,7 @@ ExceptionHandler(ExceptionType which)
                           if(stringArg[i] == '\0') break;
                         }
                         // machine->mainMemory[whence++] = '\0'; *****
+                        DEBUG('a', "%s\n", stringArg);
                         DEBUG('a', "size: %d %s\n", size, stringArg);
                         machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
                       }
@@ -584,7 +585,6 @@ ExceptionHandler(ExceptionType which)
                     if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
                       toOutput = 1;
                   }
-                  fprintf(stderr, "%d\n", toOutput);
                   if(size != 1 && !toOutput){
                     for (i=0; i<size; i++){
                       currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
@@ -638,7 +638,8 @@ ExceptionHandler(ExceptionType which)
                     synchConsole->PutChar('\0');
                   }
                   else if (descriptor == ConsoleInput){
-                      fprintf(stderr, "I should never be here\n.");
+                      machine->WriteRegister(2, -1);
+                      //I should never be here
                   }
                   else{
                     DEBUG('a', "Invalid file descriptor.\n");
@@ -791,14 +792,13 @@ ExceptionHandler(ExceptionType which)
                 machine->Run();//pretending this works
                 break;
         case SC_Dup:
-                fprintf(stdin, "here?\n" );
                 descriptor = machine->ReadRegister(4);
                 if(descriptor<0||descriptor>15){DEBUG('a', "Invalid OpenFileId"); interrupt->Halt();}//invalid openfileid //!!!!!!!!!!!!!!!!!!!!!!!!!!!!NO HALTING REMOVE THIS!!!!!!!!!!!!!!!!
                 if(currentThread->space->fileDescriptors[descriptor] == NULL){DEBUG('a', "No OpenFile is associated with the given OpenFileId"); interrupt->Halt();}
-                else{currentThread->space->fileDescriptors[descriptor]->CopyFile();}
                 for (i = 0; i < 16; i++) {
                   if (currentThread->space->fileDescriptors[i] == NULL) {
                     currentThread->space->fileDescriptors[i] = currentThread->space->fileDescriptors[descriptor];
+                    currentThread->space->fileDescriptors[i]->CopyFile();
                     currentThread->space->fileDescriptors[i]->inOut = 0;
                     break;
                   }
@@ -807,7 +807,7 @@ ExceptionHandler(ExceptionType which)
                   //There's no open space.  Cry.
                   interrupt->Halt();
                 }
-                fprintf(stderr, "i = %d\n", i);
+                DEBUG('a', "File descriptor returned by Dup: %d\n", i);
                 machine->WriteRegister(2, i);
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
