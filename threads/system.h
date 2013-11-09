@@ -224,6 +224,7 @@ public:
         child = (int) t;
         childAlive = true;
         parentAlive = true;
+        next=NULL;
     };
 
     ~FamilyNode(){

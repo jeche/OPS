@@ -668,28 +668,39 @@ ExceptionHandler(ExceptionType which)
  * prevents the creation of the child, the parent gets a -1 return value.
  */
                 DEBUG('a', "Fork\n");
+                fprintf(stderr, "precursor\n");
+                if(root==NULL){fprintf(stderr, "Well FUCK\n");interrupt->Halt();}
                 curr = root;
+
                 while(curr->next != NULL){
                   curr = curr->next;
+
                 }
+                fprintf(stderr, "postcursor\n");
                 t = new(std::nothrow) Thread("clone");
+                fprintf(stderr, "When I wake in the morning\n");
                 curr->next = new(std::nothrow) FamilyNode(t);
+                fprintf(stderr, "and I step outside\n");
                 // fprintf(stderr, "\nPARENT: %d, CHILD %d\n", (int) currentThread, (int)t);
                 newSpacer = currentThread->space->newSpace();
+                fprintf(stderr, "and I take a deep breath and I get real high\n");
                 t->space = newSpacer;
+                fprintf(stderr, "I say ...\n");
                 // t->space->parent = (int)currentThread;
                 // currentThread->space->child = (int)t;
                 // machine->WriteRegister(2, 0);
                 t->SaveUserState();
                 currentThread->SaveUserState();
                 t->Fork(CopyRegs, (int)currentThread);
+                fprintf(stderr, "HEYHEYHEYAHEY\n");
                 // fprintf(stderr, "\nPOST FORK\n");
                 machine->WriteRegister(2, (int)t);
                 currentThread->SaveUserState();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-                machine->WriteRegister(NextPCReg, incrementPC);    
+                machine->WriteRegister(NextPCReg, incrementPC);  
+                fprintf(stderr, "WHATS GOING ON\n");  
                 break;
         case SC_Exec:
         /* Run the executable, stored in the Nachos file "name", in the context
