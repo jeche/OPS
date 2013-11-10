@@ -1,8 +1,22 @@
 Nachos 2
 ========
-Currently the games can only be started by an admin.  There is currently only a single super admin (Forcibly set with the password: admin, and username: admin), however functionality has been added to allow other users to be set as admins and the super admin will be removed once development is finished.
+For the Nachos 2 project the 10 syscalls as defined in syscall.h were defined as follows:
 
-Features
+##### Syscalls
+[SC\_Exit](#sc_exit)  
+[SC\_Exec](#sc_exec)  
+[SC\_Join](#sc_join)  
+[SC\_Create](#sc_create)  
+[SC\_Open](#sc_open)  
+[SC\_Read](#sc_read)  
+[SC\_Write](#sc_write)  
+[SC\_Close](#sc_close)  
+[SC\_Fork](#sc_fork)  
+[SC\_Dup](#sc_dup)  
+
+
+<a name="sc_exit"/>
+SC_Exit
 --------
 
 - [x]    Check for players nearby (if werewolf)
