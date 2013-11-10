@@ -251,7 +251,9 @@ ExceptionHandler(ExceptionType which)
     int whence;
     int size;
     int toOutput = 0;
+    int toInput = 0;
     int fromInput = 0;
+    int fromOutput = 0;
     char* stringArg;
     OpenFile* open;
     int descriptor = -1;
@@ -402,7 +404,11 @@ ExceptionHandler(ExceptionType which)
                     if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
                       fromInput = 1;
                   }
-                  if (!fromInput && descriptor != ConsoleOutput && descriptor < 16) {
+                  if (descriptor == ConsoleOutput) {
+                    if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
+                      fromOutput = 1;
+                  }
+                  if (!fromInput && !fromOutput && descriptor < 16) {
                     if(currentThread->space->fileDescriptors[descriptor] == NULL){
                       DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                       machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
@@ -466,18 +472,22 @@ ExceptionHandler(ExceptionType which)
                     if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
                       toOutput = 1;
                   }
-                  if(size != 1 && !toOutput){
+                  if (descriptor == ConsoleInput) {
+                    if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
+                      toInput = 1;
+                  }
+                  if(size != 1 && !toOutput && !toInput){
                     for (i=0; i<size; i++){
                       currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
                       if(stringArg[i] == '\0')break;
                     }
                       //stringArg[size]='\0';
                   }
-                  else if(size == 1 && !toOutput){
+                  else if(size == 1 && !toOutput && !toInput){
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[0]);
                   }
                     DEBUG('a', "Argument string is <%s>\n",stringArg);
-                  if (descriptor != ConsoleInput && !toOutput && descriptor < 16) {
+                  if (!toInput && !toOutput && descriptor < 16) {
                     open = currentThread->space->fileDescriptors[descriptor]->file;
                     if(open == NULL){
                       DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
@@ -497,7 +507,7 @@ ExceptionHandler(ExceptionType which)
                     }
                     //synchConsole->PutChar('\0');
                   }
-                  else if (descriptor == ConsoleInput){ // Should this also check for toInput? *****
+                  else if (toInput){ // Should this also check for toInput? *****
                       DEBUG('a', "Invalid file descriptor, cannot write to ConsoleInput.\n");
                       machine->WriteRegister(2, -1);
                   }
