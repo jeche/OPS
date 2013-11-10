@@ -89,7 +89,7 @@ main(int argc, char*argv[])
     char scriptBuf[8];
 
     char prompt[2], buffer[120];
-    int i, j, script, redir;
+    int i, j, script, redir, end;
     int exitval;
     int argcount;  
     char *args[16];
@@ -99,35 +99,40 @@ main(int argc, char*argv[])
     script=0;
     redir=0;
     argcount=0;
+    end=0;
     prompt[0] = '-';
     prompt[1] = '-';
 
 
     if(argc==2 && argv[1][0]=='s'&& argv[1][1]=='m'&& argv[1][2]=='o'&& argv[1][3]=='d'&& argv[1][4]=='e'){
         script=1;
+        Write("InS\n", 4, output);
     }
     while( 1 ){
+        if(script){prints("on and on and on", output);}
         if(!script){
             Write(prompt, 2, output);
         }
         i = 0;
         redir=0;
-        script=0;
+        /*script=0;*/
         do {
         
          Read(&buffer[i], 1, input);
-
+         /*if(buffer[i]=-1){end=1;};*/
         } while( buffer[i++] != '\n' );
 
         buffer[--i] = '\0';
         /*prints(buffer, output);
         prints("\n", output);*/
-
+        prints(buffer, output);
         argcount=0;
         /*Check for a # and treat as Comment as in do not proceed*/
-        if(buffer[0] != '#'){
-        
-        /* Get the Process Name */
+        if(script){prints(buffer, output);Write(&buffer[0], 1, output);}
+
+        if(buffer[0] != '#' || buffer[0] == -1){
+            prints("hia", output);
+            /* Get the Process Name */
             i=0;
             while(buffer[i]!=' ' && buffer[i]!='\0'){
                 filename[i] = buffer[i];
@@ -155,6 +160,7 @@ main(int argc, char*argv[])
                     
                     newProc = Fork();
                     if(newProc == 0){
+                        Write("h1\n", 3, output);
                         j=0;
                        /* if(buffer[i]!='\0'){
                                 while(buffer[i]==' '){i++;}
@@ -188,26 +194,32 @@ main(int argc, char*argv[])
                         Close(fd);
                         args[0]="smode";
                         args[1]=(char*)0;
+                        Write("h2\n", 3, output);
                         Exec("shell", args);
                     }
                     else if(newProc == -1){
                         prints("well fuck\n", output);
                     }
                     else{
-                        prints("waiting for the script to finish", output);
+                        Write("JoinScript\n", 11, output);
+                        printd(newProc, output);
+                        Write("\n", 1, output);
                         Join(newProc);
+                        Write("JoinSPostt \n", 11, output);
+
 
                     }
-                    prints("heyo\n", output);
+                    Write("Script Finished\n", 16, output);
                     Close(fd);
                 }
                 else {/* Exec With Args */
                     Close(fd);
                     newProc = Fork();
-                    if (newProc == 0) {      
+                    if (newProc == 0) {  
+                        if(script){Write("he\n", 3, output);}    
                         i=0;j=0;                               
                         while(buffer[i] != '\0'){/* Gets the Args and puts them in the argv */
-/*                            Write("<", 1, output);
+                            /*Write("<", 1, output);
                             Write(&buffer[i], 1, output);
                             Write(">", 1, output);*/
                             if(buffer[i]==' '||buffer[i+1]=='\0'){
@@ -251,27 +263,30 @@ main(int argc, char*argv[])
                             args[i]=execBuffer[i];
                         }
                         args[argcount]=(char *)0;/*Put a \0 in the last arg spot*/
-                        prints("I say heyhey", 1);
+                        Write("h4\n", 3, output);
                         Exec(args[0], &args[1]);
                         Halt();
                         
                         
                     }
                      else if(newProc == -1){
-                        prints("well fuck\n", output);
+                        Write("h5\n", 3, output);
                     }
                     else {
-                        prints("parent waiting\n", output);
+                        Write("h6\n", 3, output);
                         exitval = Join(newProc);
+                        /*if(!script){
                         Write("\nProcess Exited: ", 17, output);
                         printd(exitval, output);
                         Write("\n\n", 2, output);
-                        if(script){Exit(0);}
+                        }*/
+                        if(script){Write("ScriptFin", 9, output);Exit(0);}
 
                     }
                 } 
             }            
         }
+        if(end){Exit(0);}
     }
 }
 printd(n,file)

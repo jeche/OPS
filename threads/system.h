@@ -211,9 +211,8 @@ extern BitMap *bitMap;
 class FamilyNode{
 public:
     int parent;
-    bool parentAlive;
+    bool touched;
     int child;
-    bool childAlive;
     int exit;
     Semaphore* death;
     FamilyNode* next;
@@ -222,8 +221,7 @@ public:
         death = new(std::nothrow) Semaphore("deadKid", 0);
         parent = (int) currentThread;
         child = (int) t;
-        childAlive = true;
-        parentAlive = true;
+        touched = false;
         next=NULL;
     };
 

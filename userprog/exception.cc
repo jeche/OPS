@@ -263,10 +263,10 @@ ExceptionHandler(ExceptionType which)
     int i, j;
     AddrSpace *newSpacer;
     Thread *t;
-    Thread *prev;
     Semaphore* die;
     IntStatus oldLevel;
     FamilyNode *curr;
+    FamilyNode *prev;
 
     //Exec w/ args variables
     int sp, len, argcount, herece;
@@ -283,14 +283,24 @@ ExceptionHandler(ExceptionType which)
         case SC_Exit:
                 DEBUG('a', "Exit\n");
                 curr = root;
+                prev = root;
+                fprintf(stderr, "\n EXITING THREAD IS: %d\n", (int)currentThread);
                 DEBUG('a', "Thread exiting %d.\n", (int)currentThread);
                 forking->P();
                 while(curr->child != (int) currentThread&& curr->next !=NULL){
+                  prev = curr;
                   curr = curr->next;  // Iterate to find the correct semphore to V
                 }
-                forking->V();
+                if(curr->touched){
+                  prev->next = curr->next;
+                }
+                else{
+                  curr->touched = true;
+                }
+                
                 whence = machine->ReadRegister(4); // whence is the exit value for the thread.
                 curr->exit = whence;
+                forking->V();
                 curr->death->V();
                 delete currentThread->space;
                 currentThread->Finish();
@@ -300,19 +310,25 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Join\n");
                 whence = machine->ReadRegister(4);
                 curr = root;
+                prev = root;
                 forking->P();
                 while(( curr->child != whence ||curr->parent != (int)currentThread) && curr->next != NULL){
+                  prev = curr;
                   curr = curr->next;  // Iterate to find the correct semapohre to P on
-                  
                 }
-                forking->V();
+                
                 if(curr->parent != (int)currentThread && curr->child !=whence){
+                  forking->V();
                   DEBUG('a', "Cannot find appropriate thread ID to join on.\n");
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
                 }
                 else{
+                  curr->touched = true;
+                  forking->V();
+                  fprintf(stderr, "\n PARENT %d JOINING ON %d\n", (int)currentThread, whence);
                   DEBUG('a', "Parent %d, joining for %d.\n");
                   curr->death->P(); // Wait for child to die.
+                  prev->next = curr->next;
                   machine->WriteRegister(2, curr->exit); // Return the exit value.
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
