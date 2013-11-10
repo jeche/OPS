@@ -115,10 +115,11 @@ class FileShield {
 class AddrSpace {
   public:
     FileShield** fileDescriptors;
+    int enoughSpace = 1;
     AddrSpace(OpenFile *executable);  // Create an address space,
           // initializing it with the program
           // stored in the file "executable"
-    AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages); //Only use if you are forking a new 
+    AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace); //Only use if you are forking a new 
           //process and you know the pages needed
           //and are going to copy in the physical pages
     ~AddrSpace();     // De-allocate an address space

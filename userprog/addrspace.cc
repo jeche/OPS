@@ -295,15 +295,18 @@ AddrSpace::AddrSpace(OpenFile *executable)
     if ((noffH.noffMagic != NOFFMAGIC) &&
                 (WordToHost(noffH.noffMagic) == NOFFMAGIC))
             SwapHeader(&noffH);
-    ASSERT(noffH.noffMagic == NOFFMAGIC);
+    if(noffH.noffMagic != NOFFMAGIC){
+        enoughSpace = 0;
+    }
 
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size
                         + UserStackSize ;        // we need to increase the size
                                                 // to leave room for the stack
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
-    ASSERT(numPages <= NumPhysPages);                // check we're not trying
-                                                // to run anything too big --
+    if(numPages > NumPhysPages){
+        enoughSpace = 0;                                       // check we're not trying
+    }                                           // to run anything too big --
                                                 // at least until we have
                                                 // virtual memory
 
@@ -318,8 +321,9 @@ AddrSpace::AddrSpace(OpenFile *executable)
         
         found = bitMap->Find();
         if(found == -1){
+            numPages = i + 1;
             i = numPages + 1;
-            numPages = -1;
+            enoughSpace = 0;
         }
         else{
             bzero( &machine->mainMemory[found*PageSize], PageSize); // Zeros out only the pages needed by the process
@@ -355,7 +359,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 
     int babyAddr = 0;
     // then, copy in the code and data segments into memory
-    if (numPages != -1) {
+    if (enoughSpace == 1) {
         // Does a byte-by-byte translation for now.
         if (noffH.code.size > 0) {
             Translate(noffH.code.virtualAddr, &babyAddr, 1, false);
@@ -389,10 +393,11 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 //  Used by newSpace to properly initialize a new address space for a 
 //  forked process
 //----------------------------------------------------------------------
-AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages){
+AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace){
     numPages = newNumPages;
     pageTable = newPageTable;
     fileDescriptors = avengers;
+    enoughSpace = newEnoughSpace;
     clean = false;
 }
 
@@ -695,7 +700,7 @@ AddrSpace* AddrSpace::newSpace(){
 
     if (bitMap->NumClear() < numPages) {
         // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
-        return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, -1);
+        return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages, 0);
     }
 
     for (i = 0; i < numPages; i++) {
@@ -703,6 +708,7 @@ AddrSpace* AddrSpace::newSpace(){
 
         if(found == -1){
             i = numPages + 1;
+            enoughSpace = 0;
         }
         else{
             bzero( &machine->mainMemory[found*PageSize], PageSize); // If things are funky this is a potential screw up.
@@ -737,7 +743,7 @@ AddrSpace* AddrSpace::newSpace(){
         }
     }
 
-    return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages);
+    return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages, enoughSpace);
 
 }
 

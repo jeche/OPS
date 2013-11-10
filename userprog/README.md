@@ -41,9 +41,14 @@ The exit syscall begins by iterating through the linked list of all processes/th
 <a name="sc_exec"/>
 SC_Exec
 ---------------------------
-In the exec syscall the name is read out of register 4 and a new address space is initialized using the specified file by name.  The syscall then also handles copying out all of the old file descriptors of the previous address, into the new address space.  After the new AddrSpace is created the registers for that space are initialized, and then argument reading begins.  The stack pointer is pushed down by the length of an argument and then the argument is written above the stack pointer,  this
+In the exec syscall the name is read out of register 4 and a new address space is initialized using the specified file by name.  The syscall then also handles copying out all of the old file descriptors of the previous address into the new address space.  After the new AddrSpace is created, the registers for that space are initialized, and then argument reading begins.  The stack pointer is pushed down by the length of the file name and then that file name is written above the stack pointer in the new AddrSpace and its location is recorded in the initial position of argvAddr.  This process of reading out the argument, decrementing the stack pointer, writing the argument to the stack and recording the location in argvAddr is repeated for all of the arguments.  After that, we move the stack pointer again to make space to write in all the values in argvAddr.  We write all of those values into the new AddrSpace and then remove the old one and replace it with the one we've created.  We restore the state of the AddrSpace and then write the argcount and the location of argvAddr[0] to the correct registers.  We also write the new stack pointer (with a little extra buffer) back to the appropriate register.  With all this complete, we run our thread again.
 
 <a name="sc_join"/>
 SC_Join
 ---------------------------
 The join syscall begins by iterating through the linked list of all processes/threads that have ever been created and continues until it finds a node where the pid of the child is equal to the argument passed into register 4 and the parent pid in the node is equal to the current thread's pid.  If a node is never found that matches the description, join exits with a return value of -1.  Otherwise the parent waits for a V() on the semaphore for the found node.  Once it gets past the semaphore it retrieves the exit value from the node and returns it in register 2.
+
+<a name="sc_dup"/>
+SC_Dup
+---------------------------
+The dup syscall begins by reading out the file to be duped and making sure that it is valid.  Once this is done, we iterate through the file descriptor buffer, looking for the first open spot.  If there is not one, we return a -1.  If there is one, we set the found slot equal to the slot of the file we wish to dup.  We increase the reference count for the file and note that if the slot previously pointed to ConsoleInput or ConsoleOutput, now it points to a file.  After this we return the slot the file was duped into and incease the PC registers appropriately.
