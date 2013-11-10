@@ -2,112 +2,48 @@ Nachos 2
 ========
 For the Nachos 2 project the 10 syscalls as defined in syscall.h were defined as follows:
 
-##### Syscalls
-[SC\_Exit](#sc_exit)  
-[SC\_Exec](#sc_exec)  
-[SC\_Join](#sc_join)  
-[SC\_Create](#sc_create)  
-[SC\_Open](#sc_open)  
-[SC\_Read](#sc_read)  
-[SC\_Write](#sc_write)  
-[SC\_Close](#sc_close)  
-[SC\_Fork](#sc_fork)  
-[SC\_Dup](#sc_dup)  
+### Syscalls
+#####0. [SC\_Halt](#sc_halt) 
+Stop Nachos, and print out performance stats
+#####1. [SC\_Exit](#sc_exit) 
+This user program is done (status = 0 means exited normally).
+#####2. [SC\_Exec](#sc_exec)  
+Run the executable, stored in the Nachos file "name", in the context of the current address space. Should not return unless there is an error, in which case a -1 is returned.
+#####3. [SC\_Join](#sc_join)  
+Only return once the the user program "id" has finished.  Return the exit status.
+#####4. [SC\_Create](#sc_create)  
+Create a Nachos file, with "name" 
+#####5. [SC\_Open](#sc_open)  
+Open the Nachos file "name", and return an "OpenFileId" that can be used to read and write to the file.
+#####6. [SC\_Read](#sc_read)  
+Read "size" bytes from the open file into "buffer".  Return the number of bytes actually read -- if the open file isn't long enough, or if it is an I/O device, and there aren't enough characters to read, return whatever is available (for I/O devices, you should always wait until you can return at least one character).
+#####7. [SC\_Write](#sc_write)  
+Write "size" bytes from "buffer" to the open file.
+#####8. [SC\_Close](#sc_close)  
+Close the file, we're done reading and writing to it.
+#####9. [SC\_Fork](#sc_fork)  
+Fork creates a clone (the child) of the calling user process (the parent). The parent gets the SpaceId of the child as the return value of the Fork; the child gets a 0 return value. If there is an error that prevents the creation of the child, the parent gets a -1 return value.
+#####10. [SC\_Dup](#sc_dup)  
+Returns a new OpenFileId referring to the same file as denoted by the argument
 
+
+
+<a name="sc_halt"/>
+SC_Halt
+---------------------------
+Calls interrupt->Halt() forcing the machine to stop.
 
 <a name="sc_exit"/>
 SC_Exit
---------
+---------------------------
+The exit syscall begins by iterating through the linked list of all processes/threads that have ever been created and continues until it finds a node where the pid of the child is equal to the current thread's pid.  This should work because each child forked should have a unique node.  Once it finds that it sets the exit value to the value that has been read out of register 4.  It then also does a V() on the semaphore within the node that is specified for the child.  This way if the parent is currently stuck at a P() on the semaphore from the SC_Join, the parent will know that its child has exited.  If the parent has not yet had a chance to join on the child, then if it does later it will be able to proceed past the node's semaphore because the child has already done the V().  The exiting process then deletes its address space and calls a Thread->Finish() to clean itself up.  The node related to the child is never affected.
 
-- [x]    Check for players nearby (if werewolf)
-- [x]    Restart game (if admin)
-- [x]    Get votable players
-- [x]    Place a vote on a person (if it is day)
-- [x]    Kill a player (if werewolf and night)
-- [x]    Report current position
-- [x]    Get score list (only viewable by users)
-- [x]    Kill players that do not update at least every 5 minutes in a game
-Special Features
-----------------
+<a name="sc_exec"/>
+SC_Exec
+---------------------------
+In the exec syscall the name is read out of register 4 and a new address space is initialized using the specified file by name.  The syscall then also handles copying out all of the old file descriptors of the previous address, into the new address space.  After the new AddrSpace is created the registers for that space are initialized, and then argument reading begins.  The stack pointer is pushed down by the length of an argument and then the argument is written above the stack pointer,  this
 
-- [x]    Web Console for Admin (in progress)
-- [x]   Online interface for users to be added
-- []    Add infection rate to werewolves, allowing for a chance to infect
-- [x]    Add web interface for users(in progress)
-- []    Allow for users to be set as Admins
-- [x]    Allow for more new game settings, setting a kill zone/scent zone (in progess)
-- []    SSL
-
-The currently viewable links include:
-<table>
-  <tr>
-    <th>Link</th><th>Description</th>
-  </tr>
-  <tr>
-    <td>\</td><td>Shows a form to add a user.</td>
-  </tr>
-  <tr>
-    <td>\player</td><td>prompts for login by a user, also shows forms for allowing the user to participate in a game(assuming a game is running and the user is currently linked with a player in the game).  Forms include a selectable vote list, and a scent list which werewolves can submit on to attack people.</td>
-  </tr>
-    <tr>
-    <td>\admin</td><td>accessible only by the super admin(for now), allows for the creation of a new game and the addition of users</td>
-  </tr>
-</table>
-
-Post
-----
-<table>
-  <tr>
-    <th>Link    </th><th>Description</th>
-  </tr>
-  <tr>
-    <td>\newgame</td><td>starts a new game.  Must have admin credentials to do this.</td>
-  </tr>
-  <tr>
-    <td>\players\location</td><td>updates a player's location based on the post.  Requested params are both of the type double and must be passed in as 'lat' and 'lng'</td>
-  </tr>
-    <tr>
-    <td>\players\kill</td><td>allows a werewolf to kill its specified victim.  Can only occur at night.  Requested param is of type string and must be passed in as 'victim'.</td>
-  </tr>
-    <tr>
-    <td>\players\vote</td><td>allows a player to vote during the daytime.  Requested param is of type string and must be passed in as 'voted'.</td>
-  </tr>
-</table>
-
-
-
-Get(without .jsp views)
------------------------
-<table>
-  <tr>
-    <th>Link    </th><th>Description</th>
-  </tr>
-  <tr>
-    <td>\game</td><td>returns a boolean value of whether the game is running or not to the requester.</td>
-  </tr>
-  <tr>
-    <td>\highscores</td><td>returns a list of WerewolfUser's scores</td>
-  </tr>
-    <tr>
-    <td>\players\getVotable</td><td>returns a list of players that can be voted for</td>
-  </tr>
-    <tr>
-    <td>\players\all</td><td>returns a list of all Players.  If a game is running the list is sanitized.</td>
-  </tr>
-      <tr>
-    <td>\players\scent</td><td>allows a werewolf to 'scent' the people nearby it.  Returns a list of players where players that are in scent but not kill range have a score of 0, those in kill range have a score of 1, and werewolves in range have a score of 2.</td>
-  </tr>
-        <tr>
-    <td>\players\alive</td><td>returns a list of currently living players.  List is sanitized.</td>
-  </tr>
-  <tr>
-    <td>\logout</td><td>when using a web interface allows users to logout assuming they have cleared their cache since their last page access.  Will be fixed in later implementations or removed.</td>
-  </tr>
-</table>
-
-Testing
-=======
-Currently there is only one large python script for testing purposes.  It prints out statements telling the user what it is attempting to do.  It then plays through a game and checks at the end to ensure that a game is no longer running.
-To run the script go under the director scritps and run newGame.py
-
-To use app go to: http://secure-lake-6285.herokuapp.com
+<a name="sc_join"/>
+SC_Join
+---------------------------
+The join syscall begins by iterating through the linked list of all processes/threads that have ever been created and continues until it finds a node where the pid of the child is equal to the argument passed into register 4 and the parent pid in the node is equal to the current thread's pid.  If a node is never found that matches the description, join exits with a return value of -1.  Otherwise the parent waits for a V() on the semaphore for the found node.  Once it gets past the semaphore it retrieves the exit value from the node and returns it in register 2.
