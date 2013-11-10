@@ -319,9 +319,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
         found = bitMap->Find();
         if(found == -1){
             i = numPages + 1;
+            numPages = -1;
         }
         else{
-            bzero( &machine->mainMemory[found*PageSize], PageSize); // If things are funky this is a potential screw up.
+            bzero( &machine->mainMemory[found*PageSize], PageSize); // Zeros out only the pages needed by the process
             pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
             
             pageTable[i].physicalPage = found;
@@ -341,6 +342,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 #endif
 
     fileDescriptors = new (std::nothrow) FileShield*[16];
+    // Specially creates the fileShields for ConsoleInput and ConsoleOutput and sets their values to -1 for checking in Read and Write
     fileDescriptors[0] = new FileShield();
     fileDescriptors[1] = new FileShield();
     fileDescriptors[0]->inOut = -1;
@@ -353,28 +355,29 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 
     int babyAddr = 0;
     // then, copy in the code and data segments into memory
+    if (numPages != -1) {
+        // Does a byte-by-byte translation for now.
+        if (noffH.code.size > 0) {
+            Translate(noffH.code.virtualAddr, &babyAddr, 1, false);
+            DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
+                            noffH.code.virtualAddr, noffH.code.size);
+            for(i = 0; i < noffH.code.size; i++){
+                Translate(noffH.code.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
+                executable->ReadAt(&(machine->mainMemory[babyAddr]),
+                            sizeof(char), noffH.code.inFileAddr+i*sizeof(char));
 
-
-    if (noffH.code.size > 0) {
-        Translate(noffH.code.virtualAddr, &babyAddr, 1, false);
-        DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
-                        noffH.code.virtualAddr, noffH.code.size);
-        for(i = 0; i < noffH.code.size; i++){
-            Translate(noffH.code.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
-            executable->ReadAt(&(machine->mainMemory[babyAddr]),
-                        sizeof(char), noffH.code.inFileAddr+i*sizeof(char));
-
+            }
         }
-    }
-    if (noffH.initData.size > 0) {
-        Translate(noffH.initData.virtualAddr, &babyAddr, sizeof(char), false);
-        DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
-                        noffH.initData.virtualAddr, noffH.initData.size);
-        for(i = 0; i < noffH.initData.size; i++){
-            
-            Translate(noffH.initData.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
-            executable->ReadAt(&(machine->mainMemory[babyAddr]),
-                        sizeof(char), noffH.initData.inFileAddr+i*sizeof(char));
+        if (noffH.initData.size > 0) {
+            Translate(noffH.initData.virtualAddr, &babyAddr, sizeof(char), false);
+            DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
+                            noffH.initData.virtualAddr, noffH.initData.size);
+            for(i = 0; i < noffH.initData.size; i++){
+                
+                Translate(noffH.initData.virtualAddr + i*sizeof(char), &babyAddr, sizeof(char), false);
+                executable->ReadAt(&(machine->mainMemory[babyAddr]),
+                            sizeof(char), noffH.initData.inFileAddr+i*sizeof(char));
+            }
         }
     }
     clean = false;
@@ -382,8 +385,9 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 }
 
 //----------------------------------------------------------------------
-// AddrSpace::~AddrSpace
-//  Dealloate an address space.  Nothing for now!
+// AddrSpace::AddrSpace
+//  Used by newSpace to properly initialize a new address space for a 
+//  forked process
 //----------------------------------------------------------------------
 AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages){
     numPages = newNumPages;
@@ -409,6 +413,12 @@ AddrSpace::~AddrSpace()
     delete pageTable;
 #endif
 }
+
+//----------------------------------------------------------------------
+// AddrSpace::Clean
+//  Goes through a process's virtual space and clears out the bit 
+//  map for the pages the process had.
+//----------------------------------------------------------------------
 
 void AddrSpace::Clean()
 {
@@ -462,8 +472,6 @@ AddrSpace::InitRegisters()
 
 void AddrSpace::SaveState() 
 {
-    // currentThread->SaveUserState();
-    // fprintf(stderr, "ohshoot\n");
 
 }
 
@@ -482,21 +490,32 @@ void AddrSpace::RestoreState()
 #ifndef USE_TLB
     machine->pageTable = pageTable;
     machine->pageTableSize = numPages;
-    // fprintf(stderr, "so amaze\n");
-    // currentThread->RestoreUserState();
 #endif
 }
+
+//----------------------------------------------------------------------
+// AddrSpace::ReadMem
+//  Our version of ReadMem.
+//
+//  Read "size" (1, 2, or 4) bytes of virtual memory at "addr" into 
+//  the location pointed to by "value".
+//
+//      Returns FALSE if the translation step from virtual to physical memory
+//      failed.
+//
+//  "addr" -- the virtual address to read from
+//  "size" -- the number of bytes to read (1, 2, or 4)
+//  "value" -- the place to write the result 
+//----------------------------------------------------------------------
 
 bool
 AddrSpace::ReadMem(int addr, int size, int *value)
 {
-    // fprintf(stderr, "Memory read: %d", addr);
     int data;
     ExceptionType Exception;
     int physicalAddress;
     
     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
-    // fprintf(stderr, "ohshit %d\n", size);
     
     Exception = Translate(addr, &physicalAddress, size, false);
     if (Exception != NoException) {
@@ -525,6 +544,21 @@ AddrSpace::ReadMem(int addr, int size, int *value)
     DEBUG('a', "\tvalue read = %8.8x\n", *value);
     return (true);
 }
+
+//----------------------------------------------------------------------
+// AddrSpace::WriteMem
+//   Our version of WriteMem
+//
+//      Write "size" (1, 2, or 4) bytes of the contents of "value" into
+//  virtual memory at location "addr".
+//
+//      Returns FALSE if the translation step from virtual to physical memory
+//      failed.
+//
+//  "addr" -- the virtual address to write to
+//  "size" -- the number of bytes to be written (1, 2, or 4)
+//  "value" -- the data to be written
+//----------------------------------------------------------------------
 
 bool
 AddrSpace::WriteMem(int addr, int size, int value)
@@ -560,6 +594,23 @@ AddrSpace::WriteMem(int addr, int size, int value)
     return true;
 }
 
+//----------------------------------------------------------------------
+// AddrSpace::Translate
+//  Our version of Translate.
+//
+//  Translate a virtual address into a physical address, using 
+//  either a page table or a TLB.  Check for alignment and all sorts 
+//  of other errors, and if everything is ok, set the use/dirty bits in 
+//  the translation table entry, and store the translated physical 
+//  address in "physAddr".  If there was an error, returns the type
+//  of the exception.
+//
+//  "virtAddr" -- the virtual address to translate
+//  "physAddr" -- the place to store the physical address
+//  "size" -- the amount of memory being read or written
+//  "writing" -- if TRUE, check the "read-only" bit in the TLB
+//----------------------------------------------------------------------
+
 ExceptionType
 AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing) 
 {
@@ -575,9 +626,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
     return AddressErrorException;
     }
-    
-    // we must have either a TLB or a page table, but not both!
-    // ASSERT(tlb == NULL || pageTable == NULL);   
+     
     ASSERT(pageTable != NULL);   
 
 // calculate the virtual page number, and offset within the page,
@@ -587,9 +636,8 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
     // => page table => vpn is index into table
     if (vpn >= numPages * PageSize) {
-        fprintf(stderr, "virtual page # %d, %d too large for page table size %d!\n", 
+        DEBUG('a', "virtual page # %d, %d too large for page table size %d!\n", 
             virtAddr, virtAddr, numPages * PageSize);
-        // fprintf(stderr, "hohoho");
         return AddressErrorException;
     } else if (!pageTable[vpn].valid) {
         DEBUG('a', "Page table miss, virtual address  %d!\n", 
@@ -626,20 +674,33 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     DEBUG('a', "phys addr = 0x%x\n", *physAddr);
     return NoException;
 }
+
 unsigned int AddrSpace::getNumPages(){
     return numPages;
 }
 
+//----------------------------------------------------------------------
+// AddrSpace::newSpace
+//  Creates a new address space for a process that has been forked
+//  If there is not enough space to create the new process, the 
+//  addrspace returns a -1 as the number of pages.  The created 
+//  addrspace will be deleted in the Fork if there is not enough space.
+//----------------------------------------------------------------------
+
 AddrSpace* AddrSpace::newSpace(){
     TranslationEntry *pageTable2 = new(std::nothrow) TranslationEntry[numPages];
+    FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
     int found = 0;
     int i;
-    // TODO: Check to make sure enough pages.
-    // currentThread->SaveState();
+
+    if (bitMap->NumClear() < numPages) {
+        // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
+        return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, -1);
+    }
+
     for (i = 0; i < numPages; i++) {
-        //fprintf(stderr, "numPages: %d\n", numPages);
         found = bitMap->Find();
-        //fprintf(stderr, "found %d\n", found);
+
         if(found == -1){
             i = numPages + 1;
         }
@@ -662,25 +723,20 @@ AddrSpace* AddrSpace::newSpace(){
                                         i*PageSize,i, found*PageSize, found);
         }
     }
-    fprintf(stderr, "What what in the butt\n");
     DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, final space is 0x%x\n",
                                         (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
-    FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
+    
+    // Copies all the open file descriptors from parent to child
     for(int k = 0; k < 16; k++){
-        fprintf(stderr, "I said what what\n");
         if(fileDescriptors[k] != NULL){
-            fprintf(stderr, "CCCCCOMBO BREAKER\n");
-            fileDescriptors[k]->CopyFile();
-                fprintf(stderr, "What what in the butt %d\n", k);
+            fileDescriptors[k]->CopyFile(); // Increases the reference count for the file
             fileDescriptors2[k] = fileDescriptors[k];
             fileDescriptors2[k]->inOut = fileDescriptors[k]->inOut;
         }else{
             fileDescriptors2[k] = NULL;
         }
     }
-    for(i = 0; i < 2; i++)
-    fprintf(stderr, "You wanna do it in my butt? In my butt?\n");
-    fprintf(stderr, "Let's do it in the butt OOOOOOOkkkaaayyyyyy.\n");
+
     return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages);
 
 }

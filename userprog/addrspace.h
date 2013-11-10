@@ -81,20 +81,19 @@ class AddrSpace {
 
 #include "copyright.h"
 #include "filesys.h"
-// #include "system.h"
-// #include "synch.h"
 
 #define UserStackSize   1024*2*2  // increase this as necessary!
 
+// Class used as a barrier for files to keep track of the number of times that the file is referenced
 class FileShield {
-    public:         // Raw console
+    public:         
     int refcount; 
-    int inOut;                   // with the interrupt handler
+    int inOut;  // Used to check if ConsoleInput or ConsoleOutput have been duped                
     OpenFile *file;
 
     FileShield(){
       refcount = 0;
-      inOut = 0;
+      inOut = 0; 
     }
 
     void CopyFile(){
@@ -111,8 +110,6 @@ class FileShield {
         delete file;
       }
     }
-    //Lock *lock;               // Only one read/write request
-                    // can be sent to the disk at a time
 };
 
 class AddrSpace {

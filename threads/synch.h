@@ -220,7 +220,7 @@ class Lock {
   private:
     const char* name;               // for debugging
     int freed;
-    const char* threadName;
+    int threadName;
     List *queue;       // threads waiting in P() for the value to be > 0
     // plus some other stuff you'll need to define
 };
