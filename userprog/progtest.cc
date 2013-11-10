@@ -13,6 +13,7 @@
 #include "console.h"
 #include "addrspace.h"
 #include "synch.h"
+#include <string.h>
 #include <new>
 
 //----------------------------------------------------------------------
@@ -37,9 +38,31 @@ StartProcess(char *filename)
 
     delete executable;			// close file
 
+    
+
     space->InitRegisters();		// set the initial register values
 
     space->RestoreState();		// load page table register
+    int addr[1];
+    int sp = machine->ReadRegister(StackReg);
+    int len = strlen(filename);
+
+    sp -= len;
+    int i;
+    for(i = 0; i < len; i++){
+        space->WriteMem(sp + i, sizeof(char), filename[i]);
+    }
+    addr[0] = sp;
+    sp = sp & ~3;
+    sp -= sizeof(int);
+    space->WriteMem(sp, sizeof(int), addr[0]);
+    
+
+
+    machine->WriteRegister(4, 1);
+    machine->WriteRegister(5, sp);
+
+    machine->WriteRegister(StackReg, sp - 8);
 
     machine->Run();			// jump to the user progam
     ASSERT(false);			// machine->Run never returns;
