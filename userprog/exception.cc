@@ -567,8 +567,9 @@ ExceptionHandler(ExceptionType which)
                 forking->V();
                 
                 newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
-                if (newSpacer->getNumPages() == -1) {
+                if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
+                  DEBUG('a', "Not enough space to fork child.\n");
                   delete newSpacer;
                   machine->WriteRegister(2, -1);
                 }
@@ -611,8 +612,9 @@ ExceptionHandler(ExceptionType which)
 
                 newSpacer = new AddrSpace(open);
                 delete open;
-                if (newSpacer->getNumPages() == -1) {
+                if (newSpacer->enoughSpace == 0) {
                   // There was not enough room, return a -1
+                  DEBUG('a', "Not enough room to create new Address Space.\n");
                   machine->WriteRegister(2, -1);
                 }
                 
@@ -675,7 +677,7 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(4, argcount);
                   machine->WriteRegister(5, sp);
 
-                  machine->WriteRegister(StackReg, sp - argcount*4);
+                  machine->WriteRegister(StackReg, sp - 8);
    
                   machine->Run();
                 }
