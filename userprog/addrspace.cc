@@ -349,6 +349,9 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     fileDescriptors[1]->inOut = -1; 
     fileDescriptors[0]->CopyFile();
     fileDescriptors[1]->CopyFile();
+    for(i = 2; i < 16; i++){
+        fileDescriptors[i] = NULL;
+    }
 
     int babyAddr = 0;
     // then, copy in the code and data segments into memory
@@ -633,9 +636,8 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
     // => page table => vpn is index into table
     if (vpn >= numPages * PageSize) {
-        fprintf(stderr, "virtual page # %d, %d too large for page table size %d!\n", 
+        DEBUG('a', "virtual page # %d, %d too large for page table size %d!\n", 
             virtAddr, virtAddr, numPages * PageSize);
-        // fprintf(stderr, "hohoho");
         return AddressErrorException;
     } else if (!pageTable[vpn].valid) {
         DEBUG('a', "Page table miss, virtual address  %d!\n", 
@@ -697,8 +699,8 @@ AddrSpace* AddrSpace::newSpace(){
     }
 
     for (i = 0; i < numPages; i++) {
-        
         found = bitMap->Find();
+
         if(found == -1){
             i = numPages + 1;
         }
@@ -730,8 +732,11 @@ AddrSpace* AddrSpace::newSpace(){
             fileDescriptors[k]->CopyFile(); // Increases the reference count for the file
             fileDescriptors2[k] = fileDescriptors[k];
             fileDescriptors2[k]->inOut = fileDescriptors[k]->inOut;
+        }else{
+            fileDescriptors2[k] = NULL;
         }
     }
+
     return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages);
 
 }
