@@ -383,7 +383,7 @@ Initialize(int argc, char **argv)
     scheduler = new(std::nothrow) Scheduler();      // initialize the ready queue
     if (randomYield)                // start the timer (if needed)
     timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
-    // timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
+    
     threadToBeDestroyed = NULL;
 
     // We didn't explicitly allocate the current thread we are running in.
@@ -399,8 +399,8 @@ Initialize(int argc, char **argv)
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
-    forking = new(std::nothrow) Semaphore("forking", 0);
-    
+    forking = new(std::nothrow) Semaphore("forking", 1);
+    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
     // bitMap->Print();
 #endif
 

@@ -284,9 +284,11 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Exit\n");
                 curr = root;
                 DEBUG('a', "Thread exiting %d.\n", (int)currentThread);
+                forking->P();
                 while(curr->child != (int) currentThread&& curr->next !=NULL){
                   curr = curr->next;  // Iterate to find the correct semphore to V
                 }
+                forking->V();
                 whence = machine->ReadRegister(4); // whence is the exit value for the thread.
                 curr->exit = whence;
                 curr->death->V();
@@ -298,10 +300,12 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Join\n");
                 whence = machine->ReadRegister(4);
                 curr = root;
+                forking->P();
                 while(( curr->child != whence ||curr->parent != (int)currentThread) && curr->next != NULL){
                   curr = curr->next;  // Iterate to find the correct semapohre to P on
                   
                 }
+                forking->V();
                 if(curr->parent != (int)currentThread && curr->child !=whence){
                   DEBUG('a', "Cannot find appropriate thread ID to join on.\n");
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
@@ -394,6 +398,7 @@ ExceptionHandler(ExceptionType which)
                 }
                 break;
         case SC_Read:
+                forking->P();
                 DEBUG('a', "Read\n");
                 size = machine->ReadRegister(5);
                 whence = machine->ReadRegister(4);
@@ -450,6 +455,7 @@ ExceptionHandler(ExceptionType which)
                   }
                   delete stringArg;
                 }
+                forking->V();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -457,6 +463,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Write:
                 DEBUG('a', "Write\n");
+                forking->P();
                 // Issue name: Oh God Why?
                 // For some ungodly reason size decides to be 0 immediately after the for loop.  Why?  No idea.  If we have a different size
                 // it for some reason then works and sets the other different size to 0.  Another fix we found... was to just reset size every
@@ -517,6 +524,7 @@ ExceptionHandler(ExceptionType which)
                   } 
                   delete [] stringArg;           
                 }
+                forking->V();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -551,11 +559,12 @@ ExceptionHandler(ExceptionType which)
                   interrupt->Halt();
                 }
                 curr = root;
-
+                forking->P();
                 while(curr->next != NULL){
                   curr = curr->next;
 
                 }
+                forking->V();
                 
                 newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
                 if (newSpacer->getNumPages() == -1) {
