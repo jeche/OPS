@@ -547,7 +547,7 @@ ExceptionHandler(ExceptionType which)
                 }
                 
                 newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
-                if (newSpacer->numPages == -1) {
+                if (newSpacer->getNumPages() == -1) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
                   delete newSpacer;
                   machine->WriteRegister(2, -1);
@@ -591,7 +591,7 @@ ExceptionHandler(ExceptionType which)
 
                 newSpacer = new AddrSpace(open);
                 delete open;
-                if (newSpacer->numPages == -1) {
+                if (newSpacer->getNumPages() == -1) {
                   // There was not enough room, return a -1
                   machine->WriteRegister(2, -1);
                 }
