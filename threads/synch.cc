@@ -236,7 +236,7 @@ Lock::Lock(const char* debugName)
 {
     name = debugName;
     freed = 1; // 1 denotes free, 0 denotes busy
-    threadName = NULL;
+    threadName = -1;
     queue = new(std::nothrow) List; 
 }
 Lock::~Lock() {
@@ -258,7 +258,7 @@ void Lock::Acquire()
         (void) interrupt->SetLevel(oldLevel);   // re-enable interrupts
     }
     // only one thread can reach this point at a time
-    threadName = currentThread->getName();    
+    threadName = (int)currentThread;    
 }
 
 void Lock::Release() 
@@ -273,7 +273,7 @@ void Lock::Release()
     if (thread != NULL)    // wake up the first thread waiting in Acquire() if there is one
         scheduler->ReadyToRun(thread);
     freed = 1; // the lock is free to be acquired by another thread
-    threadName = NULL;  // ensures the current thread can't do something with the lock since it's released it
+    threadName = -1;  // ensures the current thread can't do something with the lock since it's released it
 
     (void) interrupt->SetLevel(oldLevel);
 }
@@ -282,7 +282,7 @@ bool Lock::isHeldByCurrentThread()
 {
     // checks to be sure that the threadName (set in Acquire after a thread has the lock)
     // is the same as the name of the current thread.  Used for assertions
-    if(strcmp(threadName, currentThread->getName()) == 0)
+    if(threadName = (int)cuurentThread)
     {
         return true;
     }
