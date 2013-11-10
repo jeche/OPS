@@ -15,6 +15,9 @@ main()
 
   SpaceId kid;
   int joinval, i;
+  char *args[1];
+
+  args[0] = (char *)0;
 
   prints("PARENT exists\n", ConsoleOutput);
   
@@ -33,7 +36,7 @@ main()
 
     }
     else {
-      /*Exec("kid");*/
+      Exec("kid", args);
       prints("ERROR: Exec failure\n", ConsoleOutput);
       Halt();
     }

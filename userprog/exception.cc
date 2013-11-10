@@ -397,7 +397,7 @@ ExceptionHandler(ExceptionType which)
                 whence = machine->ReadRegister(4);
                 descriptor = machine->ReadRegister(6);
                 if(size > 0){
-                  stringArg = new (std::nothrow) char[size];
+                  stringArg = new (std::nothrow) char[size + 1];
                   if (descriptor == ConsoleInput) {
                     if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
                       fromInput = 1;
@@ -416,9 +416,10 @@ ExceptionHandler(ExceptionType which)
                       else{
                         descriptor = 0;
                         size = open->Read(stringArg, size);
-                        if(size != 1){
-                          stringArg[size - 1] = '\0';
-                        }
+                        // if(size != 1){
+                        //   ;
+                        //   //stringArg[size] = '\0';
+                        // }
                         for(i=0; i < size; i++){
                           currentThread->space->WriteMem(whence++, sizeof(char), stringArg[i]);
                           if(stringArg[i] == '\0') break;
@@ -470,7 +471,7 @@ ExceptionHandler(ExceptionType which)
                       currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
                       if(stringArg[i] == '\0')break;
                     }
-                      stringArg[size]='\0';
+                      //stringArg[size]='\0';
                   }
                   else if(size == 1 && !toOutput){
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[0]);
@@ -494,7 +495,7 @@ ExceptionHandler(ExceptionType which)
                       synchConsole->PutChar(whee);
 
                     }
-                    synchConsole->PutChar('\0');
+                    //synchConsole->PutChar('\0');
                   }
                   else if (descriptor == ConsoleInput){ // Should this also check for toInput? *****
                       DEBUG('a', "Invalid file descriptor, cannot write to ConsoleInput.\n");
