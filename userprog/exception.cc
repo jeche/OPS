@@ -376,7 +376,7 @@ ExceptionHandler(ExceptionType which)
                       i = 17;
                     }
                   }
-                  if (i == 17) {
+                  if (i == 18) {
                     machine->WriteRegister(2, descriptor);
                   }
                   else {

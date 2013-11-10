@@ -7,7 +7,7 @@
 #include "syscall.h"
 
 int
-main()
+main(int argc, char **argv)
 {
   int i, j;
 
