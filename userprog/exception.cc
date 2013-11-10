@@ -376,7 +376,12 @@ ExceptionHandler(ExceptionType which)
                       i = 17;
                     }
                   }
-                  machine->WriteRegister(2, descriptor);
+                  if (i == 17) {
+                    machine->WriteRegister(2, descriptor);
+                  }
+                  else {
+                    machine->WriteRegister(2, -1);
+                  }
                   DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
                   delete [] stringArg;
                   incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -540,15 +545,23 @@ ExceptionHandler(ExceptionType which)
                   curr = curr->next;
 
                 }
-                t = new(std::nothrow) Thread("clone");
-                curr->next = new(std::nothrow) FamilyNode(t);  // Add new parent child relation to family tree.
+                
                 newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
-                t->space = newSpacer; // Give child its brand new space.
-                t->SaveUserState(); // Write all current machine registers to userRegisters for child.
-                currentThread->SaveUserState(); // Save just in case the Fork gets weird.
-                t->Fork(CopyRegs, (int)currentThread); // Fork child.
-                machine->WriteRegister(2, (int)t); // Write the appropriate return val for parent
-                currentThread->SaveUserState(); // Save again in case of weirdness.
+                if (newSpacer->numPages == -1) {
+                  // There was not enough space to create the child.  Return a -1 and delete the created addrspace
+                  delete newSpacer;
+                  machine->WriteRegister(2, -1);
+                }
+                else {
+                  t = new(std::nothrow) Thread("clone");
+                  curr->next = new(std::nothrow) FamilyNode(t);  // Add new parent child relation to family tree.
+                  t->space = newSpacer; // Give child its brand new space.
+                  t->SaveUserState(); // Write all current machine registers to userRegisters for child.
+                  currentThread->SaveUserState(); // Save just in case the Fork gets weird.
+                  t->Fork(CopyRegs, (int)currentThread); // Fork child.
+                  machine->WriteRegister(2, (int)t); // Write the appropriate return val for parent
+                  currentThread->SaveUserState(); // Save again in case of weirdness.
+                }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -578,68 +591,74 @@ ExceptionHandler(ExceptionType which)
 
                 newSpacer = new AddrSpace(open);
                 delete open;
-
-                for(i = 0; i < 16; i++){
-                  if(currentThread->space->fileDescriptors[i]!= NULL){
-                    newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
-                  }
+                if (newSpacer->numPages == -1) {
+                  // There was not enough room, return a -1
+                  machine->WriteRegister(2, -1);
                 }
-                whence = machine->ReadRegister(5);
                 
-                newSpacer->InitRegisters();
-                sp = machine->ReadRegister(StackReg);
-
-                len = strlen(stringArg) + 1;
-                sp -= len;
-                for(i = 0; i < len; i++){
-                  newSpacer->WriteMem(sp + i, sizeof(char), stringArg[i]);
-                }
-                argvAddr[0] = sp;
-
-                
-                for(i = 1; i < 16; i++){
-                  memset(stringArg, 0, sizeof(stringArg));
-                  currentThread->space->ReadMem(whence, sizeof(int), &herece);
-                  if (herece == 0){
-                    break;
+                else {
+                  for(i = 0; i < 16; i++){
+                    if(currentThread->space->fileDescriptors[i]!= NULL){
+                      newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
+                    }
                   }
-                  for(j = 0; j < 127; j++){
-                    currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
-                    if(stringArg[j] == '\0') break;
-                  }
-                  DEBUG('a', "STRINGARG %s\n",stringArg);
+                  whence = machine->ReadRegister(5);
+                  
+                  newSpacer->InitRegisters();
+                  sp = machine->ReadRegister(StackReg);
 
                   len = strlen(stringArg) + 1;
                   sp -= len;
-
-                  for(j = 0; j < len; j++){
-                    newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                  for(i = 0; i < len; i++){
+                    newSpacer->WriteMem(sp + i, sizeof(char), stringArg[i]);
                   }
-                  argvAddr[i] = sp;
-                  whence = whence + sizeof(int);
+                  argvAddr[0] = sp;
 
+                  
+                  for(i = 1; i < 16; i++){
+                    memset(stringArg, 0, sizeof(stringArg));
+                    currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                    if (herece == 0){
+                      break;
+                    }
+                    for(j = 0; j < 127; j++){
+                      currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
+                      if(stringArg[j] == '\0') break;
+                    }
+                    DEBUG('a', "STRINGARG %s\n",stringArg);
+
+                    len = strlen(stringArg) + 1;
+                    sp -= len;
+
+                    for(j = 0; j < len; j++){
+                      newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                    }
+                    argvAddr[i] = sp;
+                    whence = whence + sizeof(int);
+
+                  }
+                  argcount = i;
+                  sp = sp & ~3;
+                  DEBUG('a', "argcount %d\n", argcount);
+                  sp -= sizeof(int) * argcount;
+
+                  for(i = 0; i < argcount; i++){
+                     newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
+                  }
+
+                  delete currentThread->space;
+                  
+                  currentThread->space = newSpacer;
+                  
+                  newSpacer->RestoreState();
+
+                  machine->WriteRegister(4, argcount);
+                  machine->WriteRegister(5, sp);
+
+                  machine->WriteRegister(StackReg, sp - argcount*4);
+   
+                  machine->Run();
                 }
-                argcount = i;
-                sp = sp & ~3;
-                DEBUG('a', "argcount %d\n", argcount);
-                sp -= sizeof(int) * argcount;
-
-                for(i = 0; i < argcount; i++){
-                   newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
-                }
-
-                delete currentThread->space;
-                
-                currentThread->space = newSpacer;
-                
-                newSpacer->RestoreState();
-
-                machine->WriteRegister(4, argcount);
-                machine->WriteRegister(5, sp);
-
-                machine->WriteRegister(StackReg, sp - argcount*4);
- 
-                machine->Run();
                 break;
         case SC_Dup:
                 descriptor = machine->ReadRegister(4);
