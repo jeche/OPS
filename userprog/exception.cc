@@ -230,108 +230,13 @@ HandleTLBFault(int vaddr)
 //  "which" is the kind of exception.  The list of possible exceptions 
 //  are in machine.h.
 //----------------------------------------------------------------------
-
-// OpenFile** fileDescriptors = new (std::nothrow) OpenFile*[16]; // Only 16 open files allowed at a time****  First two are console input and console output.
-// static Semaphore *readAvail= new(std::nothrow) Semaphore("read avail", 0);
-// static Semaphore *writeDone= new(std::nothrow) Semaphore("write done", 0);
-// static void ReadAvail(int) { readAvail->V(); }
-// static void WriteDone(int) { writeDone->V(); }
-// static Console *console;
-
-// int *fileDescriptors[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-// int start = 0;
-// for(int j = 0; j < 16; j++){
-  // fileDescriptors[j] = start;
-// }
-
-// ExceptionType
-// Translate(int virtAddr, int* physAddr, int size, bool writing) 
-// {
-//     int i;
-//     unsigned int vpn, offset;
-//     TranslationEntry *entry;
-//     unsigned int pageFrame;
-
-//     DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
-
-// // check for alignment errors
-//     if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
-//   DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
-//   return AddressErrorException;
-//     }
-    
-//     // we must have either a TLB or a page table, but not both!
-//     ASSERT(machine->tlb == NULL || machine->pageTable == NULL); 
-//     ASSERT(machine->tlb != NULL || machine->pageTable != NULL); 
-
-// // calculate the virtual page number, and offset within the page,
-// // from the virtual address
-//     vpn = (unsigned) virtAddr / PageSize;
-//     offset = (unsigned) virtAddr % PageSize;
-    
-//     if (machine->tlb == NULL) {    // => page table => vpn is index into table
-//   if (vpn >= machine->pageTableSize) {
-//       DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
-//       virtAddr, machine->pageTableSize);
-//       return AddressErrorException;
-//   } else if (!machine->pageTable[vpn].valid) {
-//       DEBUG('a', "Page table miss, virtual address  %d!\n", 
-//       virtAddr);
-//       return PageFaultException;
-//   }
-//   entry = &machine->pageTable[vpn];
-//     } else {
-//         for (entry = NULL, i = 0; i < TLBSize; i++)
-//           if (machine->tlb[i].valid && ((unsigned)machine->tlb[i].virtualPage == vpn)) {
-//     entry = &machine->tlb[i];      // FOUND!
-//     break;
-//       }
-//   if (entry == NULL) {        // not found
-//           DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
-//           return PageFaultException;    // really, this is a TLB fault,
-//             // the page may be in memory,
-//             // but not in the TLB
-//   }
-//     }
-
-//     if (entry->readOnly && writing) { // trying to write to a read-only page
-//   DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
-//   return ReadOnlyException;
-//     }
-//     pageFrame = entry->physicalPage;
-
-//     // if the pageFrame is too big, there is something really wrong! 
-//     // An invalid translation was loaded into the page table or TLB. 
-//     if (pageFrame >= NumPhysPages) { 
-//   DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
-//   return BusErrorException;
-//     }
-//     entry->use = false;   // set the use, dirty bits
-//     if (writing)
-//   entry->dirty = true;
-//     *physAddr = pageFrame * PageSize + offset;
-//     ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
-//     DEBUG('a', "phys addr = 0x%x\n", *physAddr);
-//     return NoException;
 // }
 
 void CopyRegs(int k){
-  // // fprintf(stderr, "Oh noes %d\n", (int) currentThread);
-  // // fprintcurrentThrea
-  // // currentThread->SaveUserState();
-  // currentThread->RestoreUserState();
-  // machine->WriteRegister(2, 0);
-  // // t->SaveUserState();
-  // // fprintf(stderr, "oh hey there\n");
-  // // t->RestoreUserState();
-  // Thread* t = (Thread*)k;
-  // t->SaveUserState();
-  // fprintf(stderr, "\nCOPYREGS %d\n", (int)currentThread);
   int incrementPC;
   currentThread->RestoreUserState();
   currentThread->space->RestoreState();
   machine->WriteRegister(2, 0);
-  // fprintf(stderr, "oh hey there\n");
   incrementPC=machine->ReadRegister(NextPCReg)+4;
   machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
   machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -366,7 +271,6 @@ ExceptionHandler(ExceptionType which)
     int argvAddr[16];
 
 
-    // fprintf(stderr, "which: %d type: %d\n", (int)which, type);
   switch (which) {
       case SyscallException:
       switch (type) {
@@ -377,7 +281,7 @@ ExceptionHandler(ExceptionType which)
         case SC_Exit:
                 DEBUG('a', "Exit\n");
                 curr = root;
-                fprintf(stderr, "Thread exiting %d.\n", (int)currentThread);
+                DEBUG('a', "Thread exiting %d.\n", (int)currentThread);
                 while(curr->child != (int) currentThread&& curr->next !=NULL){
                   curr = curr->next;  // Iterate to find the correct semphore to V
                 }
@@ -626,23 +530,29 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Fork:
                 DEBUG('a', "Fork\n");
+                if(root==NULL){
+                  DEBUG('a', "Root for the family tree is nonexistent.\n");
+                  interrupt->Halt();
+                }
                 curr = root;
+
                 while(curr->next != NULL){
                   curr = curr->next;
+
                 }
                 t = new(std::nothrow) Thread("clone");
-                curr->next = new(std::nothrow) FamilyNode(t); // Add new parent child relation to family tree.
+                curr->next = new(std::nothrow) FamilyNode(t);  // Add new parent child relation to family tree.
                 newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
                 t->space = newSpacer; // Give child its brand new space.
                 t->SaveUserState(); // Write all current machine registers to userRegisters for child.
                 currentThread->SaveUserState(); // Save just in case the Fork gets weird.
                 t->Fork(CopyRegs, (int)currentThread); // Fork child.
                 machine->WriteRegister(2, (int)t); // Write the appropriate return val for parent
-                currentThread->SaveUserState();// Save again in case of weirdness.
+                currentThread->SaveUserState(); // Save again in case of weirdness.
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-                machine->WriteRegister(NextPCReg, incrementPC);    
+                machine->WriteRegister(NextPCReg, incrementPC);  
                 break;
         case SC_Exec:
                 DEBUG('a', "Exec\n");
@@ -785,4 +695,3 @@ ExceptionHandler(ExceptionType which)
 #define SC_Write  7
 #define SC_Close  8
 #define SC_Fork   9
-

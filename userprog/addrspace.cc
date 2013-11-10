@@ -347,6 +347,9 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     fileDescriptors[1]->inOut = -1; 
     fileDescriptors[0]->CopyFile();
     fileDescriptors[1]->CopyFile();
+    for(i = 2; i < 16; i++){
+        fileDescriptors[i] = NULL;
+    }
 
     int babyAddr = 0;
     // then, copy in the code and data segments into memory
@@ -634,9 +637,9 @@ AddrSpace* AddrSpace::newSpace(){
     // TODO: Check to make sure enough pages.
     // currentThread->SaveState();
     for (i = 0; i < numPages; i++) {
-        
+        //fprintf(stderr, "numPages: %d\n", numPages);
         found = bitMap->Find();
-        // fprintf(stderr, "found %d\n", found);
+        //fprintf(stderr, "found %d\n", found);
         if(found == -1){
             i = numPages + 1;
         }
@@ -659,16 +662,25 @@ AddrSpace* AddrSpace::newSpace(){
                                         i*PageSize,i, found*PageSize, found);
         }
     }
+    fprintf(stderr, "What what in the butt\n");
     DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, final space is 0x%x\n",
                                         (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
     FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
     for(int k = 0; k < 16; k++){
+        fprintf(stderr, "I said what what\n");
         if(fileDescriptors[k] != NULL){
+            fprintf(stderr, "CCCCCOMBO BREAKER\n");
             fileDescriptors[k]->CopyFile();
+                fprintf(stderr, "What what in the butt %d\n", k);
             fileDescriptors2[k] = fileDescriptors[k];
             fileDescriptors2[k]->inOut = fileDescriptors[k]->inOut;
+        }else{
+            fileDescriptors2[k] = NULL;
         }
     }
+    for(i = 0; i < 2; i++)
+    fprintf(stderr, "You wanna do it in my butt? In my butt?\n");
+    fprintf(stderr, "Let's do it in the butt OOOOOOOkkkaaayyyyyy.\n");
     return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages);
 
 }
