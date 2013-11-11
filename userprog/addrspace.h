@@ -115,6 +115,7 @@ class FileShield {
 class AddrSpace {
   public:
     FileShield** fileDescriptors;
+    int pid;
     int enoughSpace = 1;
     AddrSpace(OpenFile *executable);  // Create an address space,
           // initializing it with the program

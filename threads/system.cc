@@ -20,6 +20,7 @@ Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
 
+
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
 #endif
@@ -241,6 +242,7 @@ Semaphore *forking;
 SynchConsole *synchConsole;
 BitMap *bitMap;
 FamilyNode* root;
+int pid;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -394,7 +396,8 @@ Initialize(int argc, char **argv)
 
     interrupt->Enable();
     CallOnUserAbort(Cleanup);           // if user hits ctl-C
-    root = new(std::nothrow) FamilyNode(currentThread);
+    pid = 0;
+    root = new(std::nothrow) FamilyNode(pid, pid);
 #ifdef USER_PROGRAM
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");

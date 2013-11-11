@@ -385,6 +385,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         }
     }
     clean = false;
+    pid = 0;
 
 }
 
@@ -399,6 +400,7 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int 
     fileDescriptors = avengers;
     enoughSpace = newEnoughSpace;
     clean = false;
+    pid = 0;
 }
 
 //----------------------------------------------------------------------

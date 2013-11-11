@@ -283,41 +283,46 @@ ExceptionHandler(ExceptionType which)
         case SC_Exit:
                 DEBUG('a', "Exit\n");
                 curr = root;
-                prev = root;
+                // prev = root;
                 //fprintf(stderr, "\n EXITING THREAD IS: %d\n", (int)currentThread);
                 DEBUG('a', "Thread exiting %d.\n", (int)currentThread);
                 forking->P();
-                while(curr->child != (int) currentThread&& curr->next !=NULL){
-                  prev = curr;
+                while(curr->child != currentThread->space->pid && curr->next !=NULL){
+                  // prev = curr;
                   curr = curr->next;  // Iterate to find the correct semphore to V
                 }
-                if(curr->touched){
-                  prev->next = curr->next;
+                // if(curr->touched){
+                  // prev->next = curr->next;
+                // }
+                // else{
+                  // curr->touched = true;
+                // }
+                if(curr->child != currentThread->space->pid){
+                  DEBUG('a', "How the hell do you break an exit?\n");
+                  fprintf(stderr, "How the hell do you break an exit?\n");
                 }
                 else{
-                  curr->touched = true;
+                  whence = machine->ReadRegister(4); // whence is the exit value for the thread.
+                  curr->exit = whence;
+                  forking->V();
+                  curr->death->V();
+                  delete currentThread->space;
+                  currentThread->Finish();
+                  DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
                 }
-                
-                whence = machine->ReadRegister(4); // whence is the exit value for the thread.
-                curr->exit = whence;
-                forking->V();
-                curr->death->V();
-                delete currentThread->space;
-                currentThread->Finish();
-                DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
                 break;
         case SC_Join:
                 DEBUG('a', "Join\n");
                 whence = machine->ReadRegister(4);
                 curr = root;
-                prev = root;
+                // prev = root;
                 forking->P();
-                while(( curr->child != whence ||curr->parent != (int)currentThread) && curr->next != NULL){
-                  prev = curr;
+                while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
+                  // prev = curr;
                   curr = curr->next;  // Iterate to find the correct semapohre to P on
                 }
                 
-                if(curr->parent != (int)currentThread && curr->child !=whence){
+                if(curr->parent != currentThread->space->pid && curr->child != whence){
                   forking->V();
                   DEBUG('a', "Cannot find appropriate thread ID to join on.\n");
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
@@ -328,7 +333,7 @@ ExceptionHandler(ExceptionType which)
                   //fprintf(stderr, "\n PARENT %d JOINING ON %d\n", (int)currentThread, whence);
                   DEBUG('a', "Parent %d, joining for %d.\n");
                   curr->death->P(); // Wait for child to die.
-                  prev->next = curr->next;
+                  // prev->next = curr->next;
                   machine->WriteRegister(2, curr->exit); // Return the exit value.
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -577,29 +582,35 @@ ExceptionHandler(ExceptionType which)
                 }
                 curr = root;
                 forking->P();
+                pid++; // bump pid before adding kid
+                size = pid;
                 while(curr->next != NULL){
                   curr = curr->next;
 
                 }
-                forking->V();
-                
+                       
                 newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
+                newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
                   DEBUG('a', "Not enough space to fork child.\n");
                   delete newSpacer;
                   machine->WriteRegister(2, -1);
+                  pid--;
+                  forking->V();
                 }
                 else {
                   t = new(std::nothrow) Thread("clone");
-                  curr->next = new(std::nothrow) FamilyNode(t);  // Add new parent child relation to family tree.
+                  curr->next = new(std::nothrow) FamilyNode(newSpacer->pid, currentThread->space->pid);  // Add new parent child relation to family tree.
                   t->space = newSpacer; // Give child its brand new space.
                   t->SaveUserState(); // Write all current machine registers to userRegisters for child.
                   currentThread->SaveUserState(); // Save just in case the Fork gets weird.
+                  forking->V();
                   t->Fork(CopyRegs, (int)currentThread); // Fork child.
-                  machine->WriteRegister(2, (int)t); // Write the appropriate return val for parent
+                  machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
                   currentThread->SaveUserState(); // Save again in case of weirdness.
                 }
+
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -629,6 +640,7 @@ ExceptionHandler(ExceptionType which)
 
                 newSpacer = new AddrSpace(open);
                 delete open;
+                newSpacer->pid = currentThread->space->pid; // Transfer pid
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough room, return a -1
                   DEBUG('a', "Not enough room to create new Address Space.\n");

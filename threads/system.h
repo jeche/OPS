@@ -201,11 +201,7 @@ extern Scheduler *scheduler;			// the ready list
 extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
-extern Timer *timer2;
-extern SynchConsole *synchConsole;
-extern Semaphore *forking;
 
-extern BitMap *bitMap;
 
 
 class FamilyNode{
@@ -217,10 +213,10 @@ public:
     Semaphore* death;
     FamilyNode* next;
 
-    FamilyNode(Thread* t){
+    FamilyNode(int t, int p){
         death = new(std::nothrow) Semaphore("deadKid", 0);
-        parent = (int) currentThread;
-        child = (int) t;
+        parent = p;
+        child = t;
         touched = false;
         next=NULL;
     };
@@ -232,11 +228,17 @@ public:
         }
     };
 };
-extern FamilyNode* root;
+
 
 #ifdef USER_PROGRAM
 #include "machine.h"
 extern Machine* machine;	// user program memory and registers
+extern Timer *timer2;
+extern SynchConsole *synchConsole;
+extern Semaphore *forking;
+extern BitMap *bitMap;
+extern FamilyNode* root;
+extern int pid;
 #endif
 
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
