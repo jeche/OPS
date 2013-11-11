@@ -284,7 +284,7 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Exit\n");
                 curr = root;
                 prev = root;
-                fprintf(stderr, "\n EXITING THREAD IS: %d\n", (int)currentThread);
+                //fprintf(stderr, "\n EXITING THREAD IS: %d\n", (int)currentThread);
                 DEBUG('a', "Thread exiting %d.\n", (int)currentThread);
                 forking->P();
                 while(curr->child != (int) currentThread&& curr->next !=NULL){
@@ -325,7 +325,7 @@ ExceptionHandler(ExceptionType which)
                 else{
                   curr->touched = true;
                   forking->V();
-                  fprintf(stderr, "\n PARENT %d JOINING ON %d\n", (int)currentThread, whence);
+                  //fprintf(stderr, "\n PARENT %d JOINING ON %d\n", (int)currentThread, whence);
                   DEBUG('a', "Parent %d, joining for %d.\n");
                   curr->death->P(); // Wait for child to die.
                   prev->next = curr->next;
@@ -443,6 +443,7 @@ ExceptionHandler(ExceptionType which)
                       else{
                         descriptor = 0;
                         size = open->Read(stringArg, size);
+                        //fprintf(stdout, "Thread: %d Read<%s> Size:%d\n", (int)currentThread, stringArg, size);
                         // if(size != 1){
                         //   ;
                         //   //stringArg[size] = '\0';

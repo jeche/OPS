@@ -697,7 +697,7 @@ AddrSpace* AddrSpace::newSpace(){
     FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
     int found = 0;
     int i;
-    fprintf(stderr, "\n<%d>\n", bitMap->NumClear());
+    //fprintf(stderr, "\n<%d>\n", bitMap->NumClear());
     if (bitMap->NumClear() < numPages) {
         // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
         return new(std::nothrow) AddrSpace(pageTable2, fileDescriptors2, numPages, 0);

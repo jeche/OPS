@@ -89,7 +89,7 @@ main(int argc, char*argv[])
     char scriptBuf[8];
 
     char prompt[2], buffer[120];
-    int i, j, script, redir, end;
+    int i, j, script, redir, end, read, lstart;
     int exitval;
     int argcount;  
     char *args[16];
@@ -106,10 +106,14 @@ main(int argc, char*argv[])
 
     if(argc==2 && argv[1][0]=='s'&& argv[1][1]=='m'&& argv[1][2]=='o'&& argv[1][3]=='d'&& argv[1][4]=='e'){
         script=1;
-        Write("InS\n", 4, output);
+        /*Write("InS\n", 4, output);*/
     }
     while( 1 ){
-        if(script){prints("on and on and on", output);}
+        /*if(script){prints("on and on and on", output);}*/
+        for(i=0;i<120;i++){
+            buffer[i]='\0';
+        }
+        for(i=0;i<30;i++){filename[i]='\0';}
         if(!script){
             Write(prompt, 2, output);
         }
@@ -118,31 +122,45 @@ main(int argc, char*argv[])
         /*script=0;*/
         do {
         
-         Read(&buffer[i], 1, input);
-         /*if(buffer[i]=-1){end=1;};*/
+         read = Read(&buffer[i], 1, input);
+         /*Write("<", 1, output);
+         Write(&buffer[i], 1, output);
+         Write(buffer[i], 1, output);
+         Write(">", 1, output);*/
+         if(read!=1){end=1;break;}
         } while( buffer[i++] != '\n' );
 
         buffer[--i] = '\0';
+        /*prints("\n", output);
+        printd(end, output);*/
         /*prints(buffer, output);
         prints("\n", output);*/
-        prints(buffer, output);
+        /*prints(buffer, output);*/
         argcount=0;
         /*Check for a # and treat as Comment as in do not proceed*/
-        if(script){prints(buffer, output);Write(&buffer[0], 1, output);}
-
-        if(buffer[0] != '#' || buffer[0] == -1){
-            prints("hia", output);
+        /*if(script){prints(buffer, output);Write(&buffer[0], 1, output);}*/
+        i=0;
+        while(buffer[i]==' '||buffer[i]=='\t'){i++;/*prints("i");*/}
+        lstart=i;
+        /*Write(&buffer[i], 1, output);*/
+        if(buffer[i] != '#' && buffer[i] != 0){
+            /*prints("hia", output);*/
             /* Get the Process Name */
-            i=0;
-            while(buffer[i]!=' ' && buffer[i]!='\0'){
-                filename[i] = buffer[i];
-                i++;
+
+            j=0;
+            while(buffer[i]!=' ' && buffer[i]!='\0' && buffer[i]!='\t'){
+                /*Write(&buffer[i], 1, output);*/
+                filename[j] = buffer[i];
+                i++;j++;
             }
             filename[i] = '\0';
+            /*Write("\n", 1, output);*/
+            /*prints(filename, output);*/
            
 
             /* Open the File and see if it is a script */
             fd = Open(filename);
+            /*prints("hiya", output);*/
             if(fd == -1){
                 prints("<", output);
                 prints(filename, output);
@@ -150,6 +168,7 @@ main(int argc, char*argv[])
                 prints("Executable File or Script does not Exist\n", output);
             }
             else{
+
                 j = Read(scriptBuf, 7, fd);
                 if(j==7 && scriptBuf[0] == '#' && scriptBuf[1] == 'S' && scriptBuf[2] == 'C' && scriptBuf[3] == 'R' && scriptBuf[4] == 'I' && scriptBuf[5] == 'P' && scriptBuf[6] == 'T' ){/* Scripting Section */
                     /*   If the file is a script then we want to */
@@ -160,33 +179,33 @@ main(int argc, char*argv[])
                     
                     newProc = Fork();
                     if(newProc == 0){
-                        Write("h1\n", 3, output);
+                        /*Write("h1\n", 3, output);*/
                         j=0;
-                       /* if(buffer[i]!='\0'){
-                                while(buffer[i]==' '){i++;}
+                        if(buffer[i]!='\0'){
+                                while(buffer[i]==' '||buffer[i]=='\t'){i++;}
                                 if(buffer[i]=='>'){
                                     i++;
-                                    while(buffer[i]==' '){i++;}
-                                    while(buffer[i]!= '\0'){
+                                    while(buffer[i]==' '||buffer[i]=='\t'){i++;}
+                                    while(buffer[i]!= '\0' && buffer[i]!='#'&&buffer[i]!=' '&&buffer[i]!='\t'){
                                         redirFile[j]=buffer[i];
                                         i++;j++;
                                     }
                                     redirFile[j]='\0';
                                     out = Open(redirFile);
-                                    prints("I am here\n", output);
+                                    /*prints("I am here\n", output);*/
                                     if(out==-1){
                                         Create(redirFile);
                                         out = Open(redirFile);
                                     }
-                                    prints("now here\n", output);
+                                    /*prints("now here\n", output);*/
                                     Close(ConsoleOutput);
                                     Dup(out);
-                                    prints("lslsdkld", 1);
+                                    /*prints("lslsdkld", 1);*/
                                     Close(out);
 
                                 }
                                 
-                        }*/
+                        }
                         Close(fd);
                         fd = Open(filename);
                         Close(ConsoleInput);
@@ -194,93 +213,111 @@ main(int argc, char*argv[])
                         Close(fd);
                         args[0]="smode";
                         args[1]=(char*)0;
-                        Write("h2\n", 3, output);
+                        /*Write("h2\n", 3, output);*/
                         Exec("shell", args);
                     }
                     else if(newProc == -1){
-                        prints("well fuck\n", output);
+                        /*prints("well fuck\n", output);*/
                     }
                     else{
-                        Write("JoinScript\n", 11, output);
+                        /*Write("JoinScript\n", 11, output);
                         printd(newProc, output);
-                        Write("\n", 1, output);
+                        Write("\n", 1, output);*/
                         Join(newProc);
-                        Write("JoinSPostt \n", 11, output);
+                        /*Write("JoinSPostt \n", 11, output);*/
 
 
                     }
-                    Write("Script Finished\n", 16, output);
+                    Write("\nScript Finished\n", 17, output);
                     Close(fd);
                 }
                 else {/* Exec With Args */
                     Close(fd);
                     newProc = Fork();
                     if (newProc == 0) {  
-                        if(script){Write("he\n", 3, output);}    
-                        i=0;j=0;                               
+                        /*if(script){Write("he\n", 3, output);} */   
+                        i=lstart;j=0;                               
                         while(buffer[i] != '\0'){/* Gets the Args and puts them in the argv */
                             /*Write("<", 1, output);
                             Write(&buffer[i], 1, output);
                             Write(">", 1, output);*/
-                            if(buffer[i]==' '||buffer[i+1]=='\0'){
+                            if(buffer[i]==' '||buffer[i]=='\t'||buffer[i+1]=='\0'){
+                                /*prints("k", output);*/
                                 if(buffer[i+1]=='\0'){execBuffer[argcount][j] = buffer[i];j++;}
                                 execBuffer[argcount][j] = '\0';
-                                while(buffer[i+1]==' '){i++;}/* Nasty Stuff, strips off extra spaces and increments i */
-                                /*if(buffer[i+1]=='>'){i++;redir=1;while(buffer[i+1]==' '){i++;}i++;}*/
+                                while(buffer[i+1]==' '||buffer[i+1]=='\t'){i++;}/* Nasty Stuff, strips off extra spaces and increments i */
+                                /*if(buffer[i+1]=='#'){break;}*/
+                                if(buffer[i+1]=='>'){i++;redir=1;while(buffer[i+1]==' '||buffer[i+1]=='\t'){i++;}i++;}
                                 argcount++;
                                 if(argcount>15){Write("\nToo Many Arguments\n\n", 21, output ); Exit(-1);}
                                 j=0;
+                                if((buffer[i]==' '||buffer[i]=='\t')&&buffer[i+1]=='#'){break;}
                                 if(redir){break;}
                             }
+                            /*else if(buffer[i]=='#'){
+                                execBuffer[argcount][j] = '\0';
+                                argcount++;
+                                j=0;
+                                break;
+                            }*/
                             else{
                                 execBuffer[argcount][j] = buffer[i];
                                 j++;
                             }
                             i++;
                         }
-                        /*if(redir){
+                        /*Write("y\n", 2, output);*/
+                        if(redir){
+                            /*Write("r\n", 2, output);*/
                             j=0;
-                            while(buffer[i]!= '\0'){
+                            while(buffer[i]!= '\0' && buffer[i]!=' ' && buffer[i]!='\t'){
                                 redirFile[j]=buffer[i];
                                 i++;j++;
                             }
                             redirFile[j]='\0';
                             prints(redirFile, output);
                             out = Open(redirFile);
-                            prints("I am here\n", output);
+                            /*prints("I am here\n", output);*/
                             if(out==-1){
                                 Create(redirFile);out = Open(redirFile);
                             }
-                            prints("now here\n", output);
+                            /*prints("now here\n", output);*/
                             Close(ConsoleOutput);
                             Dup(out);
-                            prints("lslsdkld", 1);
+                            /*prints("lslsdkld", 1);*/
                             Close(out);
                         }
                         redir=0;
-                        */
+                        /*Write("h\n", 2, output);*/
                         for(i=0;i<=argcount;i++){/*Put the args into the *char[] to pass into exec*/
                             args[i]=execBuffer[i];
                         }
+                        /*prints(execBuffer[0], output);*/
                         args[argcount]=(char *)0;/*Put a \0 in the last arg spot*/
-                        Write("h4\n", 3, output);
+                        /*Write("h4\n", 3, output);/*
+                        prints("\nArgcount  ", output);
+                        printd(argcount, output);
+                        prints("\narg0 ", output);
+                        prints(args[0], output);
+                        prints("\narg1 ", output);
+                        prints(args[1], output);*/
                         Exec(args[0], &args[1]);
                         Halt();
                         
                         
                     }
                      else if(newProc == -1){
-                        Write("h5\n", 3, output);
+                        /*Write("h5\n", 3, output);*/
                     }
                     else {
-                        Write("h6\n", 3, output);
+                        /*Write("h6\n", 3, output);*/
                         exitval = Join(newProc);
-                        /*if(!script){
+                        if(!script){
                         Write("\nProcess Exited: ", 17, output);
                         printd(exitval, output);
                         Write("\n\n", 2, output);
-                        }*/
-                        if(script){Write("ScriptFin", 9, output);Exit(0);}
+                        }
+                        /*if(script){Write("ScriptFin", 9, output);Exit(0);}*/
 
                     }
                 } 
