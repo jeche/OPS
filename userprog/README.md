@@ -2,6 +2,23 @@ Nachos 2
 ========
 For the Nachos 2 project the 10 syscalls as defined in syscall.h were defined as follows:
 
+system.h
+--------
+In system.h changes made included declaring two classes, FamilyNode and SynchConsole, as well as several global variables used later.  The SynchConsole class creates a global console for the system to write to.  It basically serves as a wrapper class for the already defined console.  There is a lock around methods that the kernel class so that no more than one process can access the SynchConsole to read to it or write from it at once.  The FamilyNode class is basically a node class for a linekd list that will contain all family relations in the system.  It has two integers, one for the parent pid and one for the child pid.  It also has an integer to store an exit value.  It lastly has a pointer to another FamilyNode which will serve as a link to other nodes that might need to be accessed.  Finally it has a semaphore, death, which is used per relation for children to notify parents that they have exited, and force the parents to wait if the children have not exited.
+
+Other global variables that were declared include a global pid to be bumped as new processes are forked.  Currently if anyone tries to allocate more than INT_MAX processes the system will have undefined behavior (so please do not try to do this).  There is also a bitmap that is declared to keep track of which pages are free, and which are currently allocated to a process.  There is also a global timer declared which results in random time slicing.  Finally there is a semaphore called forking which is used to ensure singluar access to most of the global objects in the system.
+
+system.cc
+---------
+Intializes the pid to 0.  Intializes the forking semaphore for accessing gloabl values in the system with a value of 1.  Initializes the root node for the family tree (which is a global value) with an initial node that has the same parent as it does child.  Initializes the bitmap with the number of pages the system has.
+
+addrspace.h
+-----------
+
+
+exception.cc
+------------
+
 ### Syscalls
 #####0. [SC\_Halt](#sc_halt) 
 Stop Nachos, and print out performance stats
