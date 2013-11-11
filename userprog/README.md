@@ -27,6 +27,8 @@ Fork creates a clone (the child) of the calling user process (the parent). The p
 Returns a new OpenFileId referring to the same file as denoted by the argument
 
 
+For all syscalls that necessitate reading as an argument, we read the string out of the appropriate register and place it in a buffer called stringArg.  The buffer has a size of 128 characters.  We allow the user to input up to 127 characters, the 128th character is always forcibly a null character.  This way if a user gives an input string for an argument that is longer than 127 characters it is simply truncated to 127 characters.
+
 
 <a name="sc_halt"/>
 SC_Halt
@@ -47,6 +49,18 @@ In the exec syscall the name is read out of register 4 and a new address space i
 SC_Join
 ---------------------------
 The join syscall begins by iterating through the linked list of all processes/threads that have ever been created and continues until it finds a node where the pid of the child is equal to the argument passed into register 4 and the parent pid in the node is equal to the current thread's pid.  If a node is never found that matches the description, join exits with a return value of -1.  Otherwise the parent waits for a V() on the semaphore for the found node.  Once it gets past the semaphore it retrieves the exit value from the node and returns it in register 2.
+
+<a name="sc_create"/>
+SC_Create
+---------------------------
+The create syscall reads a string for the name of the file out of register 4.  It passes that name to the file system and asks the file system to create the file.  If the file is successfully created the system continues on its merry way.  If it is not the system places a -1 in the return register, however since Create does not return anything this is virtually useless, and only there to denote the difference between a successful call and unsuccessful call.  The limit on the file name size is a total of 127 characters, not including the null character at the end of a string.  If the user attmepts to create a file with a name that is longer than 127 characters the system will truncate it to 127 characters with a null character at the end.
+
+<a name="sc_open"/>
+SC_Open
+---------------------------
+The open syscall reads a string for the name of the file out of register 4.  After reading the string out it does a sanity check to make sure the user entered a string with size greater than 0 for the name.  It then makes a call to the file system to open the file.  If the call was unsuccessful the return value is NULL.  If the returned value is null the kernel cleans up information from the syscall, increments the PCRegs, and returns a -1 in register 2.  If the returned file was valid it iterates through the current thread's file descriptor array.  If it finds an open spot (denoted by a NULL) in the array it creates a new File Shield in that spot and places the open file in that spot.  When it finds a spot the loop then terminates and forces the value of i to 18.  At the end if the value of i was 18 it will return the found descriptor, if no open spot was found it returns a -1.  In the open syscall the user is never allowed to open a file in the spots reserved for ConsoleInput and ConsoleOutput.  If a user intends to place files in those spots in the file descriptor array a Close and Dup syscalls should be used in the appropriate fashion.
+
+
 
 <a name="sc_dup"/>
 SC_Dup
