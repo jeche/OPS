@@ -564,20 +564,19 @@ ExceptionHandler(ExceptionType which)
                   DEBUG('a', "Invalid OpenFileId"); 
                   machine->WriteRegister(2 , -1);
                 }//invalid openfileid
-                if(currentThread->space->fileDescriptors[descriptor]==NULL){
-                  //fprintf(stderr, "HUMAN WAT R U DOIN\n");
+                else if(currentThread->space->fileDescriptors[descriptor]==NULL){
                   machine->WriteRegister(2, -1);
                 }
                 else{
-                whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
-                if(whence < 0){//no file is associated with the openfileid
-                  DEBUG('a', "No OpenFile is associated with the given OpenFileId\n");
-                  machine->WriteRegister(2 , -1);
-                }
-                if(whence == 0){
-                  delete (currentThread->space->fileDescriptors[descriptor]->file);
-                }
-                currentThread->space->fileDescriptors[descriptor] = NULL;
+                  whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
+                  if(whence < 0){//no file is associated with the openfileid
+                    DEBUG('a', "No OpenFile is associated with the given OpenFileId\n");
+                    machine->WriteRegister(2 , -1);
+                  }
+                  if(whence == 0){
+                    delete (currentThread->space->fileDescriptors[descriptor]->file);
+                  }
+                  currentThread->space->fileDescriptors[descriptor] = NULL;
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));

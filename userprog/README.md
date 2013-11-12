@@ -107,7 +107,22 @@ SC_Open
 ---------------------------
 The open syscall reads a string for the name of the file out of register 4.  After reading the string out it does a sanity check to make sure the user entered a string with size greater than 0 for the name.  It then makes a call to the file system to open the file.  If the call was unsuccessful the return value is NULL.  If the returned value is null the kernel cleans up information from the syscall, increments the PCRegs, and returns a -1 in register 2.  If the returned file was valid it iterates through the current thread's file descriptor array.  If it finds an open spot (denoted by a NULL) in the array it creates a new File Shield in that spot and places the open file in that spot.  When it finds a spot the loop then terminates and forces the value of i to 18.  At the end if the value of i was 18 it will return the found descriptor, if no open spot was found it returns a -1.  In the open syscall the user is never allowed to open a file in the spots reserved for ConsoleInput and ConsoleOutput.  If a user intends to place files in those spots in the file descriptor array a Close and Dup syscalls should be used in the appropriate fashion.
 
+<a name="sc_read"/>
+SC_Read
+---------------------------
 
+<a name="sc_write"/>
+SC_Write
+---------------------------
+
+<a name="sc_close"/>
+SC_Close
+---------------------------
+The close syscall starts by reading the file descriptor id to be closed out of register 4.  It them checks to make sure it is within the range of valid file.  If the descriptor is invalid 
+
+<a name="sc_fork"/>
+SC_Fork
+---------------------------
 
 <a name="sc_dup"/>
 SC_Dup
