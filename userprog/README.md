@@ -14,7 +14,37 @@ Intializes the pid to 0.  Intializes the forking semaphore for accessing gloabl 
 
 addrspace.h
 -----------
+In addrspace.h a class for protecting each file in the file descriptor is declared.  The class is referred to as FileShield.  Each FileShield has a reference count, a pointer to and integer, and an integer to check if ConsoleInput or ConsoleOutput have been dup-ed into that particular spot.  Each FileShield object has a method CopyFile() which is called everytime a new reference to that file is created (mostly for use in Fork).  Each FileShield also has a CloseFile() which decrements the reference count and returns the new reference count to the caller.  In the AddrSpace declaration 4 new variables related to each space are declared.  An integer to store a pid, a pointer to pointers for FileShields, referred to as fileDescriptors.  There is also an integer, enoughSpace which is used to determine if the AddrSpace has been created correctly.
 
+addrspace.cc
+------------
+In the constructor the changes made include removing all ASSERTs and instead when they fail those sanity checks setting the value of enoughSpace to 0 (It is initially 1 because it assumes that the address space will allocate correctly).  It then interates through in a for loop in an attempt to find pages for the address space.  If it is ever unable to find a page it immediately exits the loop and sets enoughSpace to 0 denoting that the allocation of the address space failed.  For every page found the value for the virtual page is set to the physical page that has been found to be free from the bitMap.  After trying to find all the pages the fileDescriptors array is initialized with a limit of 16 files, including ConsoleInput and ConsoleOutput.  After that assuming all the other steps in the constructor have been successful it writes the code and global information to the executable in a byte by byte fashion using the virtual addresses and translation specific to that address space.  It then also initializes the pid.
+
+The methods from translate.cc were copied for ReadMem(), WriteMem(), and Translate() verbatim into the AddrSpace object to allow for their usage when trying to determine the correct physical page from virtual pages.  This was done out of sheer laziness on the part of Jessica.
+
+Clean()
+Added to AddrSpace to release the pages in case it was necessary to release the pages, but not delete the AddrSpace.
+
+newSpace()
+Added within AddrSpace to allow for the forking of children.  Initializes a new AddrSpace with the same values that the AddrSpace that called it holds.  A new page table is allocated, but in the new page table the physical pages that the virtual pages point to are different than the original's.  It then also copies over the FileShield object into a new fileDescriptors array.  As it copies pointers to the actual FileShield objects into the new array it increments each reference count by calling CopyFile().  newSpace then returns a new AddrSpace with the newly initialized values.
+
+The deconstructor of AddrSpace was also modified to notify the bitMap to release the pages, delete the fileDescriptors array while closing any files it stillahas open , and then finally deleting the pageTable.
+
+bitmap.h
+--------
+Intialized a Semaphore monitor with the value of 1.
+
+bitmap.cc
+---------
+All the changes that were made to bitMap.cc were simply to ensure only one process can access it at a time.  Semaphores were placed around all accessors forcing each process attempting to access to P() on monitor and then V() when it exits.
+
+syscall.h
+---------
+Added the Dup syscall with a #define value of 10.
+
+test/start.s
+------------
+Added the Dup syscall.
 
 exception.cc
 ------------
