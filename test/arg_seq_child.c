@@ -38,9 +38,11 @@ main()
       args[1] = (char *)0;  
       Exec("kid", args);
       prints("ERROR: Exec failure\n", ConsoleOutput);
-      Halt();
+      Exit(42);
+      /*Halt();*/
     }
   }
+  Exit(43);
   Halt();
 }
 

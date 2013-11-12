@@ -1,0 +1,47 @@
+#SCRIPT
+argkid
+echo argkid
+arg_seq_child
+echo arg_seq_child
+cat superTestScript
+echo cat
+cp data data2
+echo cp
+deepfork
+echo deepfork
+deepkid1
+echo deepkid1
+deepkid2
+echo deepkid2
+dupkid
+echo dupkid
+dupparent
+echo dupparent
+fileio
+echo fileio
+fork
+echo fork
+#fromcons
+#echo fromcons
+#halt
+#echo halt
+hellocons
+echo hellocons
+hellofile
+echo hellofile
+kid
+echo kid
+matmult
+echo matmult
+maxfork
+echo maxfork
+newfork
+echo newfork
+seq_child
+echo seq_child
+share
+echo share
+sharekid
+echo sharekid
+sort
+echo sort

@@ -53,7 +53,7 @@ main()
     prints("Read from closed file returned ", ConsoleOutput);
     printd(retval, ConsoleOutput);
     prints("\n", ConsoleOutput);
-
+    Exit(52);
     Halt();
 }
 

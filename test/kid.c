@@ -12,7 +12,9 @@ main(int argc, char **argv)
   int i, j;
 
   prints("KID exists\n", ConsoleOutput);
-  for (i=0; i<10000; i++) j++ ;
+  /*prints("killme\n", ConsoleOutput);*/
+  for (i=0; i<10000; i++){j++;}
+  /*prints("lolwut\n", ConsoleOutput);*/
   /* loop to delay kid initially; hope parent gets to Join and sleeps */
   Exit(17);
   /* Should not get past here */

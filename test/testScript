@@ -1,2 +1,14 @@
 #SCRIPT
-cat cat.c
+	cat cat.c #test cat
+	cat newout > newnewout #test cat and file redirection
+	cp newout testcp
+	argkid test test test
+	#this is a test of comments
+argkid test #test
+argkid test#test
+argkid #test
+argkid test > argkidtestfile #wow
+argkid #test > argkidtestfile2 #so win
+argkid > argkidtest3 #many argkid
+#spacing tests
+argkid 	wow	many  	spacing

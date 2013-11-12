@@ -398,7 +398,7 @@ ExceptionHandler(ExceptionType which)
                     if(currentThread->space->fileDescriptors[i] == NULL){
                       descriptor = i;
                       currentThread->space->fileDescriptors[i] = new FileShield();
-                      currentThread->space->fileDescriptors[i]->file = open; // Bitten in the ass.
+                      currentThread->space->fileDescriptors[i]->file = open;
                       currentThread->space->fileDescriptors[i]->CopyFile();
                       i = 17;
                     }
@@ -426,7 +426,7 @@ ExceptionHandler(ExceptionType which)
                 descriptor = machine->ReadRegister(6);
                 /*if(descriptor>=0&&descriptor<=15&&)*/
                   if(size > 0){
-                    stringArg = new (std::nothrow) char[size + 1];
+                    stringArg = new (std::nothrow) char[128];
                     if (descriptor == ConsoleInput) {
                       if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
                         fromInput = 1;
@@ -476,7 +476,7 @@ ExceptionHandler(ExceptionType which)
                       DEBUG('a', "Invalid file descriptor.\n");
                       machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
                     }
-                    delete stringArg;
+                    delete[] stringArg;
                   }
                 forking->V();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -494,7 +494,7 @@ ExceptionHandler(ExceptionType which)
                 // time we need to use it.
                 size = machine->ReadRegister(5);
                 if (size > 0){
-                  stringArg = new(std::nothrow) char[size];
+                  stringArg = new(std::nothrow) char[128];
                   whence = machine->ReadRegister(4);
                   descriptor = machine->ReadRegister(6);
                   DEBUG('a',"String starts at address %d in user VAS\n", whence);
@@ -510,7 +510,7 @@ ExceptionHandler(ExceptionType which)
                   if(size != 1 && !toOutput && !toInput){
                     for (i=0; i<size; i++){
                       currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
-                      if(stringArg[i] == '\0')break;
+                      // if(stringArg[i] == '\0') break;
                     }
                       //stringArg[size]='\0';
                   }
@@ -521,13 +521,12 @@ ExceptionHandler(ExceptionType which)
                   if (!toInput && !toOutput && descriptor < 16) {
                     open = currentThread->space->fileDescriptors[descriptor]->file;
                     if(open == NULL){
-                      //fprintf(stderr, "WAT R U DOIN HUMAN???????!?\n");
                       DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                       machine->WriteRegister(2, -1);
                     }
                     else{                
                       open->Write(stringArg, size);
-                      if(size == 1)
+                      // if(size == 1)
                       DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
                     }
                   }
@@ -548,7 +547,9 @@ ExceptionHandler(ExceptionType which)
                     DEBUG('a', "Invalid file descriptor.\n");
                     machine->WriteRegister(2, -1);
                   } 
-                  delete [] stringArg;           
+                  // fprintf(stderr, "<%s>\n", stringArg);
+                  stringArg[size] = '\0';
+                  delete[] stringArg;
                 }
                 forking->V();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -705,6 +706,7 @@ ExceptionHandler(ExceptionType which)
                   for(i = 0; i < argcount; i++){
                      newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
                   }
+                  delete [] stringArg;
 
                   delete currentThread->space;
                   
@@ -715,7 +717,7 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(4, argcount);
                   machine->WriteRegister(5, sp);
 
-                  machine->WriteRegister(StackReg, sp - 8);
+                  machine->WriteRegister(StackReg, sp - (8 * 4));
    
                   machine->Run();
                 }
@@ -730,20 +732,23 @@ ExceptionHandler(ExceptionType which)
                   DEBUG('a', "No OpenFile is associated with the given OpenFileId.\n");
                   machine->WriteRegister(2, -1);
                 }
-                for (i = 0; i < 16; i++) {
-                  if (currentThread->space->fileDescriptors[i] == NULL) {
-                    currentThread->space->fileDescriptors[i] = currentThread->space->fileDescriptors[descriptor];
-                    currentThread->space->fileDescriptors[i]->CopyFile();
-                    currentThread->space->fileDescriptors[i]->inOut = 0;
-                    break;
+                else{
+                  for (i = 0; i < 16; i++) {
+                    if (currentThread->space->fileDescriptors[i] == NULL) {
+                      currentThread->space->fileDescriptors[i] = currentThread->space->fileDescriptors[descriptor];
+                      currentThread->space->fileDescriptors[i]->CopyFile();
+                      currentThread->space->fileDescriptors[i]->inOut = 0;
+                      break;
+                    }
+                  }
+                  machine->WriteRegister(2, i);
+                  if (i == 16) {
+                    DEBUG('a', "No open space to DUP to.  Please close a file.\n");
+                    machine->WriteRegister(2, -1);
                   }
                 }
-                if (i == 16) {
-                  DEBUG('a', "No open space to DUP to.  Please close a file.\n");
-                  machine->WriteRegister(2, -1);
-                }
                 DEBUG('a', "File descriptor returned by Dup: %d\n", i);
-                machine->WriteRegister(2, i);
+                
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));

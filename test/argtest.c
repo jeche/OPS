@@ -34,7 +34,7 @@ main()
   prints("PARENT off Join with value of ", ConsoleOutput);
   printd(joinval, ConsoleOutput);
   prints("\n", ConsoleOutput);
-
+  Exit(5);
   Halt();
   /* not reached */
 }

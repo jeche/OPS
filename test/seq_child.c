@@ -41,6 +41,7 @@ main()
       Halt();
     }
   }
+  Exit(45);
   Halt();
 }
 

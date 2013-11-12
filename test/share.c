@@ -65,6 +65,7 @@ main()
   printd(numbytes, ConsoleOutput);
   prints("\n", ConsoleOutput);
 
+  Exit(54);
   Halt();
 }
 

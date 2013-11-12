@@ -27,6 +27,7 @@ main()
       prints("\n", ConsoleOutput);
       printd(count, ConsoleOutput);
       prints(" characters seen.\n", ConsoleOutput);
+      Exit(54);
       Halt();
     }
     else {

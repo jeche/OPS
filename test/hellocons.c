@@ -16,7 +16,7 @@ main()
     char *s = "Hello, console.\n";
     
     prints(s, ConsoleOutput);
-
+    Exit(8);
     Halt();
     /* not reached */
 }

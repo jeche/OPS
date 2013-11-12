@@ -416,8 +416,8 @@ AddrSpace::~AddrSpace()
             bitMap->Clear(pageTable[i].physicalPage);
         }
     }
-    delete fileDescriptors;
-    delete pageTable;
+    delete[] fileDescriptors;
+    delete[] pageTable;
 #endif
 }
 

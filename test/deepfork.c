@@ -31,6 +31,7 @@ main()
   printd(joinval, ConsoleOutput);
   print("\n");
 
+  Exit(10);
   Halt();
   /* not reached */
 }
