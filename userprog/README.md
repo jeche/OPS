@@ -118,7 +118,7 @@ SC_Write
 <a name="sc_close"/>
 SC_Close
 ---------------------------
-The close syscall starts by reading the file descriptor id to be closed out of register 4.  It them checks to make sure it is within the range of valid file.  If the descriptor is invalid 
+The close syscall starts by reading the file descriptor id to be closed out of register 4.  It them checks to make sure it is within the range of valid file.  If the descriptor is invalid it returns a -1.  If the file descriptor is a valid file descriptor it attempts to CloseFile() on the fileShield in that thread's space's fileDescriptors array.  If the CloseFile() call returns a 0 it deletes the file.  After closing the file, no matter what the return value was of the CloseFile() call it sets that spot in the fileDescriptors array to point at NULL so it is no longer pointing to the fileShield object that was there previously.  If for some reason the CLoseFile() returns a nubmer that is less than 0 Close will return a -1.
 
 <a name="sc_fork"/>
 SC_Fork
