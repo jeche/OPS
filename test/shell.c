@@ -275,7 +275,7 @@ main(int argc, char*argv[])
                                 i++;j++;
                             }
                             redirFile[j]='\0';
-                            prints(redirFile, output);
+                            /*prints(redirFile, output);*/
                             out = Open(redirFile);
                             /*prints("I am here\n", output);*/
                             if(out==-1){

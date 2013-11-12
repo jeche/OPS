@@ -424,59 +424,60 @@ ExceptionHandler(ExceptionType which)
                 size = machine->ReadRegister(5);
                 whence = machine->ReadRegister(4);
                 descriptor = machine->ReadRegister(6);
-                if(size > 0){
-                  stringArg = new (std::nothrow) char[size + 1];
-                  if (descriptor == ConsoleInput) {
-                    if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
-                      fromInput = 1;
-                  }
-                  if (descriptor == ConsoleOutput) {
-                    if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
-                      fromOutput = 1;
-                  }
-                  if (!fromInput && !fromOutput && descriptor < 16) {
-                    if(currentThread->space->fileDescriptors[descriptor] == NULL){
-                      DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
-                      machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
+                /*if(descriptor>=0&&descriptor<=15&&)*/
+                  if(size > 0){
+                    stringArg = new (std::nothrow) char[size + 1];
+                    if (descriptor == ConsoleInput) {
+                      if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
+                        fromInput = 1;
                     }
-                    else{
-                      open = currentThread->space->fileDescriptors[descriptor]->file;
-                      if(open == NULL){
+                    if (descriptor == ConsoleOutput) {
+                      if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
+                        fromOutput = 1;
+                    }
+                    if (!fromInput && !fromOutput && descriptor < 16) {
+                      if(currentThread->space->fileDescriptors[descriptor] == NULL){
                         DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                         machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
                       }
                       else{
-                        descriptor = 0;
-                        size = open->Read(stringArg, size);
-                        //fprintf(stdout, "Thread: %d Read<%s> Size:%d\n", (int)currentThread, stringArg, size);
-                        // if(size != 1){
-                        //   ;
-                        //   //stringArg[size] = '\0';
-                        // }
-                        for(i=0; i < size; i++){
-                          currentThread->space->WriteMem(whence++, sizeof(char), stringArg[i]);
-                          if(stringArg[i] == '\0') break;
+                        open = currentThread->space->fileDescriptors[descriptor]->file;
+                        if(open == NULL){
+                          DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
+                          machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
                         }
-                        DEBUG('a', "%s\n", stringArg);
-                        DEBUG('a', "size: %d %s\n", size, stringArg);
-                        machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
+                        else{
+                          descriptor = 0;
+                          size = open->Read(stringArg, size);
+                          //fprintf(stdout, "Thread: %d Read<%s> Size:%d\n", (int)currentThread, stringArg, size);
+                          // if(size != 1){
+                          //   ;
+                          //   //stringArg[size] = '\0';
+                          // }
+                          for(i=0; i < size; i++){
+                            currentThread->space->WriteMem(whence++, sizeof(char), stringArg[i]);
+                            if(stringArg[i] == '\0') break;
+                          }
+                          DEBUG('a', "%s\n", stringArg);
+                          DEBUG('a', "size: %d %s\n", size, stringArg);
+                          machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
+                        }
                       }
                     }
-                  }
-                  else if (fromInput) { // Deals with ConsoleInput
-                    DEBUG('a', "size: %d %c\n", size, stringArg);
-                    for(i = 0; i < size; i++){
-                      whee = synchConsole->GetChar();
-                      currentThread->space->WriteMem(whence++, sizeof(char), whee);
+                    else if (fromInput) { // Deals with ConsoleInput
+                      DEBUG('a', "size: %d %c\n", size, stringArg);
+                      for(i = 0; i < size; i++){
+                        whee = synchConsole->GetChar();
+                        currentThread->space->WriteMem(whence++, sizeof(char), whee);
+                      }
+                      machine->WriteRegister(2, i);
                     }
-                    machine->WriteRegister(2, i);
+                    else{ // Deals with out of bounds of the array.
+                      DEBUG('a', "Invalid file descriptor.\n");
+                      machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
+                    }
+                    delete stringArg;
                   }
-                  else{ // Deals with out of bounds of the array.
-                    DEBUG('a', "Invalid file descriptor.\n");
-                    machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
-                  }
-                  delete stringArg;
-                }
                 forking->V();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
@@ -485,6 +486,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Write:
                 DEBUG('a', "Write\n");
+                //fprintf(stderr, "wat\n");
                 forking->P();
                 // Issue name: Oh God Why?
                 // For some ungodly reason size decides to be 0 immediately after the for loop.  Why?  No idea.  If we have a different size
@@ -519,13 +521,15 @@ ExceptionHandler(ExceptionType which)
                   if (!toInput && !toOutput && descriptor < 16) {
                     open = currentThread->space->fileDescriptors[descriptor]->file;
                     if(open == NULL){
+                      //fprintf(stderr, "WAT R U DOIN HUMAN???????!?\n");
                       DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                       machine->WriteRegister(2, -1);
-                    }                
-                    open->Write(stringArg, size);
-                    if(size == 1)
-                    DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
-                    
+                    }
+                    else{                
+                      open->Write(stringArg, size);
+                      if(size == 1)
+                      DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
+                    }
                   }
                   else if (toOutput) {
                     for (i = 0; i < size; i++) {
@@ -559,6 +563,11 @@ ExceptionHandler(ExceptionType which)
                   DEBUG('a', "Invalid OpenFileId"); 
                   machine->WriteRegister(2 , -1);
                 }//invalid openfileid
+                if(currentThread->space->fileDescriptors[descriptor]==NULL){
+                  //fprintf(stderr, "HUMAN WAT R U DOIN\n");
+                  machine->WriteRegister(2, -1);
+                }
+                else{
                 whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
                 if(whence < 0){//no file is associated with the openfileid
                   DEBUG('a', "No OpenFile is associated with the given OpenFileId\n");
@@ -568,7 +577,7 @@ ExceptionHandler(ExceptionType which)
                   delete (currentThread->space->fileDescriptors[descriptor]->file);
                 }
                 currentThread->space->fileDescriptors[descriptor] = NULL;
-
+                }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
