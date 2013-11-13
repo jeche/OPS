@@ -242,7 +242,7 @@ Semaphore *forking;
 SynchConsole *synchConsole;
 BitMap *bitMap;
 FamilyNode* root;
-int pid;
+unsigned int pid;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;

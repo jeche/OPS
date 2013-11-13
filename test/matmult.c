@@ -28,11 +28,16 @@ main()
 	     B[i][j] = j;
 	     C[i][j] = 0;
 	}
+	Write("here\n", 5, ConsoleOutput);
 
-    for (i = 0; i < Dim; i++)		/* then multiply them together */
+    for (i = 0; i < Dim; i++){
+    Write("now\n", 4, ConsoleOutput);		/* then multiply them together */
 	for (j = 0; j < Dim; j++)
             for (k = 0; k < Dim; k++)
 		 C[i][j] += A[i][k] * B[k][j];
+
+		}
+
 
     Exit(C[Dim-1][Dim-1]);		/* and then we're done */
 }

@@ -238,7 +238,7 @@ extern SynchConsole *synchConsole;
 extern Semaphore *forking;
 extern BitMap *bitMap;
 extern FamilyNode* root;
-extern int pid;
+extern unsigned int pid;
 #endif
 
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 

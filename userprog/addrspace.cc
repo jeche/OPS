@@ -290,7 +290,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 #ifndef USE_TLB
     unsigned int i;
 #endif
-
+    enoughSpace = 1;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) &&
                 (WordToHost(noffH.noffMagic) == NOFFMAGIC))

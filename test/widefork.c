@@ -10,35 +10,35 @@ int
 main()
 {
 
-  SpaceId kid;
+  SpaceId kid[16];
   int joinval;
   char *args[1];
+  int i;
 
   args[0] = (char *)0;
 
   print("PARENT exists\n");
-  if ((kid=Fork()) == 0) {
-    Exec("deepkid1", args);
-    print("ERROR: exec failed\n");
-    Halt();
+  for(i=0;i<16;i++){
+
+    if ((kid[i]=Fork()) == 0) {
+      Exec("deepfork", args);
+      print("ERROR: exec failed\n");
+      Halt();
+    }
+    if(kid[i]==-1){Halt();}
   }
-  if(kid==-1){Halt();}
-  print("PARENT after fork/exec; kid pid is "); printd((int)kid, ConsoleOutput);
-  print("\n");
-
-  print("PARENT about to Join kid\n");
-  joinval = Join(kid);
-  print(">>PARENT off Join with value of ");
-  printd(joinval, ConsoleOutput);
-  print("\n");
-
+  for(i=0;i<16;i++){
+    print("PARENT about to Join kid\n");
+    joinval = Join(kid[i]);
+    print("PARENT off Join with value of ");
+    printd(joinval, ConsoleOutput);
+    print("\n");
+  }
+  
   Exit(10);
   Halt();
   /* not reached */
 }
-
-
-/* Print a null-terminated string "s" on open file descriptor "file". */
 
 prints(s,file)
 char *s;
@@ -98,5 +98,3 @@ char *s;
 {
   prints(s, ConsoleOutput);
 }
-
-

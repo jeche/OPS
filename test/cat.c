@@ -24,7 +24,7 @@ main(int argc, char **argv)
         }
         Close(curFile);
     }
-    Write("hi\n", 3, ConsoleOutput);
+    /*Write("hi\n", 3, ConsoleOutput);*/
 
 	Exit(0);
 }

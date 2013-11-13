@@ -104,7 +104,7 @@ main(int argc, char*argv[])
     prompt[1] = '-';
 
 
-    if(argc==2 && argv[1][0]=='s'&& argv[1][1]=='m'&& argv[1][2]=='o'&& argv[1][3]=='d'&& argv[1][4]=='e'){
+    if(argc==1 && argv[0][0]=='s'&& argv[0][1]=='m'&& argv[0][2]=='o'&& argv[0][3]=='d'&& argv[0][4]=='e'){
         script=1;
         /*Write("InS\n", 4, output);*/
     }
@@ -143,7 +143,7 @@ main(int argc, char*argv[])
         /*if(script){prints(buffer, output);Write(&buffer[0], 1, output);}*/
         i=0;
         while(buffer[i]==' '||buffer[i]=='\t'){i++;/*prints("i");*/}
-        /*lstart=i;*/
+        lstart=i;
         /*Write(&buffer[i], 1, output);*/
         if(buffer[i] != '#' && buffer[i] != 0){
             /*prints("hia", output);*/
@@ -240,7 +240,7 @@ main(int argc, char*argv[])
                         newProc = Fork();
                         if (newProc == 0) {  
                             /*if(script){Write("he\n", 3, output);} */   
-                            i=0;j=0;                               
+                            i=lstart;j=0;                               
                             printd(i, output);
                             while(buffer[i] != '\0'){/* Gets the Args and puts them in the argv */
                                 /*Write("<", 1, output);
@@ -309,7 +309,10 @@ main(int argc, char*argv[])
                             prints(args[0], output);
                             prints(">", output);
                             prints("\narg1 ", output);
+                            prints("<", output);
                             prints(args[1], output);
+                                                        prints(">", output);
+
                             Exec(args[0], args);
                             Halt();
                             

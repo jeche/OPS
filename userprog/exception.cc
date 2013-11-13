@@ -100,7 +100,7 @@ ExceptionHandler(ExceptionType which)
       case SyscallException:
   switch (type) {
     case SC_Halt:
-            DEBUG('a', "Shutdown, initiated by user program.\n");
+            DEBUG('j', "Shutdown, initiated by user program.\n");
             interrupt->Halt();
           default:
       printf("Undefined SYSCALL %d\n", type);
@@ -234,6 +234,9 @@ HandleTLBFault(int vaddr)
 
 void CopyRegs(int k){
   int incrementPC;
+  if(currentThread->space->enoughSpace == 0){
+    interrupt->Halt();
+  }
   currentThread->RestoreUserState();
   currentThread->space->RestoreState();
   machine->WriteRegister(2, 0);
@@ -277,15 +280,15 @@ ExceptionHandler(ExceptionType which)
       case SyscallException:
       switch (type) {
         case SC_Halt:
-                DEBUG('a', "Shutdown, initiated by user program.\n");
+                DEBUG('j', "Shutdown, initiated by user program.\n");
                 interrupt->Halt();
                 break;
         case SC_Exit:
-                DEBUG('a', "Exit\n");
+                DEBUG('j', "Exit\n");
                 curr = root;
                 // prev = root;
                 //fprintf(stderr, "\n EXITING THREAD IS: %d\n", (int)currentThread);
-                DEBUG('a', "Thread exiting %d.\n", (int)currentThread);
+                DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
                 forking->P();
                 while(curr->child != currentThread->space->pid && curr->next !=NULL){
                   // prev = curr;
@@ -298,7 +301,7 @@ ExceptionHandler(ExceptionType which)
                   // curr->touched = true;
                 // }
                 if(curr->child != currentThread->space->pid){
-                  DEBUG('a', "How the hell do you break an exit?\n");
+                  DEBUG('j', "How the hell do you break an exit?\n");
                   fprintf(stderr, "How the hell do you break an exit?\n");
                 }
                 else{
@@ -308,11 +311,11 @@ ExceptionHandler(ExceptionType which)
                   curr->death->V();
                   delete currentThread->space;
                   currentThread->Finish();
-                  DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
+                  DEBUG('j', "Failed to exit.  Machine will now terminate.\n");
                 }
                 break;
         case SC_Join:
-                DEBUG('a', "Join\n");
+                DEBUG('j', "Join\n");
                 whence = machine->ReadRegister(4);
                 curr = root;
                 // prev = root;
@@ -320,18 +323,20 @@ ExceptionHandler(ExceptionType which)
                 while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
                   // prev = curr;
                   curr = curr->next;  // Iterate to find the correct semapohre to P on
+                  fprintf(stderr, "child : %d pid : %d, parent : %d currPid : %d\n", curr->child, whence, curr->parent, currentThread->space->pid);
                 }
+                /*if(curr->next == NULL){fprintf(stdout, "Hullpointerexception\n");}*/
                 
                 if(curr->parent != currentThread->space->pid && curr->child != whence){
                   forking->V();
-                  DEBUG('a', "Cannot find appropriate thread ID to join on.\n");
+                  DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
                 }
                 else{
                   curr->touched = true;
                   forking->V();
                   //fprintf(stderr, "\n PARENT %d JOINING ON %d\n", (int)currentThread, whence);
-                  DEBUG('a', "Parent %d, joining for %d.\n");
+                  DEBUG('j', "Parent %d, joining for %d.\n", curr->parent, curr->child);
                   curr->death->P(); // Wait for child to die.
                   // prev->next = curr->next;
                   machine->WriteRegister(2, curr->exit); // Return the exit value.
@@ -342,21 +347,21 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         case SC_Create:/*Checks for -> Filename given is a single \0*/
-                DEBUG('a', "Create\n");
+                DEBUG('j', "Create\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
-                DEBUG('a',"String starts at address %d in user VAS\n", whence);
+                DEBUG('j',"String starts at address %d in user VAS\n", whence);
                 for (i=0; i<127; i++){
                   currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
                 }
                 if(i==0){
-                  DEBUG('a', "Invalid File Name: Must be longer than 0\n");
+                  DEBUG('j', "Invalid File Name: Must be longer than 0\n");
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 } // User puts a single \0 for the string name of the file, this should not be allowed
                 stringArg[127]='\0';
-                DEBUG('a', "Argument string is <%s>\n",stringArg);
+                DEBUG('j', "Argument string is <%s>\n",stringArg);
                 if(!fileSystem->Create(stringArg, 16)){
-                  DEBUG('a', "Create Failed\n");
+                  DEBUG('j', "Create Failed\n");
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 }
                 delete [] stringArg;
@@ -366,23 +371,23 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         case SC_Open:
-                DEBUG('a', "Open\n");
+                DEBUG('j', "Open\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string
-                DEBUG('a',"String starts at address %d in user VAS\n", whence);
+                DEBUG('j',"String starts at address %d in user VAS\n", whence);
                 for (i=0; i<127; i++){
                   currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
                   if(stringArg[i] == '\0') break;
                 }
                 if(i==0){
-                  DEBUG('a', "Invalid File Name: Must be longer than 0\n");
+                  DEBUG('j', "Invalid File Name: Must be longer than 0\n");
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 }// Cannot have a file with 'no name'
                 stringArg[127]='\0';
-                DEBUG('a', "Argument string is <%s>\n",stringArg);
+                DEBUG('j', "Argument string is <%s>\n",stringArg);
                 open = fileSystem->Open(stringArg);
                 if(open==NULL){
-                  DEBUG('a', "File Could not be Found, -1 returned"); 
+                  DEBUG('j', "File Could not be Found, -1 returned"); 
                   descriptor = -1;
                   machine->WriteRegister(2, descriptor);
                   
@@ -409,7 +414,7 @@ ExceptionHandler(ExceptionType which)
                   else {
                     machine->WriteRegister(2, -1);
                   }
-                  DEBUG('a', "File descriptor for <%s> is %d\n", stringArg, descriptor);
+                  DEBUG('j', "File descriptor for <%s> is %d\n", stringArg, descriptor);
                   delete [] stringArg;
                   incrementPC=machine->ReadRegister(NextPCReg)+4;
                   machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
@@ -558,10 +563,10 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);            
                 break;
         case SC_Close:/*Cases Handled -> invalid openfileid, and no file associated with the openfileid*/
-                DEBUG('a', "Close\n");
+                DEBUG('j', "Close\n");
                 descriptor = machine->ReadRegister(4);
                 if(descriptor < 0 || descriptor > 15){
-                  DEBUG('a', "Invalid OpenFileId"); 
+                  DEBUG('j', "Invalid OpenFileId"); 
                   machine->WriteRegister(2 , -1);
                 }//invalid openfileid
                 else if(currentThread->space->fileDescriptors[descriptor]==NULL){
@@ -570,7 +575,7 @@ ExceptionHandler(ExceptionType which)
                 else{
                   whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
                   if(whence < 0){//no file is associated with the openfileid
-                    DEBUG('a', "No OpenFile is associated with the given OpenFileId\n");
+                    DEBUG('j', "No OpenFile is associated with the given OpenFileId\n");
                     machine->WriteRegister(2 , -1);
                   }
                   if(whence == 0){
@@ -584,15 +589,16 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);            
                 break;
         case SC_Fork:
-                DEBUG('a', "Fork\n");
+                DEBUG('j', "Fork\n");
                 if(root==NULL){
-                  DEBUG('a', "Root for the family tree is nonexistent.\n");
+                  DEBUG('j', "Root for the family tree is nonexistent.\n");
                   interrupt->Halt();
                 }
                 curr = root;
                 forking->P();
                 pid++; // bump pid before adding kid
                 size = pid;
+                fprintf(stderr, "PID: %d %d\n", size, pid);
                 while(curr->next != NULL){
                   curr = curr->next;
 
@@ -600,11 +606,12 @@ ExceptionHandler(ExceptionType which)
                        
                 newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
                 newSpacer->pid = size; // give child's space a pid.
+                // fprintf(stderr, "PID: %d %d\n", newSpacer->pid, pid);
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
-                  DEBUG('a', "Not enough space to fork child.\n");
-                  delete newSpacer;
+                  DEBUG('j', "Not enough space to fork child.\n");
                   machine->WriteRegister(2, -1);
+                  interrupt->Halt();
                   pid--;
                   forking->V();
                 }
@@ -619,43 +626,47 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
                   currentThread->SaveUserState(); // Save again in case of weirdness.
                 }
-
+                if(newSpacer->enoughSpace == 0){
+                  delete newSpacer;
+                  interrupt->Halt();
+                }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);  
                 break;
         case SC_Exec:
-                DEBUG('a', "Exec\n");
+                DEBUG('j', "Exec\n");
                 argcount = 1;
                 stringArg = new(std::nothrow) char[128];
                 whence = machine->ReadRegister(4);
-                DEBUG('a',"String starts at address %d in user VAS\n", whence);
+                DEBUG('j',"String starts at address %d in user VAS\n", whence);
                 for (i=0; i<127; i++){
                   currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
                   if(stringArg[i] == '\0') break;
                 }
                 if(i==0){
-                  DEBUG('a', "Invalid File Name: Must be longer than 0\n");
+                  DEBUG('j', "Invalid File Name: Must be longer than 0\n");
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
                 stringArg[127]='\0';
-                DEBUG('a', "Argument string is <%s>\n",stringArg);
+                DEBUG('j', "Argument string is <%s>\n",stringArg);
                 open = fileSystem->Open(stringArg);
                 if(open == NULL){
-                  DEBUG('a', "Invalid File Name, no such file exists.\n");
+                  DEBUG('j', "Invalid File Name, no such file exists.\n");
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
 
                 newSpacer = new AddrSpace(open);
                 delete open;
                 newSpacer->pid = currentThread->space->pid; // Transfer pid
+                fprintf(stderr, "newSpacer: %d currSpace: %d\n", newSpacer->pid, currentThread->space->pid );
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough room, return a -1
-                  DEBUG('a', "Not enough room to create new Address Space.\n");
+                  DEBUG('j', "Not enough room to create new Address Space.\n");
                   machine->WriteRegister(2, -1);
+                  interrupt->Halt();
                 }
-                
                 else {
                   for(i = 0; i < 16; i++){
                     if(currentThread->space->fileDescriptors[i]!= NULL){
@@ -667,15 +678,15 @@ ExceptionHandler(ExceptionType which)
                   newSpacer->InitRegisters();
                   sp = machine->ReadRegister(StackReg);
 
-                  len = strlen(stringArg) + 1;
-                  sp -= len;
-                  for(i = 0; i < len; i++){
-                    newSpacer->WriteMem(sp + i, sizeof(char), stringArg[i]);
-                  }
-                  argvAddr[0] = sp;
+                  // len = strlen(stringArg) + 1;
+                  // sp -= len;
+                  // for(i = 0; i < len; i++){
+                  //   newSpacer->WriteMem(sp + i, sizeof(char), stringArg[i]);
+                  // }
+                  // argvAddr[0] = sp;
 
                   
-                  for(i = 1; i < 16; i++){
+                  for(i = 0; i < 16; i++){
                     memset(stringArg, 0, sizeof(stringArg));
                     currentThread->space->ReadMem(whence, sizeof(int), &herece);
                     if (herece == 0){
@@ -685,7 +696,7 @@ ExceptionHandler(ExceptionType which)
                       currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
                       if(stringArg[j] == '\0') break;
                     }
-                    DEBUG('a', "STRINGARG %s\n",stringArg);
+                    DEBUG('j', "STRINGARG %s\n",stringArg);
 
                     len = strlen(stringArg) + 1;
                     sp -= len;
@@ -699,7 +710,7 @@ ExceptionHandler(ExceptionType which)
                   }
                   argcount = i;
                   sp = sp & ~3;
-                  DEBUG('a', "argcount %d\n", argcount);
+                  DEBUG('j', "argcount %d\n", argcount);
                   sp -= sizeof(int) * argcount;
 
                   for(i = 0; i < argcount; i++){
@@ -720,15 +731,19 @@ ExceptionHandler(ExceptionType which)
    
                   machine->Run();
                 }
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);  
                 break;
         case SC_Dup:
                 descriptor = machine->ReadRegister(4);
                 if(descriptor < 0 || descriptor > 15){
-                  DEBUG('a', "Invalid OpenFileId.\n");
+                  DEBUG('j', "Invalid OpenFileId.\n");
                   machine->WriteRegister(2, -1);
                 }
                 if(currentThread->space->fileDescriptors[descriptor] == NULL){
-                  DEBUG('a', "No OpenFile is associated with the given OpenFileId.\n");
+                  DEBUG('j', "No OpenFile is associated with the given OpenFileId.\n");
                   machine->WriteRegister(2, -1);
                 }
                 else{
@@ -742,11 +757,11 @@ ExceptionHandler(ExceptionType which)
                   }
                   machine->WriteRegister(2, i);
                   if (i == 16) {
-                    DEBUG('a', "No open space to DUP to.  Please close a file.\n");
+                    DEBUG('j', "No open space to DUP to.  Please close a file.\n");
                     machine->WriteRegister(2, -1);
                   }
                 }
-                DEBUG('a', "File descriptor returned by Dup: %d\n", i);
+                DEBUG('j', "File descriptor returned by Dup: %d\n", i);
                 
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));

@@ -82,7 +82,7 @@ class AddrSpace {
 #include "copyright.h"
 #include "filesys.h"
 
-#define UserStackSize   1024*2*2  // increase this as necessary!
+#define UserStackSize   1024*2*2*2  // increase this as necessary!
 
 // Class used as a barrier for files to keep track of the number of times that the file is referenced
 class FileShield {
@@ -116,7 +116,7 @@ class AddrSpace {
   public:
     FileShield** fileDescriptors;
     int pid;
-    int enoughSpace = 1;
+    int enoughSpace;
     AddrSpace(OpenFile *executable);  // Create an address space,
           // initializing it with the program
           // stored in the file "executable"
