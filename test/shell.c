@@ -143,7 +143,7 @@ main(int argc, char*argv[])
         /*if(script){prints(buffer, output);Write(&buffer[0], 1, output);}*/
         i=0;
         while(buffer[i]==' '||buffer[i]=='\t'){i++;/*prints("i");*/}
-        lstart=i;
+        /*lstart=i;*/
         /*Write(&buffer[i], 1, output);*/
         if(buffer[i] != '#' && buffer[i] != 0){
             /*prints("hia", output);*/
@@ -240,7 +240,8 @@ main(int argc, char*argv[])
                         newProc = Fork();
                         if (newProc == 0) {  
                             /*if(script){Write("he\n", 3, output);} */   
-                            i=lstart;j=0;                               
+                            i=0;j=0;                               
+                            printd(i, output);
                             while(buffer[i] != '\0'){/* Gets the Args and puts them in the argv */
                                 /*Write("<", 1, output);
                                 Write(&buffer[i], 1, output);
@@ -301,15 +302,15 @@ main(int argc, char*argv[])
                             }
                             /*prints(execBuffer[0], output);*/
                             args[argcount]=(char *)0;/*Put a \0 in the last arg spot*/
-                            /*Write("h4\n", 3, output);
+                            Write("h4\n", 3, output);
                             prints("\nArgcount  ", output);
                             printd(argcount, output);
                             prints("\narg0 <", output);
                             prints(args[0], output);
                             prints(">", output);
                             prints("\narg1 ", output);
-                            prints(args[1], output);*/
-                            Exec(args[0], &args[1]);
+                            prints(args[1], output);
+                            Exec(args[0], args);
                             Halt();
                             
                             
