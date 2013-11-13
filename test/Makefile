@@ -34,7 +34,7 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp
+all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -190,3 +190,15 @@ cp.o: cp.c
 cp: cp.o start.o
 	$(LD) $(LDFLAGS) start.o cp.o -o cp.coff
 	../bin/coff2noff cp.coff cp
+
+echo.o: echo.c
+	$(CC) $(CFLAGS) -c echo.c
+echo: echo.o start.o
+	$(LD) $(LDFLAGS) start.o echo.o -o echo.coff
+	../bin/coff2noff echo.coff echo
+
+widefork.o: widefork.c
+	$(CC) $(CFLAGS) -c widefork.c
+widefork: widefork.o start.o
+	$(LD) $(LDFLAGS) start.o widefork.o -o widefork.coff
+	../bin/coff2noff widefork.coff widefork
