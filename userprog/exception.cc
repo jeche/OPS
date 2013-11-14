@@ -234,9 +234,6 @@ HandleTLBFault(int vaddr)
 
 void CopyRegs(int k){
   int incrementPC;
-  if(currentThread->space->enoughSpace == 0){
-    interrupt->Halt();
-  }
   currentThread->RestoreUserState();
   currentThread->space->RestoreState();
   machine->WriteRegister(2, 0);
@@ -570,7 +567,6 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Fork\n");
                 if(root==NULL){
                   DEBUG('a', "Root for the family tree is nonexistent.\n");
-                  interrupt->Halt();
                 }
                 curr = root;
                 forking->P();
@@ -587,7 +583,6 @@ ExceptionHandler(ExceptionType which)
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
                   DEBUG('a', "Not enough space to fork child.\n");
                   machine->WriteRegister(2, -1);
-                  interrupt->Halt();
                   pid--;
                   forking->V();
                 }
@@ -604,7 +599,6 @@ ExceptionHandler(ExceptionType which)
                 }
                 if(newSpacer->enoughSpace == 0){
                   delete newSpacer;
-                  interrupt->Halt();
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
@@ -640,7 +634,6 @@ ExceptionHandler(ExceptionType which)
                   // There was not enough room, return a -1
                   DEBUG('a', "Not enough room to create new Address Space.\n");
                   machine->WriteRegister(2, -1);
-                  interrupt->Halt();
                 }
                 else {
                   for(i = 0; i < 16; i++){

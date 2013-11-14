@@ -114,19 +114,22 @@ The open syscall reads a string for the name of the file out of register 4.  Aft
 <a name="sc_read"/>
 SC_Read
 ---------------------------
+Oh God Why?
 
 <a name="sc_write"/>
 SC_Write
 ---------------------------
+Oh God Why?
 
 <a name="sc_close"/>
 SC_Close
 ---------------------------
-The close syscall starts by reading the file descriptor id to be closed out of register 4.  It them checks to make sure it is within the range of valid file.  If the descriptor is invalid it returns a -1.  If the file descriptor is a valid file descriptor it attempts to CloseFile() on the fileShield in that thread's space's fileDescriptors array.  If the CloseFile() call returns a 0 it deletes the file.  After closing the file, no matter what the return value was of the CloseFile() call it sets that spot in the fileDescriptors array to point at NULL so it is no longer pointing to the fileShield object that was there previously.  If for some reason the CLoseFile() returns a nubmer that is less than 0 Close will return a -1.
+The close syscall starts by reading the file descriptor id to be closed out of register 4.  It them checks to make sure it is within the range of valid file.  If the descriptor is invalid it returns a -1.  If the file descriptor is a valid file descriptor it attempts to CloseFile() on the fileShield in that thread's space's fileDescriptors array.  If the CloseFile() call returns a 0 it deletes the file.  After closing the file, no matter what the return value was of the CloseFile() call it sets that spot in the fileDescriptors array to point at NULL so it is no longer pointing to the fileShield object that was there previously.  If for some reason the CloseFile() returns a nubmer that is less than 0 Close will return a -1.
 
 <a name="sc_fork"/>
 SC_Fork
 ---------------------------
+The fork syscall starts by iterating through the familyTree to find the end of it.  It bumps the global pid and then attempts to create a new AddrSpace for the child by copying the parent's using the AddrSpace function newSpace().  After attempting to create the new AddrSpace it checks to see if there was enough space to create the AddrSpace.  If there was not it writes a -1 to register 2 and decrements the global pid.  If there was a enough space it creates a new thread, and a new FamilyNode to add to the end of the family linked list.  It gives the new thread the copy AddrSpace that was created.  The new AddrSpace is given the pid so that the thread can identify itself later.  It then calls SaveUserState() on the new thread to write all the current machine registers to the userRegisters for the child.  It then Forks the new process with the function CopyRegs.  CopyRegs restores the child's registers, restores the page table for the child, increments the PC Regs, and finally writes a 0 to register to before calling machine->Run() to start the execution of that thread.  The parent continues its execution by writing the bumped pid to register 2 and saving the state just in case we have problems later.  It then increments its PC Regs and resumes execution.
 
 <a name="sc_dup"/>
 SC_Dup
