@@ -369,7 +369,7 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 }// Cannot have a file with 'no name'
                 stringArg[127]='\0';
-                DEBUG('a', "Argument string is <%s>\n",stringArg);
+                DEBUG('j', "Argument string is <%s>\n",stringArg);
                 open = fileSystem->Open(stringArg);
                 if(open==NULL){
                   DEBUG('a', "File Could not be Found, -1 returned"); 
@@ -425,7 +425,7 @@ ExceptionHandler(ExceptionType which)
                       if (currentThread->space->fileDescriptors[descriptor]->inOut == -1)
                         fromOutput = 1;
                     }
-                    if (!fromInput && !fromOutput && descriptor < 16) {
+                    if (!fromInput && !fromOutput && descriptor < 16 && descriptor >= 0) {
                       if(currentThread->space->fileDescriptors[descriptor] == NULL){
                         DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                         machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
@@ -502,7 +502,7 @@ ExceptionHandler(ExceptionType which)
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[0]);
                   }
                     DEBUG('a', "Argument string is <%s>\n",stringArg);
-                  if (!toInput && !toOutput && descriptor < 16) {
+                  if (!toInput && !toOutput && descriptor < 16 && descriptor >= 0) {
                     open = currentThread->space->fileDescriptors[descriptor]->file;
                     if(open == NULL){
                       DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.

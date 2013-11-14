@@ -241,7 +241,7 @@ main(int argc, char*argv[])
                         if (newProc == 0) {  
                             /*if(script){Write("he\n", 3, output);} */   
                             i=lstart;j=0;                               
-                            printd(i, output);
+                            /*printd(i, output);*/
                             while(buffer[i] != '\0'){/* Gets the Args and puts them in the argv */
                                 /*Write("<", 1, output);
                                 Write(&buffer[i], 1, output);
@@ -302,7 +302,7 @@ main(int argc, char*argv[])
                             }
                             /*prints(execBuffer[0], output);*/
                             args[argcount]=(char *)0;/*Put a \0 in the last arg spot*/
-                            Write("h4\n", 3, output);
+                            /*Write("h4\n", 3, output);
                             prints("\nArgcount  ", output);
                             printd(argcount, output);
                             prints("\narg0 <", output);
@@ -311,7 +311,7 @@ main(int argc, char*argv[])
                             prints("\narg1 ", output);
                             prints("<", output);
                             prints(args[1], output);
-                                                        prints(">", output);
+                                                        prints(">", output);*/
 
                             Exec(args[0], args);
                             Halt();
