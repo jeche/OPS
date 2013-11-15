@@ -383,9 +383,11 @@ ExceptionHandler(ExceptionType which)
                   for(i = 2; i < 16; i++){
                     if(currentThread->space->fileDescriptors[i] == NULL){
                       descriptor = i;
+                      forking->P();
                       currentThread->space->fileDescriptors[i] = new FileShield();
                       currentThread->space->fileDescriptors[i]->file = open;
                       currentThread->space->fileDescriptors[i]->CopyFile();
+                      forking->V();
                       i = 17;
                     }
                   }
@@ -543,7 +545,9 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, -1);
                 }
                 else{
+                  forking->P();
                   whence = currentThread->space->fileDescriptors[descriptor]->CloseFile();
+                  forking->V();
                   if(whence < 0){//no file is associated with the openfileid
                     DEBUG('a', "No OpenFile is associated with the given OpenFileId\n");
                     machine->WriteRegister(2 , -1);

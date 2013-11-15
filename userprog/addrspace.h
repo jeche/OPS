@@ -93,7 +93,7 @@ class FileShield {
 
     FileShield(){
       refcount = 0;
-      inOut = 0; 
+      inOut = 0;
     }
 
     void CopyFile(){
