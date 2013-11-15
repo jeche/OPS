@@ -407,12 +407,13 @@ ExceptionHandler(ExceptionType which)
                 }
                 break;
         case SC_Read:
-                forking->P();
+                
                 DEBUG('a', "Read\n");
                 size = machine->ReadRegister(5);
                 whence = machine->ReadRegister(4);
                 descriptor = machine->ReadRegister(6);
                 /*if(descriptor>=0&&descriptor<=15&&)*/
+
                   if(size > 0){
                     stringArg = new (std::nothrow) char[128];
                     if (descriptor == ConsoleInput) {
@@ -424,6 +425,7 @@ ExceptionHandler(ExceptionType which)
                         fromOutput = 1;
                     }
                     if (!fromInput && !fromOutput && descriptor < 16 && descriptor >= 0) {
+                      forking->P();
                       if(currentThread->space->fileDescriptors[descriptor] == NULL){
                         DEBUG('a', "Invalid file descriptor.\n");  // Handles if the open file descriptor describes a file that is not open.
                         machine->WriteRegister(2, -1);  // Assume user allocates for null byte in char*
@@ -449,7 +451,6 @@ ExceptionHandler(ExceptionType which)
                       forking->V();
                     }
                     else if (fromInput) { // Deals with ConsoleInput
-                      forking->V();
                       DEBUG('a', "size: %d %c\n", size, stringArg);
                       for(i = 0; i < size; i++){
                         whee = synchConsole->GetChar();
