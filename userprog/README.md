@@ -12,6 +12,10 @@ In system.h changes made included declaring two classes, FamilyNode and SynchCon
 
 Other global variables that were declared include a global pid to be bumped as new processes are forked.  Currently if anyone tries to allocate more than INT_MAX processes the system will have undefined behavior (so please do not try to do this).  There is also a bitmap that is declared to keep track of which pages are free, and which are currently allocated to a process.  There is also a global timer declared which results in random time slicing.  Finally there is a semaphore called forking which is used to ensure singluar access to most of the global objects in the system.
 
+Major Design Decisions:  We made the "FamilyNode" essentially a linked list of pids with semaphores stored in each node for parents and children to communicate with each other.  The linked list works because each pid is unique so each node should have a unique relation of parent and child pids.  This way no nodes need ever be deleted for multiprogramming to correctly occur.  Nodes are only ever added to the end.
+
+The SynchConsole is essentially a wrapper for Console with a lock around the methods of PutChar and GetChar, and a Wait that forces processes to wait until the SynchConsole is not in use.  After a read or write is finished it Broadcasts to a condition to allow waiting processes to continue.  This was done for testing purposes before we added a semaphore to atomize read and write syscalls.  It was never removed due to sheer laziness on the part of Jessica.
+
 system.cc
 ---------
 Intializes the pid to 0.  Intializes the forking semaphore for accessing gloabl values in the system with a value of 1.  Initializes the root node for the family tree (which is a global value) with an initial node that has the same parent as it does child.  Initializes the bitmap with the number of pages the system has.
