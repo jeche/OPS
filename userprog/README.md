@@ -118,7 +118,7 @@ The read syscall starts by grabbing the global semaphore that is used to atomize
 <a name="sc_write"/>
 SC_Write
 ---------------------------
-The write syscall starts by grabbing the global semaphore on a P() that is used to atomize reads and writes.  It then checks to make sure the size 
+The write syscall starts by grabbing the global semaphore on a P() that is used to atomize reads and writes.  It then checks to make sure the size it writes is greater than 0.  It reads the characters to be written out of memory at the address retrieved from register 4 and into the buffer stringArg.  (Again Write is limited to 128 characters maximum)  After that it checks to make sure the write is being called on a valid filed descriptor that has been read out of register 6.  If it is it calls write on the file and gives it the size to write as well as the buffer stringArg to write from.  If the write is to consoleOutput it calls a putChar() on the synchConsole as it reads characters out of memory in a for loop.  We do not allow anyone to write to consoleInput.  If at anypoint anything goes wrong a -1 is written into register 2 (even though Write technically does not return anything).  Before the write syscall exits it V()s the global semaphore and increments the PC Regs.
 
 <a name="sc_close"/>
 SC_Close
