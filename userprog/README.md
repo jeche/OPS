@@ -26,13 +26,12 @@ In the constructor the changes made include removing all ASSERTs and instead whe
 
 The methods from translate.cc were copied for ReadMem(), WriteMem(), and Translate() verbatim into the AddrSpace object to allow for their usage when trying to determine the correct physical page from virtual pages.  This was done out of sheer laziness on the part of Jessica.
 
-Clean()
-Added to AddrSpace to release the pages in case it was necessary to release the pages, but not delete the AddrSpace.
+Clean(): An unimportant remnant of days where we did things in an ugly fashion and where everything was stored in the AddrSpace.  This is not used anymore, but has not yet been deleted because we don't want to break something. (Not that it actualy should be capable of doing so, but we seem to be capable of breaking things in strange ways sometimes so we are leaving it alone for now).
 
 newSpace()
 Added within AddrSpace to allow for the forking of children.  Initializes a new AddrSpace with the same values that the AddrSpace that called it holds.  A new page table is allocated, but in the new page table the physical pages that the virtual pages point to are different than the original's.  It then also copies over the FileShield object into a new fileDescriptors array.  As it copies pointers to the actual FileShield objects into the new array it increments each reference count by calling CopyFile().  newSpace then returns a new AddrSpace with the newly initialized values.
 
-The deconstructor of AddrSpace was also modified to notify the bitMap to release the pages, delete the fileDescriptors array while closing any files it stillahas open , and then finally deleting the pageTable.
+The deconstructor of AddrSpace was also modified to notify the bitMap to release pages held in the pageTable, delete the fileDescriptors array while closing any files it still has open, and then finally delete the pageTable.
 
 bitmap.h
 --------
@@ -55,7 +54,7 @@ exception.cc
 
 ### Syscalls
 #####0. [SC\_Halt](#sc_halt) 
-Stop Nachos, and print out performance stats
+Stop Nachos, and prints out performance stats
 #####1. [SC\_Exit](#sc_exit) 
 This user program is done (status = 0 means exited normally).
 #####2. [SC\_Exec](#sc_exec)  
@@ -119,7 +118,7 @@ The read syscall starts by grabbing the global semaphore that is used to atomize
 <a name="sc_write"/>
 SC_Write
 ---------------------------
-Oh God Why?
+The write syscall starts by grabbing the global semaphore on a P() that is used to atomize reads and writes.  It then checks to make sure the size 
 
 <a name="sc_close"/>
 SC_Close
