@@ -32,7 +32,7 @@ main(int argc, char **argv)
 			while (Read(&ch, 1, from) == 1) {
 				Write(&ch, 1, to);
 			}
-			Close(from); /*Should we close these?*/
+			Close(from);
 			Close(to);
 		}
 	}

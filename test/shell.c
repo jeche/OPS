@@ -221,7 +221,7 @@ main(int argc, char*argv[])
                             Exec("shell", args);
                         }
                         else if(newProc == -1){
-                            /*prints("well fuck\n", output);*/
+                            /*prints("well, \n", out);*/
                         }
                         else{
                             /*Write("JoinScript\n", 11, output);

@@ -258,7 +258,6 @@ ExceptionHandler(ExceptionType which)
     OpenFile* open;
     int descriptor = -1;
     int incrementPC;
-    // int size2;
     char whee;
     int i, j;
     AddrSpace *newSpacer;
@@ -469,10 +468,6 @@ ExceptionHandler(ExceptionType which)
         case SC_Write:
                 DEBUG('a', "Write\n");
                 forking->P();
-                // Issue name: Oh God Why?
-                // For some ungodly reason size decides to be 0 immediately after the for loop.  Why?  No idea.  If we have a different size
-                // it for some reason then works and sets the other different size to 0.  Another fix we found... was to just reset size every
-                // time we need to use it.
                 size = machine->ReadRegister(5);
                 if (size > 0){
                   stringArg = new(std::nothrow) char[128];
@@ -702,7 +697,7 @@ ExceptionHandler(ExceptionType which)
                   DEBUG('a', "Invalid OpenFileId.\n");
                   machine->WriteRegister(2, -1);
                 }
-                if(currentThread->space->fileDescriptors[descriptor] == NULL){
+                else if(currentThread->space->fileDescriptors[descriptor] == NULL){
                   DEBUG('a', "No OpenFile is associated with the given OpenFileId.\n");
                   machine->WriteRegister(2, -1);
                 }
@@ -721,7 +716,7 @@ ExceptionHandler(ExceptionType which)
                     machine->WriteRegister(2, -1);
                   }
                 }
-                DEBUG('a', "File descriptor returned by Dup: %d\n", i);
+                // DEBUG('a', "File descriptor returned by Dup: %d\n", i);
                 
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
