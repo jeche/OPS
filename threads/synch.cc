@@ -282,7 +282,7 @@ bool Lock::isHeldByCurrentThread()
 {
     // checks to be sure that the threadName (set in Acquire after a thread has the lock)
     // is the same as the name of the current thread.  Used for assertions
-    if(threadName = (int)currentThread)
+    if(threadName == (int)currentThread)
     {
         return true;
     }

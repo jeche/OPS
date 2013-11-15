@@ -287,9 +287,10 @@ SwapHeader (NoffHeader *noffH)
 AddrSpace::AddrSpace(OpenFile *executable)
 {    NoffHeader noffH;
     unsigned int size;
-#ifndef USE_TLB
     unsigned int i;
-#endif
+// #ifndef USE_TLB
+    
+// #endif
     enoughSpace = 1;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) &&
@@ -412,7 +413,7 @@ AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
     if(!clean){
-        for(int i = 0; i < numPages; i++){
+        for(unsigned int i = 0; i < numPages; i++){
             bitMap->Clear(pageTable[i].physicalPage);
         }
     }
@@ -662,7 +663,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
 
     if (entry->readOnly && writing) {   // trying to write to a read-only page
-    DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
+    // DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
     return ReadOnlyException;
     }
     pageFrame = entry->physicalPage;

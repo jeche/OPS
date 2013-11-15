@@ -262,10 +262,10 @@ ExceptionHandler(ExceptionType which)
     int i, j;
     AddrSpace *newSpacer;
     Thread *t;
-    Semaphore* die;
-    IntStatus oldLevel;
+    // Semaphore* die;
+    // IntStatus oldLevel;
     FamilyNode *curr;
-    FamilyNode *prev;
+    // FamilyNode *prev;
 
     //Exec w/ args variables
     int sp, len, argcount, herece;
@@ -628,71 +628,74 @@ ExceptionHandler(ExceptionType which)
                   DEBUG('a', "Invalid File Name, no such file exists.\n");
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
+                else{
+                  newSpacer = new AddrSpace(open);
+                  delete open;
+                  newSpacer->pid = currentThread->space->pid; // Transfer pid
+                  
+                  if (newSpacer->enoughSpace == 0) {
+                    // There was not enough room, return a -1
+                    DEBUG('a', "Not enough room to create new Address Space.\n");
+                    machine->WriteRegister(2, -1);
+                  }
+                  else {
+                    for(i = 0; i < 16; i++){
+                      if(currentThread->space->fileDescriptors[i]!= NULL){
+                        newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
+                      }
+                    }
+                    whence = machine->ReadRegister(5);
+                    
+                    newSpacer->InitRegisters();
+                    sp = machine->ReadRegister(StackReg);
 
-                newSpacer = new AddrSpace(open);
-                delete open;
-                newSpacer->pid = currentThread->space->pid; // Transfer pid
-                if (newSpacer->enoughSpace == 0) {
-                  // There was not enough room, return a -1
-                  DEBUG('a', "Not enough room to create new Address Space.\n");
-                  machine->WriteRegister(2, -1);
+                    for(i = 0; i < 16; i++){
+                      memset(stringArg, 0, sizeof(stringArg));
+                      currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                      if (herece == 0){
+                        break;
+                      }
+                      for(j = 0; j < 127; j++){
+                        currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
+                        if(stringArg[j] == '\0') break;
+                      }
+                      DEBUG('a', "STRINGARG %s\n",stringArg);
+
+                      len = strlen(stringArg) + 1;
+                      sp -= len;
+
+                      for(j = 0; j < len; j++){
+                        newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                      }
+                      argvAddr[i] = sp;
+                      whence = whence + sizeof(int);
+
+                    }
+                    argcount = i;
+                    sp = sp & ~3;
+                    DEBUG('a', "argcount %d\n", argcount);
+                    sp -= sizeof(int) * argcount;
+
+                    for(i = 0; i < argcount; i++){
+                       newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
+                    }
+                    delete [] stringArg;
+
+                    delete currentThread->space;
+                    
+                    currentThread->space = newSpacer;
+                    
+                    newSpacer->RestoreState();
+
+                    machine->WriteRegister(4, argcount);
+                    machine->WriteRegister(5, sp);
+
+                    machine->WriteRegister(StackReg, sp - (8 * 4));
+     
+                    machine->Run();
+                  }
                 }
-                else {
-                  for(i = 0; i < 16; i++){
-                    if(currentThread->space->fileDescriptors[i]!= NULL){
-                      newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
-                    }
-                  }
-                  whence = machine->ReadRegister(5);
-                  
-                  newSpacer->InitRegisters();
-                  sp = machine->ReadRegister(StackReg);
-
-                  for(i = 0; i < 16; i++){
-                    memset(stringArg, 0, sizeof(stringArg));
-                    currentThread->space->ReadMem(whence, sizeof(int), &herece);
-                    if (herece == 0){
-                      break;
-                    }
-                    for(j = 0; j < 127; j++){
-                      currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
-                      if(stringArg[j] == '\0') break;
-                    }
-                    DEBUG('a', "STRINGARG %s\n",stringArg);
-
-                    len = strlen(stringArg) + 1;
-                    sp -= len;
-
-                    for(j = 0; j < len; j++){
-                      newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
-                    }
-                    argvAddr[i] = sp;
-                    whence = whence + sizeof(int);
-
-                  }
-                  argcount = i;
-                  sp = sp & ~3;
-                  DEBUG('a', "argcount %d\n", argcount);
-                  sp -= sizeof(int) * argcount;
-
-                  for(i = 0; i < argcount; i++){
-                     newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
-                  }
-                  delete [] stringArg;
-
-                  delete currentThread->space;
-                  
-                  currentThread->space = newSpacer;
-                  
-                  newSpacer->RestoreState();
-
-                  machine->WriteRegister(4, argcount);
-                  machine->WriteRegister(5, sp);
-
-                  machine->WriteRegister(StackReg, sp - (8 * 4));
-   
-                  machine->Run();
-                }
+                delete [] stringArg;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
