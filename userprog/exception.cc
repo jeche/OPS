@@ -446,8 +446,10 @@ ExceptionHandler(ExceptionType which)
                           machine->WriteRegister(2, size);  // Assume user allocates for null byte in char*
                         }
                       }
+                      forking->V();
                     }
                     else if (fromInput) { // Deals with ConsoleInput
+                      forking->V();
                       DEBUG('a', "size: %d %c\n", size, stringArg);
                       for(i = 0; i < size; i++){
                         whee = synchConsole->GetChar();
@@ -461,7 +463,7 @@ ExceptionHandler(ExceptionType which)
                     }
                     delete[] stringArg;
                   }
-                forking->V();
+                
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));

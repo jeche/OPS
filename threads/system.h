@@ -152,8 +152,9 @@ class SynchConsole {
         //semaphore->P();           // wait for interrupt
         writeDone->P();
         // busy->V();
-        notBusy->Broadcast(busy);
         used = false;
+        notBusy->Broadcast(busy);
+        
         busy->Release();
         //lock->Release();
     };
@@ -171,8 +172,8 @@ class SynchConsole {
         //semaphore->P();           // wait for interrupt
         //lock->Release();
         // busy->V();
-        notBusy->Broadcast(busy);
         used = false;
+        notBusy->Broadcast(busy);
         busy->Release();
         return c;
     };
