@@ -7,13 +7,13 @@ system.h
 --------
 In system.h changes made included declaring two classes, FamilyNode and SynchConsole, as well as several global variables used later.  The SynchConsole class creates a global console for the system to write to.  It basically serves as a wrapper class for the already defined console.  There is a lock around methods that the kernel class so that no more than one process can access the SynchConsole to read to it or write from it at once.  The FamilyNode class is basically a node class for a linked list that will contain all family relations in the system.  It has two integers, one for the parent pid and one for the child pid.  It also has an integer to store an exit value.  It lastly has a pointer to another FamilyNode which will serve as a link to other nodes that might need to be accessed.  Finally it has a semaphore, death, which is used per relation for children to notify parents that they have exited, and force the parents to wait if the children have not exited.
 
-Other global variables that were declared include a global pid to be bumped as new processes are forked.  Currently if anyone tries to allocate more than INT_MAX processes the system will have undefined behavior (so please do not try to do this).  There is also a bitmap that is declared to keep track of which pages are free, and which are currently allocated to a process.  There is also a global timer declared which results in random time slicing.  Finally there is a semaphore called forking which is used to ensure singluar access to most of the global objects in the system.
+Other global variables that were declared include a global pid to be bumped as new processes are forked.  Currently if anyone tries to allocate more than INT_MAX processes the system will have undefined behavior (so please do not try to do this).  There is also a bitmap that is declared to keep track of which pages are free, and which are currently allocated to a process.  There is also a global timer(Timer 2) declared which results in random time slicing.  Finally there is a semaphore called forking which is used to ensure singluar access to most of the global objects in the system.
 
 system.cc
 ---------
 Intializes the pid to 0.  Intializes the forking semaphore for accessing gloabl values in the system with a value of 1.  Initializes the root node for the family tree (which is a global value) with an initial node that has the same parent as it does child.  Initializes the bitmap with the number of pages the system has.
 
-MAJOR DESIGN DECISIONS:  We made the "FamilyNode" essentially a linked list of pids with semaphores stored in each node for parents and children to communicate with each other.  The linked list works because each pid is unique so each node should have a unique relation of parent and child pids.  This way no nodes need ever be deleted for multiprogramming to correctly occur.  Nodes are only ever added to the end.
+MAJOR DESIGN DECISIONS:  We made the "FamilyNode" essentially a linked list of pids with semaphores stored in each node for parents and children to communicate with each other.  The linked list works because each pid is unique so each node should have a unique relation of parent and child pids.  This way no nodes need ever be deleted for multiprogramming to correctly occur.  Nodes are only ever added to the end.  We do this in here instead of in AddrSpace so that we can delete the AddrSpace of the child as soon as it exits.
 
 The SynchConsole is essentially a wrapper for Console with a lock around the methods of PutChar and GetChar, and a Wait that forces processes to wait until the SynchConsole is not in use.  After a read or write is finished it Broadcasts to a condition to allow waiting processes to continue.  This was done for testing purposes before we added a semaphore to atomize read and write syscalls.  It was never removed due to sheer laziness on the part of Jessica.
 
@@ -66,9 +66,13 @@ SC_Exit
 ---------------------------
 The exit syscall begins by iterating through the linked list of all processes/threads that have ever been created and continues until it finds a node where the pid of the child is equal to the current thread's pid.  This should work because each child forked should have a unique node.  Once it finds that it sets the exit value to the value that has been read out of register 4.  It then also does a V() on the semaphore within the node that is specified for the child.  This way if the parent is currently stuck at a P() on the semaphore from the SC_Join, the parent will know that its child has exited.  If the parent has not yet had a chance to join on the child, then if it does later it will be able to proceed past the node's semaphore because the child has already done the V().  The exiting process then deletes its address space and calls a Thread->Finish() to clean itself up.  The node related to the child is never affected.
 
+Design Decisions:  We delete the space in here because for some reason the system never seems to do it itself.
+
 SC_Exec
 ---------------------------
 In the exec syscall the name is read out of register 4 and a new address space is initialized using the specified file by name.  The syscall then also handles copying out all of the old file descriptors of the previous address into the new address space.  After the new AddrSpace is created, the registers for that space are initialized, and then argument reading begins.  The stack pointer is pushed down by the length of the file name and then that file name is written above the stack pointer in the new AddrSpace and its location is recorded in the initial position of argvAddr.  This process of reading out the argument, decrementing the stack pointer, writing the argument to the stack and recording the location in argvAddr is repeated for all of the arguments.  After that, we move the stack pointer again to make space to write in all the values in argvAddr.  We write all of those values into the new AddrSpace and then remove the old one and replace it with the one we've created.  We restore the state of the AddrSpace and then write the argcount and the location of argvAddr[0] to the correct registers.  We also write the new stack pointer (with a little extra buffer) back to the appropriate register.  With all this complete, we run our thread again.
+
+Design Decisions:  We technically have to have two spaces at once while copying over the data from the original.  This is for convenience over efficiency.
 
 SC_Join
 ---------------------------
@@ -93,6 +97,8 @@ The write syscall starts by grabbing the global semaphore on a P() that is used 
 SC_Close
 ---------------------------
 The close syscall starts by reading the file descriptor id to be closed out of register 4.  It then checks to make sure it is within the range of valid files.  If the descriptor is invalid it returns a -1.  If the file descriptor is a valid file descriptor it attempts to CloseFile() on the fileShield in that thread's space's fileDescriptors array.  If the CloseFile() call returns a 0 it deletes the file.  After closing the file, no matter what the return value was of the CloseFile() call it sets that spot in the fileDescriptors array to point at NULL so it is no longer pointing to the fileShield object that was there previously.  If for some reason the CloseFile() returns a nubmer that is less than 0 Close will return a -1.
+
+Design Decisions:  We delete the file in close because that way we know the reference count for the file must be 0 before deleting it.
 
 SC_Fork
 ---------------------------
