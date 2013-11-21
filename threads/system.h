@@ -92,6 +92,7 @@ extern PostOffice* postOffice;
 #include "console.h"
 #include "synch.h"
 #include "bitmap.h"
+//#include "disk.h"
 #include <new>
 
 class SynchConsole {
@@ -189,6 +190,73 @@ class SynchConsole {
 
   
 };
+class addrSpaceNode{
+public:
+    AddrSpace *current;
+    addrSpaceNode *next;
+
+    addrSpaceNode(AddrSpace *cur){
+        current = cur;
+        next = NULL;
+    };
+    ~addrSpaceNode(){
+        if(next != NULL){
+            delete next;
+        }
+    };
+
+};
+
+class ramEntry{ //Need to add stuff for replacement alg ***************************************
+private:
+    int pid;
+    int status;
+    int refcount;
+    addrSpaceNode *head;
+
+public:
+    ramEntry(int PID, int STATUS, AddrSpace *first){
+        pid = PID;
+        status = STATUS;
+        refcount = 1;
+        head = new(std::nothrow) addrSpaceNode(first);
+    };
+    ~ramEntry(){
+        delete head;
+    };
+    int removeAddrSpaceNode(AddrSpace *del){
+        addrSpaceNode *cur, *prev;
+        cur = head;
+        while(cur->current != del && cur->next != NULL){
+            prev = cur;
+            cur = cur->next;
+        }
+        if(cur->current == del){
+            prev->next = cur->next;
+            cur->next = NULL;
+            delete cur;
+            refcount--;
+            return refcount;
+        }
+        else{
+            fprintf(stderr, "You Done Goofed Gender Neutral Spawn of Universe\n");
+            return -1;
+        }
+    };
+
+    int addAddrSpaceNode(AddrSpace *addr){
+        addrSpaceNode *newHead;
+        newHead = new(std::nothrow) addrSpaceNode(addr);
+        newHead->next = head; 
+        head = newHead;
+        refcount++;
+        return refcount;
+
+    };
+
+
+};
+
 
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,
@@ -247,9 +315,11 @@ extern unsigned int pid;
 extern FileSystem  *fileSystem;
 #endif
 
-#ifdef FILESYS
+#ifdef FILESYS //NEED STUFF FOR COMMUTATOR *************************************************
 #include "synchdisk.h"
 extern SynchDisk   *synchDisk;
+extern BitMap *diskBitMap;
+extern ramEntry *ramPages;
 #endif
 
 #ifdef NETWORK

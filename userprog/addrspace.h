@@ -112,6 +112,7 @@ class FileShield {
     }
 };
 
+
 class AddrSpace {
   public:
     FileShield** fileDescriptors;
@@ -142,6 +143,8 @@ class AddrSpace {
     TranslationEntry *pageTable;  // Assume linear page table translation
 #endif          // for now!
     bool clean;
+    TranslationEntry *revPageTable;
+
     unsigned int numPages;    // Number of pages in the virtual 
           // address space
 };

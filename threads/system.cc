@@ -250,6 +250,7 @@ FileSystem  *fileSystem;
 
 #ifdef FILESYS
 SynchDisk   *synchDisk;
+BitMap *diskBitMap;
 #endif
 
 #ifdef USER_PROGRAM // requires either FILESYS or FILESYS_STUB
@@ -409,6 +410,11 @@ Initialize(int argc, char **argv)
 
 #ifdef FILESYS
     synchDisk = new(std::nothrow) SynchDisk("DISK");
+    diskBitMap = new(std::nothrow) BitMap(NumSectors);
+    ramPages = new(std::nothrow) ramEntry[NumPhysPages];
+    for(int i = 0; i < NumPhysPages; i++;){
+        ramPages[i] = new(std::nothrow) ramEntry(-1, -1, NULL);
+    }
 #endif
 
 #ifdef FILESYS_NEEDED

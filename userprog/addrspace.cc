@@ -316,10 +316,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
 #ifndef USE_TLB
 // first, set up the translation
     pageTable = new(std::nothrow) TranslationEntry[numPages];
+    revPageTable = new(std::nothrow) TranslationEntry[numPages];
     int found = 0;
 
     for (i = 0; i < numPages; i++) {
-        
+//FC        found = diskBitMap->Find();
         found = bitMap->Find();
         if(found == -1){
             numPages = i + 1;
@@ -331,13 +332,14 @@ AddrSpace::AddrSpace(OpenFile *executable)
             pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
             
             pageTable[i].physicalPage = found;
-            pageTable[i].valid = true;
+            pageTable[i].valid = true;//FC    False;
             pageTable[i].use = false;
             pageTable[i].dirty = false;
             pageTable[i].readOnly = false; // if the code segment was entirely on
                                         // a separate page, we could set its
                                         // pages to be read-only
             bitMap->Mark(found);
+//FC            diskBitMap->Mark(found);
             DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
                                         i*PageSize,i, found*PageSize, found);
         }
