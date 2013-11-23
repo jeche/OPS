@@ -288,6 +288,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 {    NoffHeader noffH;
     unsigned int size;
     unsigned int i;
+    int j;
 // #ifndef USE_TLB
     
 // #endif
@@ -305,6 +306,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
                         + UserStackSize ;        // we need to increase the size
                                                 // to leave room for the stack
     numPages = divRoundUp(size, PageSize);
+    fprintf(stderr, "numPages: %d\n", numPages);
     size = numPages * PageSize;
     if(numPages > NumSectors){
         enoughSpace = 0;                                       // check we're not trying
@@ -355,6 +357,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
                                         i*PageSize,i, found*PageSize, found);
         }
     }
+    fprintf(stderr, "Gots ma pages!\n");
 DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, final space is 0x%x\n",
                                         (i - 1)*PageSize,(i - 1), found*PageSize, found, (found + 1)*PageSize - PageSize - 16);
 #endif
@@ -380,10 +383,10 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         unsigned int page;//loc is the amount pulled from the segments
         if(noffH.code.size > 0){
             if(noffH.code.virtualAddr != 0){fprintf(stderr, "Well Shit bout to be fucked up(code not starting at 0x0)\n");}
-            for(i=noffH.code.size; i >= 0; i-=128){
-                if(i<128 && i>0){
+            for(j=noffH.code.size; j >= 0; j-=128){
+                if(j<128 && j>0){
                     //TranslateDisk(noffH.code.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
-                    executable->ReadAt(strbuf, sizeof(char)*i, noffH.code.inFileAddr+loc*sizeof(char));
+                    executable->ReadAt(strbuf, sizeof(char)*j, noffH.code.inFileAddr+loc*sizeof(char));
                     break;
                 }
                 else{
@@ -397,12 +400,14 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                 }
             }
         }
+        fprintf(stderr, "Writing initdata\n");
+        fprintf(stderr, "initdata: %d\n", noffH.initData.size);
         if(noffH.initData.size > 0){
             loc = 0;//reset since we havent pulled anything from initdata
-            if(i > 0){//this fills the partial page since the segments need to be next to each other
+            if(j > 0){//this fills the partial page since the segments need to be next to each other
                 //TranslateDisk(noffH.initData.virtualAddr, &babyAddr, 1, false);
-                executable->ReadAt(strbuf+i, sizeof(char)*(SectorSize-i), noffH.initData.inFileAddr);
-                loc = (SectorSize-i);
+                executable->ReadAt(strbuf+j, sizeof(char)*(SectorSize-j), noffH.initData.inFileAddr);
+                loc = (SectorSize-j);
                 page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
                 memset(strbuf, '\0', sizeof(strbuf));
@@ -410,15 +415,18 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
             }//loc is now equal to the amount written to the partial page, aka the remainder of the size of the page(SectorSize which 
              //happens to equal the page size) now we must subtract the amount read out of initdata from the over count in the for
              //loop so we don't go over the amount we need to read out
-            for(i=noffH.initData.size-loc; i >= 0; i-=128){
-                if(i < 128 && i > 0){
+
+            for(j=noffH.initData.size-loc; j >= 0; j-=128){
+                if(j < 128 && j > 0){
+                    fprintf(stderr, "LastIter\n");
                     //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
-                    executable->ReadAt(strbuf, sizeof(char)*i, noffH.initData.inFileAddr+loc*sizeof(char));
+                    executable->ReadAt(strbuf, sizeof(char)*j, noffH.initData.inFileAddr+loc*sizeof(char));
                     page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
                     synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
                     break;
                 }
                 else{
+                    fprintf(stderr, "j: %u\n", j);
                     //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
                     executable->ReadAt(strbuf, sizeof(char)*sizeof(SectorSize), noffH.initData.inFileAddr+loc*sizeof(char));
                     loc+=128;
@@ -429,6 +437,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
             }
 
         }
+        fprintf(stderr, "I SAY HEYHEYHEYHEY\n");
     }
 
     /*End Writing to Disk directly*/
@@ -708,7 +717,7 @@ AddrSpace::WriteMem(int addr, int size, int value)
 ExceptionType
 AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing) 
 {
-    fprintf(stderr, "Depricated Translate, You should not be here!\n");
+//    fprintf(stderr, "Depricated Translate, You should not be here!\n");
     int i;
     unsigned int vpn, offset;
     TranslationEntry *entry;

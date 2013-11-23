@@ -254,18 +254,19 @@ int findReplacement(){
   int startPos = commutator;
   // Sweep through and check for free pages
   for (commutator; commutator < NumPhysPages; commutator++) {
-      int vPage = ramPages[commutator]->vPage;
-      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      // int vPage = ramPages[commutator]->vPage;
+      // TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
       if (ramPages[commutator]->status == Free) {
         found = commutator;
         // 2 means going out to disk
         ramPages[commutator]->status = MarkedForReplacement;
+        fprintf(stderr, "I said what what in the butt\n");
         return found;
       }
     }
     for (commutator = 0; commutator < startPos; commutator++) {
-      int vPage = ramPages[commutator]->vPage;
-      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      // int vPage = ramPages[commutator]->vPage;
+      // TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
       if (ramPages[commutator]->status == Free) {
         found = commutator;
         // 2 means going out to disk
@@ -273,9 +274,10 @@ int findReplacement(){
         return found;
       }
     }
-
+  fprintf(stderr, "What What in the butt\n");
   // Fancy clock part  
   while(1) {
+    fprintf(stderr, "nonononono\n");
     // First scan -- Look for use and dirty bits false
     for (commutator; commutator < NumPhysPages; commutator++) {
       int vPage = ramPages[commutator]->vPage;
@@ -830,24 +832,41 @@ ExceptionHandler(ExceptionType which)
       #endif
 
         case PageFaultException:
-            descriptor = findReplacement(); // Set to currently being replaced.
+            fprintf(stderr, "and I get real high\n");
+            descriptor = findReplacement();
+            
+             // Set to currently being replaced.
             stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
             vpn =  machine->ReadRegister(BadVAddrReg) / PageSize;
-            ramPages[descriptor]->status = MarkedForReplacement;
-            if(ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].dirty){
-                for(j = 0; j < PageSize; j ++){
-                  stringArg[j] = machine->mainMemory[ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].physicalPage * PageSize + j];
-                }
-                synchDisk->WriteSector(ramPages[descriptor]->head->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, stringArg);
+            
+            if(ramPages[descriptor]->head->current != NULL){
+              fprintf(stderr, "I say HEY HEY HEY AHEY\n");
+              if(ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].dirty){
+                  for(j = 0; j < PageSize; j ++){
+                    stringArg[j] = machine->mainMemory[ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].physicalPage * PageSize + j];
+                  }
+                  ramPages[descriptor]->status = MarkedForReplacement;
+                  synchDisk->WriteSector(ramPages[descriptor]->head->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, stringArg);
+              }
             }
             memset(stringArg, 0, sizeof(stringArg));
-            ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].valid = false;
+            if(ramPages[descriptor]->head->current != NULL){
+              ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].valid = false;  
+            }
+            ramPages[descriptor]->status = MarkedForReplacement;
             synchDisk->ReadSector(currentThread->space->revPageTable[vpn].physicalPage, stringArg);
             for(j = 0; j < PageSize; j++){
               machine->mainMemory[descriptor * PageSize + j] = stringArg[j];
             }
+            ramPages[descriptor]->status = InUse;
+
             currentThread->space->pageTable[vpn].valid = true;
             currentThread->space->pageTable[vpn].physicalPage = descriptor;
+            ramPages[descriptor]->vPage = currentThread->space->pageTable[vpn].virtualPage;
+            ramPages[descriptor]->head->current = currentThread->space;
+            ramPages[descriptor]->pid = currentThread->space->pid;
+            fprintf(stderr, "and I I I \n");
+            DEBUG('a', "Page %d replaced for VAddr %d, Place on disk is: %d\n", descriptor, machine->ReadRegister(BadVAddrReg), currentThread->space->revPageTable[vpn].physicalPage);
             // ramPages[descriptor].
             // for (i=0; i<127; i++){
               // currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
