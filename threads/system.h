@@ -209,16 +209,23 @@ public:
 
 class ramEntry{ //Need to add stuff for replacement alg ***************************************
 private:
+    // int pid;
+    // int status;
+    // int refcount;
+    // int vPage;
+    // addrSpaceNode *head;
+
+public:
     int pid;
     int status;
     int refcount;
+    int vPage;
     addrSpaceNode *head;
-
-public:
-    ramEntry(int PID, int STATUS, AddrSpace *first){
+    ramEntry(int PID, int STATUS, int VPage, AddrSpace *first){
         pid = PID;
         status = STATUS;
         refcount = 1;
+        vPage = VPage;
         head = new(std::nothrow) addrSpaceNode(first);
     };
     ~ramEntry(){
@@ -318,6 +325,7 @@ extern FileSystem  *fileSystem;
 extern SynchDisk   *synchDisk;
 extern BitMap *diskBitMap;
 extern ramEntry **ramPages;
+extern int commutator;
 #ifdef FILESYS 
 #endif
 

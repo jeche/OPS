@@ -250,7 +250,45 @@ void CopyRegs(int k){
 //----------------------------------------
 
 int findReplacement(){
-  return 0;
+  int found = 0;
+  int startPos = commutator;
+  while(1) {
+    // First scan -- Look for use and dirty bits false
+    for (commutator; commutator < NumPhysPages; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && !pageTableEntry.dirty) {
+        return commutator;
+      }
+    }
+    for (commutator = 0; commutator < startPos; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && !pageTableEntry.dirty) {
+        return commutator;
+      }
+    }
+
+    // Second scan -- Look for use bit false and dirty bit true -- change use bits as we go
+    for (commutator; commutator < NumPhysPages; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && pageTableEntry.dirty) {
+        return commutator;
+      }
+      // Set the use bit to false if it is not already
+      pageTableEntry.use = false;
+    }
+    for (commutator = 0; commutator < startPos; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && pageTableEntry.dirty) {
+        return commutator;
+      }
+      // Set the use bit to false if it is not already
+      pageTableEntry.use = false;
+    }
+  }
 }
 
 
