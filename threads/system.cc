@@ -416,7 +416,7 @@ Initialize(int argc, char **argv)
     diskBitMap = new(std::nothrow) BitMap(NumSectors);
     ramPages = new(std::nothrow) ramEntry*[NumPhysPages];
     for(int i = 0; i < NumPhysPages; i++){
-        ramPages[i] = new(std::nothrow) ramEntry(-1, 0, -1, NULL);
+        ramPages[i] = new(std::nothrow) ramEntry(-1, Free, -1, NULL);
     }
     commutator = 0;
 

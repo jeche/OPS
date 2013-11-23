@@ -223,11 +223,11 @@ private:
 
 public:
     int pid;
-    int status;
+    Status status;
     int refcount;
     int vPage;
     addrSpaceNode *head;
-    ramEntry(int PID, int STATUS, int VPage, AddrSpace *first){
+    ramEntry(int PID, Status STATUS, int VPage, AddrSpace *first){
         pid = PID;
         status = STATUS;
         refcount = 1;

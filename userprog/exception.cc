@@ -256,20 +256,20 @@ int findReplacement(){
   for (commutator; commutator < NumPhysPages; commutator++) {
       int vPage = ramPages[commutator]->vPage;
       TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
-      if (ramPages[commutator]->status == 0) {
+      if (ramPages[commutator]->status == Free) {
         found = commutator;
         // 2 means going out to disk
-        ramPages[commutator]->status = 2;
+        ramPages[commutator]->status = MarkedForReplacement;
         return found;
       }
     }
     for (commutator = 0; commutator < startPos; commutator++) {
       int vPage = ramPages[commutator]->vPage;
       TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
-      if (ramPages[commutator]->status == 0) {
+      if (ramPages[commutator]->status == Free) {
         found = commutator;
         // 2 means going out to disk
-        ramPages[commutator]->status = 2;
+        ramPages[commutator]->status = MarkedForReplacement;
         return found;
       }
     }
@@ -280,20 +280,20 @@ int findReplacement(){
     for (commutator; commutator < NumPhysPages; commutator++) {
       int vPage = ramPages[commutator]->vPage;
       TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
-      if (!pageTableEntry.use && !pageTableEntry.dirty && ramPages[commutator]->status != 2) {
+      if (!pageTableEntry.use && !pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
         found = commutator;
         // 2 means going out to disk
-        ramPages[commutator]->status = 2;
+        ramPages[commutator]->status = MarkedForReplacement;
         return found;
       }
     }
     for (commutator = 0; commutator < startPos; commutator++) {
       int vPage = ramPages[commutator]->vPage;
       TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
-      if (!pageTableEntry.use && !pageTableEntry.dirty && ramPages[commutator]->status != 2) {
+      if (!pageTableEntry.use && !pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
         found = commutator;
         // 2 means going out to disk
-        ramPages[commutator]->status = 2;
+        ramPages[commutator]->status = MarkedForReplacement;
         return found;
       }
     }
@@ -302,10 +302,10 @@ int findReplacement(){
     for (commutator; commutator < NumPhysPages; commutator++) {
       int vPage = ramPages[commutator]->vPage;
       TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
-      if (!pageTableEntry.use && pageTableEntry.dirty && ramPages[commutator]->status != 2) {
+      if (!pageTableEntry.use && pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
         found = commutator;
         // 2 means going out to disk
-        ramPages[commutator]->status = 2;
+        ramPages[commutator]->status = MarkedForReplacement;
         return found;
       }
       // Set the use bit to false if it is not already
@@ -314,10 +314,10 @@ int findReplacement(){
     for (commutator = 0; commutator < startPos; commutator++) {
       int vPage = ramPages[commutator]->vPage;
       TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
-      if (!pageTableEntry.use && pageTableEntry.dirty && ramPages[commutator]->status != 2) {
+      if (!pageTableEntry.use && pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
         found = commutator;
         // 2 means going out to disk
-        ramPages[commutator]->status = 2;
+        ramPages[commutator]->status = MarkedForReplacement;
         return found;
       }
       // Set the use bit to false if it is not already
