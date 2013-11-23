@@ -313,13 +313,13 @@ extern unsigned int pid;
 #include "filesys.h"
 extern FileSystem  *fileSystem;
 #endif
-
-
-#ifdef FILESYS //NEED STUFF FOR COMMUTATOR *************************************************
 #include "synchdisk.h"
 extern SynchDisk   *synchDisk;
 extern BitMap *diskBitMap;
-extern ramEntry *ramPages;
+extern ramEntry **ramPages;
+
+
+#ifdef FILESYS //NEED STUFF FOR COMMUTATOR *************************************************
 #endif
 
 #ifdef NETWORK

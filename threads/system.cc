@@ -248,9 +248,12 @@ unsigned int pid;
 FileSystem  *fileSystem;
 #endif
 
-#ifdef FILESYS
 SynchDisk   *synchDisk;
 BitMap *diskBitMap;
+ramEntry **ramPages;
+
+#ifdef FILESYS
+
 #endif
 
 #ifdef USER_PROGRAM // requires either FILESYS or FILESYS_STUB
@@ -408,13 +411,15 @@ Initialize(int argc, char **argv)
     // bitMap->Print();
 #endif
 
-#ifdef FILESYS
     synchDisk = new(std::nothrow) SynchDisk("DISK");
     diskBitMap = new(std::nothrow) BitMap(NumSectors);
-    ramPages = new(std::nothrow) ramEntry[NumPhysPages];
-    for(int i = 0; i < NumPhysPages; i++;){
+    ramPages = new(std::nothrow) ramEntry*[NumPhysPages];
+    for(int i = 0; i < NumPhysPages; i++){
         ramPages[i] = new(std::nothrow) ramEntry(-1, -1, NULL);
     }
+
+#ifdef FILESYS
+
 #endif
 
 #ifdef FILESYS_NEEDED
@@ -447,9 +452,9 @@ Cleanup()
 #ifdef FILESYS_NEEDED
     delete fileSystem;
 #endif
-
+delete synchDisk;
 #ifdef FILESYS
-    delete synchDisk;
+    
 #endif
     
     delete timer;
