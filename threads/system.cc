@@ -24,9 +24,9 @@ Timer *timer;				// the hardware timer device,
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
 #endif
-SynchDisk   *synchDisk;//***********************
-#ifdef FILESYS
 
+#ifdef FILESYS
+SynchDisk   *synchDisk;//***********************
 #endif
 
 #ifdef USER_PROGRAM	// requires either FILESYS or FILESYS_STUB
@@ -452,9 +452,10 @@ Cleanup()
 #ifdef FILESYS_NEEDED
     delete fileSystem;
 #endif
-delete synchDisk;
+
+    delete synchDisk; 
 #ifdef FILESYS
-    
+   
 #endif
     
     delete timer;
