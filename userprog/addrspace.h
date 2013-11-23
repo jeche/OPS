@@ -121,7 +121,7 @@ class AddrSpace {
     AddrSpace(OpenFile *executable);  // Create an address space,
           // initializing it with the program
           // stored in the file "executable"
-    AddrSpace(TranslationEntry *newPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace); //Only use if you are forking a new 
+    AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace); //Only use if you are forking a new 
           //process and you know the pages needed
           //and are going to copy in the physical pages
     ~AddrSpace();     // De-allocate an address space
@@ -133,7 +133,7 @@ class AddrSpace {
     void SaveState();     // Save/restore address space-specific
     void RestoreState();    // info on a context switch 
     ExceptionType Translate(int virtAddr, int* physAddr, int size, bool writing);
-    ExceptionType TranslateDisk(int virtAddr, int* physAddr, int size, bool writing);
+//DC    ExceptionType TranslateDisk(int virtAddr, int* physAddr, int size, bool writing);
     unsigned int getNumPages();
     AddrSpace* newSpace();
     bool ReadMem(int addr, int size, int *value);
