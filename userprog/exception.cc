@@ -250,7 +250,80 @@ void CopyRegs(int k){
 //----------------------------------------
 
 int findReplacement(){
-  return 0;
+  int found;
+  int startPos = commutator;
+  // Sweep through and check for free pages
+  for (commutator; commutator < NumPhysPages; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (ramPages[commutator]->status == Free) {
+        found = commutator;
+        // 2 means going out to disk
+        ramPages[commutator]->status = MarkedForReplacement;
+        return found;
+      }
+    }
+    for (commutator = 0; commutator < startPos; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (ramPages[commutator]->status == Free) {
+        found = commutator;
+        // 2 means going out to disk
+        ramPages[commutator]->status = MarkedForReplacement;
+        return found;
+      }
+    }
+
+  // Fancy clock part  
+  while(1) {
+    // First scan -- Look for use and dirty bits false
+    for (commutator; commutator < NumPhysPages; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && !pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
+        found = commutator;
+        // 2 means going out to disk
+        ramPages[commutator]->status = MarkedForReplacement;
+        return found;
+      }
+    }
+    for (commutator = 0; commutator < startPos; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && !pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
+        found = commutator;
+        // 2 means going out to disk
+        ramPages[commutator]->status = MarkedForReplacement;
+        return found;
+      }
+    }
+
+    // Second scan -- Look for use bit false and dirty bit true -- change use bits as we go
+    for (commutator; commutator < NumPhysPages; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
+        found = commutator;
+        // 2 means going out to disk
+        ramPages[commutator]->status = MarkedForReplacement;
+        return found;
+      }
+      // Set the use bit to false if it is not already
+      pageTableEntry.use = false;
+    }
+    for (commutator = 0; commutator < startPos; commutator++) {
+      int vPage = ramPages[commutator]->vPage;
+      TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
+      if (!pageTableEntry.use && pageTableEntry.dirty && ramPages[commutator]->status != MarkedForReplacement) {
+        found = commutator;
+        // 2 means going out to disk
+        ramPages[commutator]->status = MarkedForReplacement;
+        return found;
+      }
+      // Set the use bit to false if it is not already
+      pageTableEntry.use = false;
+    }
+  }
 }
 
 
@@ -279,7 +352,7 @@ ExceptionHandler(ExceptionType which)
     // IntStatus oldLevel;
     FamilyNode *curr;
     // FamilyNode *prev;
-
+    int vpn;
     //Exec w/ args variables
     int sp, len, argcount, herece;
     int argvAddr[16];
@@ -755,6 +828,34 @@ ExceptionHandler(ExceptionType which)
         HandleTLBFault(machine->ReadRegister(BadVAddrReg));
         break;
       #endif
+
+        case PageFaultException:
+            descriptor = findReplacement(); // Set to currently being replaced.
+            stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
+            vpn =  machine->ReadRegister(BadVAddrReg) / PageSize;
+            ramPages[descriptor]->status = MarkedForReplacement;
+            if(ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].dirty){
+                for(j = 0; j < PageSize; j ++){
+                  stringArg[j] = machine->mainMemory[ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].physicalPage * PageSize + j];
+                }
+                synchDisk->WriteSector(ramPages[descriptor]->head->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, stringArg);
+            }
+            memset(stringArg, 0, sizeof(stringArg));
+            ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].valid = false;
+            synchDisk->ReadSector(currentThread->space->revPageTable[vpn].physicalPage, stringArg);
+            for(j = 0; j < PageSize; j++){
+              machine->mainMemory[descriptor * PageSize + j] = stringArg[j];
+            }
+            currentThread->space->pageTable[vpn].valid = true;
+            currentThread->space->pageTable[vpn].physicalPage = descriptor;
+            // ramPages[descriptor].
+            // for (i=0; i<127; i++){
+              // currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+            // }
+            // if(){
+              // synchDisk->WriteSector(ramPages[descriptor]->addrSpaceNode->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, );]
+            // }
+        break;
       default: ;
     }
 }

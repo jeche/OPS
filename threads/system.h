@@ -190,6 +190,12 @@ class SynchConsole {
 
   
 };
+
+enum Status { Free,           // No page here yet!
+             InUse,      // Currently in use but not being replaced
+             MarkedForReplacement,    // Found by replacement algorithm to be removed
+};
+
 class addrSpaceNode{
 public:
     AddrSpace *current;
@@ -209,16 +215,23 @@ public:
 
 class ramEntry{ //Need to add stuff for replacement alg ***************************************
 private:
-    int pid;
-    int status;
-    int refcount;
-    addrSpaceNode *head;
+    // int pid;
+    // int status;
+    // int refcount;
+    // int vPage;
+    // addrSpaceNode *head;
 
 public:
-    ramEntry(int PID, int STATUS, AddrSpace *first){
+    int pid;
+    Status status;
+    int refcount;
+    int vPage;
+    addrSpaceNode *head;
+    ramEntry(int PID, Status STATUS, int VPage, AddrSpace *first){
         pid = PID;
         status = STATUS;
         refcount = 1;
+        vPage = VPage;
         head = new(std::nothrow) addrSpaceNode(first);
     };
     ~ramEntry(){
@@ -318,6 +331,7 @@ extern FileSystem  *fileSystem;
 extern SynchDisk   *synchDisk;
 extern BitMap *diskBitMap;
 extern ramEntry **ramPages;
+extern int commutator;
 #ifdef FILESYS 
 #endif
 
