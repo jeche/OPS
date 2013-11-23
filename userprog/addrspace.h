@@ -139,13 +139,14 @@ class AddrSpace {
     AddrSpace* newSpace();
     bool ReadMem(int addr, int size, int *value);
     bool WriteMem(int addr, int size, int value);
+    TranslationEntry *revPageTable;
 
   private:
 #ifndef USE_TLB
     //TranslationEntry *pageTable;  // Assume linear page table translation
 #endif          // for now!
     bool clean;
-    TranslationEntry *revPageTable;
+    
 
 
     unsigned int numPages;    // Number of pages in the virtual 

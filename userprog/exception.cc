@@ -352,7 +352,7 @@ ExceptionHandler(ExceptionType which)
     // IntStatus oldLevel;
     FamilyNode *curr;
     // FamilyNode *prev;
-
+    int vpn;
     //Exec w/ args variables
     int sp, len, argcount, herece;
     int argvAddr[16];
@@ -832,12 +832,29 @@ ExceptionHandler(ExceptionType which)
         case PageFaultException:
             descriptor = findReplacement(); // Set to currently being replaced.
             stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
-            for (i=0; i<127; i++){
-              currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+            vpn =  machine->ReadRegister(BadVAddrReg) / PageSize;
+            ramPages[descriptor]->status = MarkedForReplacement;
+            if(ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].dirty){
+                for(j = 0; j < PageSize; j ++){
+                  stringArg[j] = machine->mainMemory[ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].physicalPage * PageSize + j];
+                }
+                synchDisk->WriteSector(ramPages[descriptor]->head->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, stringArg);
             }
-            if(){
-              synchDisk->WriteSector(ramPages[descriptor]->addrSpaceNode->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, );]
+            memset(stringArg, 0, sizeof(stringArg));
+            ramPages[descriptor]->head->current->pageTable[ramPages[descriptor]->vPage].valid = false;
+            synchDisk->ReadSector(currentThread->space->revPageTable[vpn].physicalPage, stringArg);
+            for(j = 0; j < PageSize; j++){
+              machine->mainMemory[descriptor * PageSize + j] = stringArg[j];
             }
+            currentThread->space->pageTable[vpn].valid = true;
+            currentThread->space->pageTable[vpn].physicalPage = descriptor;
+            // ramPages[descriptor].
+            // for (i=0; i<127; i++){
+              // currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+            // }
+            // if(){
+              // synchDisk->WriteSector(ramPages[descriptor]->addrSpaceNode->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, );]
+            // }
         break;
       default: ;
     }
