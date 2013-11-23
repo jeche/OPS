@@ -258,7 +258,6 @@ int findReplacement(){
       TranslationEntry pageTableEntry = ramPages[commutator]->head->current->pageTable[vPage];
       if (ramPages[commutator]->status == 0) {
         found = commutator;
-        // 2 means going out to disk
         ramPages[commutator]->status = 2;
         return found;
       }
@@ -828,6 +827,17 @@ ExceptionHandler(ExceptionType which)
         HandleTLBFault(machine->ReadRegister(BadVAddrReg));
         break;
       #endif
+
+        case PageFaultException:
+            descriptor = findReplacement(); // Set to currently being replaced.
+            stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
+            for (i=0; i<127; i++){
+              currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+            }
+            if(){
+              synchDisk->WriteSector(ramPages[descriptor]->addrSpaceNode->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, );]
+            }
+        break;
       default: ;
     }
 }
