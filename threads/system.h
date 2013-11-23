@@ -190,6 +190,12 @@ class SynchConsole {
 
   
 };
+
+enum Status { Free,           // No page here yet!
+             InUse,      // Currently in use but not being replaced
+             MarkedForReplacement,    // Found by replacement algorithm to be removed
+};
+
 class addrSpaceNode{
 public:
     AddrSpace *current;
