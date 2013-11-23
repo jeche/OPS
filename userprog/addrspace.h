@@ -132,12 +132,12 @@ class AddrSpace {
     void Clean();
     void SaveState();     // Save/restore address space-specific
     void RestoreState();    // info on a context switch 
-    bool ReadMem(int addr, int size, int *value);
-    bool WriteMem(int addr, int size, int value);
     ExceptionType Translate(int virtAddr, int* physAddr, int size, bool writing);
     ExceptionType TranslateDisk(int virtAddr, int* physAddr, int size, bool writing);
     unsigned int getNumPages();
     AddrSpace* newSpace();
+    bool ReadMem(int addr, int size, int *value);
+    bool WriteMem(int addr, int size, int value);
 
   private:
 #ifndef USE_TLB
@@ -145,6 +145,7 @@ class AddrSpace {
 #endif          // for now!
     bool clean;
     TranslationEntry *revPageTable;
+
 
     unsigned int numPages;    // Number of pages in the virtual 
           // address space

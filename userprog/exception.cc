@@ -244,6 +244,19 @@ void CopyRegs(int k){
   machine->Run();
 }
 
+//----------------------------------------
+// findReplacement
+// finds a page to replace
+//----------------------------------------
+
+int findReplacement(){
+  return 0;
+}
+
+
+//----------------------------------------
+// END findReplacement
+//----------------------------------------
 void
 ExceptionHandler(ExceptionType which)
 {

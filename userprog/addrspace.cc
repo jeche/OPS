@@ -288,7 +288,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 {    NoffHeader noffH;
     unsigned int size;
     unsigned int i;
-    diskBitMap;
+    // diskBitMap;
 // #ifndef USE_TLB
     
 // #endif
