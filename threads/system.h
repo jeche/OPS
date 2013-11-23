@@ -309,11 +309,11 @@ extern BitMap *bitMap;
 extern FamilyNode* root;
 extern unsigned int pid;
 #endif
-
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
 #include "filesys.h"
 extern FileSystem  *fileSystem;
 #endif
+
 
 #ifdef FILESYS //NEED STUFF FOR COMMUTATOR *************************************************
 #include "synchdisk.h"

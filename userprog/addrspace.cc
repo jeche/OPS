@@ -288,9 +288,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
 {    NoffHeader noffH;
     unsigned int size;
     unsigned int i;
+    diskBitMap;
 // #ifndef USE_TLB
     
 // #endif
+    currentThread;
     enoughSpace = 1;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) &&
@@ -359,7 +361,67 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     for(i = 2; i < 16; i++){
         fileDescriptors[i] = NULL;
     }
+    /*New Writing to Disk directly*/
 
+    if(enoughSpace==1){
+        char strbuf[128];
+        memset(strbuf, '\0', sizeof(strbuf));
+        int loc = 0;
+        unsigned int page;//loc is the amount pulled from the segments
+        if(noffH.code.size > 0){
+            if(noffH.code.virtualAddr != 0){fprintf(stderr, "Well Shit bout to be fucked up(code not starting at 0x0)\n");}
+            for(i=noffH.code.size; i >= 0; i-=128){
+                if(i<128 && i>0){
+                    //TranslateDisk(noffH.code.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+                    executable->ReadAt(strbuf, sizeof(char)*i, noffH.code.inFileAddr+loc*sizeof(char));
+                    break;
+                }
+                else{
+                    //TranslateDisk(noffH.code.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+                    executable->ReadAt(strbuf, sizeof(char)*sizeof(SectorSize), noffH.code.inFileAddr+loc*sizeof(char));
+                    loc+=128;
+                    page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+                    synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+                    memset(strbuf, '\0', sizeof(strbuf));
+
+                }
+            }
+        }
+        if(noffH.initData.size > 0){
+            loc = 0;//reset since we havent pulled anything from initdata
+            if(i > 0){//this fills the partial page since the segments need to be next to each other
+                //TranslateDisk(noffH.initData.virtualAddr, &babyAddr, 1, false);
+                executable->ReadAt(strbuf+i, sizeof(char)*(SectorSize-i), noffH.initData.inFileAddr);
+                loc = (SectorSize-i);
+                page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+                synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+                memset(strbuf, '\0', sizeof(strbuf));
+
+            }//loc is now equal to the amount written to the partial page, aka the remainder of the size of the page(SectorSize which 
+             //happens to equal the page size) now we must subtract the amount read out of initdata from the over count in the for
+             //loop so we don't go over the amount we need to read out
+            for(i=noffH.initData.size-loc; i >= 0; i-=128){
+                if(i < 128 && i > 0){
+                    //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+                    executable->ReadAt(strbuf, sizeof(char)*i, noffH.initData.inFileAddr+loc*sizeof(char));
+                    page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+                    synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+                    break;
+                }
+                else{
+                    //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+                    executable->ReadAt(strbuf, sizeof(char)*sizeof(SectorSize), noffH.initData.inFileAddr+loc*sizeof(char));
+                    loc+=128;
+                    page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+                    synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+                    memset(strbuf, '\0', sizeof(strbuf));
+                }
+            }
+
+        }
+    }
+
+    /*End Writing to Disk directly*/
     int babyAddr = 0;
     // then, copy in the code and data segments into memory
     if (enoughSpace == 1) {
@@ -624,6 +686,7 @@ AddrSpace::WriteMem(int addr, int size, int value)
 ExceptionType
 AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing) 
 {
+    fprintf(stderr, "Depricated Translate, You should not be here!\n");
     int i;
     unsigned int vpn, offset;
     TranslationEntry *entry;
@@ -684,6 +747,75 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     DEBUG('a', "phys addr = 0x%x\n", *physAddr);
     return NoException;
 }
+/*
+    ** We may also have to do a ReadDisk and WriteDisk method for the addrspace possibly.
+*/
+ExceptionType
+AddrSpace::TranslateDisk(int virtAddr, int* physAddr, int size, bool writing) /*Look over, should be right but need a second set to look at*/
+{
+    int i;
+    unsigned int vpn, offset;
+    TranslationEntry *entry;
+    unsigned int pageFrame;
+
+    DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
+
+// check for alignment errors
+    if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
+    DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
+    return AddressErrorException;
+    }
+     
+    ASSERT(revPageTable != NULL);   
+
+// calculate the virtual page number, and offset within the page,
+// from the virtual address
+    vpn = (unsigned) virtAddr / SectorSize;
+    //offset = (unsigned) virtAddr % PageSize;
+    
+    // => page table => vpn is index into table
+    if (vpn >= NumSectors * SectorSize) {
+        DEBUG('a', "virtual page # %d, %d too large for page table size %d!\n", 
+            virtAddr, virtAddr, numPages * PageSize);
+        return AddressErrorException;
+    } /*else if (!pageTable[vpn].valid) {
+        DEBUG('a', "Page table miss, virtual address  %d!\n", 
+            virtAddr);
+        return PageFaultException;
+    }*/
+    entry = &revPageTable[vpn];
+    
+    if (entry == NULL) {                // not found
+            DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
+            return PageFaultException;      // really, this is a TLB fault,
+                        // the page may be in memory,
+                        // but not in the TLB
+    }
+    
+
+    if (entry->readOnly && writing) {   // trying to write to a read-only page
+    // DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
+    return ReadOnlyException;
+    }
+    pageFrame = entry->physicalPage;
+
+    // if the pageFrame is too big, there is something really wrong! 
+    // An invalid translation was loaded into the page table or TLB. 
+    if (pageFrame >= NumSectors) { 
+    DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumSectors);
+    return BusErrorException;
+    }
+/*    entry->use = false;     // set the use, dirty bits
+    if (writing)
+    entry->dirty = true;*/ //*********************************** Warning we should be doing some 
+                           //kind of use and dirty bit stuff, should not effect the revPageTable 
+                           //as it all the locs on disk, not mem
+    *physAddr = pageFrame * SectorSize + offset;
+    ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
+    DEBUG('a', "phys addr = 0x%x\n", *physAddr);
+    return NoException;
+}
+
 
 unsigned int AddrSpace::getNumPages(){
     return numPages;

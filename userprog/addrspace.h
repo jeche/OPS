@@ -135,6 +135,7 @@ class AddrSpace {
     bool ReadMem(int addr, int size, int *value);
     bool WriteMem(int addr, int size, int value);
     ExceptionType Translate(int virtAddr, int* physAddr, int size, bool writing);
+    ExceptionType TranslateDisk(int virtAddr, int* physAddr, int size, bool writing);
     unsigned int getNumPages();
     AddrSpace* newSpace();
 
