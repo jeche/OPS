@@ -213,14 +213,7 @@ public:
 
 };
 
-class ramEntry{ //Need to add stuff for replacement alg ***************************************
-private:
-    // int pid;
-    // int status;
-    // int refcount;
-    // int vPage;
-    // addrSpaceNode *head;
-
+class ramEntry{ 
 public:
     int pid;
     Status status;
@@ -269,6 +262,13 @@ public:
 
 
 };
+
+// class RAM{
+//     public:
+//         RAM(){
+            
+//         }
+// };
 
 
 // Initialization and cleanup routines
@@ -332,6 +332,7 @@ extern SynchDisk   *synchDisk;
 extern BitMap *diskBitMap;
 extern ramEntry **ramPages;
 extern int commutator;
+extern Semaphore *chillBrother;
 #ifdef FILESYS 
 #endif
 
