@@ -376,85 +376,142 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 
     /*New Writing to Disk directly*/
 
-    if(enoughSpace==1){
+    // if(enoughSpace==1){
+    //     char strbuf[128];
+    //     memset(strbuf, '\0', sizeof(strbuf));
+    //     int loc = 0;
+    //     unsigned int page;//loc is the amount pulled from the segments
+    //     if(noffH.code.size > 0){
+    //         if(noffH.code.virtualAddr != 0){fprintf(stderr, "Well Shit bout to be fucked up(code not starting at 0x0)\n");}
+    //         for(j=noffH.code.size; j > 0; j-=128){
+    //             if(j<128 && j>0){
+    //                 //TranslateDisk(noffH.code.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+    //                 executable->ReadAt(strbuf, sizeof(char)*j, noffH.code.inFileAddr+loc*sizeof(char));
+
+
+    //                 break;
+    //             }
+    //             else{
+    //                 //TranslateDisk(noffH.code.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+    //                 executable->ReadAt(strbuf, sizeof(char)*SectorSize, noffH.code.inFileAddr+loc*sizeof(char));
+    //                 loc+=128;
+    //                 page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+    //                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+    //                for(i = 0; i < 128; i++ ){
+    //                    DEBUG('j', "%c", strbuf[i]);
+    //                }
+    //                 memset(strbuf, '\0', sizeof(strbuf));
+
+    //             }
+    //         }
+    //     }
+    //     fprintf(stderr, "Writing initdata\n");
+    //     fprintf(stderr, "initdata: %d\n", noffH.initData.size);
+    //     // DEBUG('j', "INITDATA");
+    //     if(noffH.initData.size > 0){
+    //         loc = 0;//reset since we havent pulled anything from initdata
+    //         if(j > 0){//this fills the partial page since the segments need to be next to each other
+    //             //TranslateDisk(noffH.initData.virtualAddr, &babyAddr, 1, false);
+    //             memset(strbuf, '\0', sizeof(strbuf));
+    //             executable->ReadAt(strbuf/*+j*/, sizeof(char)*(SectorSize-j), noffH.initData.inFileAddr);//put back in +j
+    //             loc = (SectorSize-j);
+    //             page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+    //             synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+    //                 for(i = 0; i <= j; i++ ){
+    //                     DEBUG('j', "%c", strbuf[i]);
+    //                 }
+    //             memset(strbuf, '\0', sizeof(strbuf));
+
+    //         }//loc is now equal to the amount written to the partial page, aka the remainder of the size of the page(SectorSize which 
+    //          //happens to equal the page size) now we must subtract the amount read out of initdata from the over count in the for
+    //          //loop so we don't go over the amount we need to read out
+            
+    //         for(j=noffH.initData.size-loc; j > 0; j-=128){
+    //             if(j < 128 && j > 0){
+    //                 fprintf(stderr, "LastIter\n");
+    //                 //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+    //                 executable->ReadAt(strbuf, sizeof(char)*j, noffH.initData.inFileAddr+loc*sizeof(char));
+    //                 page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+    //                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+    //                 for(i = 0; i < j; i++ ){
+    //                     DEBUG('j', "%c", strbuf[i]);
+    //                 }
+    //                 break;
+    //             }
+    //             else{
+    //                 fprintf(stderr, "j: %u\n", j);
+    //                 //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
+    //                 executable->ReadAt(strbuf, sizeof(char)*SectorSize, noffH.initData.inFileAddr+loc*sizeof(char));
+    //                 loc+=128;
+    //                 page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
+    //                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+    //                 for(i = 0; i < 128; i++ ){
+    //                     DEBUG('j', "%c", strbuf[i]);
+    //                 }
+    //                 memset(strbuf, '\0', sizeof(strbuf));
+    //             }
+    //         }
+
+    //     }
+    //     fprintf(stderr, "I SAY HEYHEYHEYHEY\n");
+    // }
+
+    if(enoughSpace == 1){
         char strbuf[128];
         memset(strbuf, '\0', sizeof(strbuf));
-        int loc = 0;
-        unsigned int page;//loc is the amount pulled from the segments
-        if(noffH.code.size > 0){
-            if(noffH.code.virtualAddr != 0){fprintf(stderr, "Well Shit bout to be fucked up(code not starting at 0x0)\n");}
-            for(j=noffH.code.size; j >= 0; j-=128){
-                if(j<128 && j>0){
-                    //TranslateDisk(noffH.code.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
-                    executable->ReadAt(strbuf, sizeof(char)*j, noffH.code.inFileAddr+loc*sizeof(char));
-
-                    break;
+        int count = 0;
+        int page = 0;
+        int j;
+        bool lastToWrite = false;
+        for(j = 0; j < noffH.code.size; j++){
+            executable->ReadAt(&strbuf[count], sizeof(char), noffH.code.inFileAddr+j* sizeof(char));
+            count++;
+            if(count == 128){
+                for(i = 0; i < 128; i++ ){
+                    // DEBUG('j', "%c", strbuf[i]);
                 }
-                else{
-                    //TranslateDisk(noffH.code.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
-                    executable->ReadAt(strbuf, sizeof(char)*SectorSize, noffH.code.inFileAddr+loc*sizeof(char));
-                    loc+=128;
-                    page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
-                    synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
-                   for(i = 0; i < 128; i++ ){
-                       DEBUG('j', "%c", strbuf[i]);
-                   }
-                    memset(strbuf, '\0', sizeof(strbuf));
-
-                }
-            }
-        }
-        fprintf(stderr, "Writing initdata\n");
-        fprintf(stderr, "initdata: %d\n", noffH.initData.size);
-        // DEBUG('j', "INITDATA");
-        if(noffH.initData.size > 0){
-            loc = 0;//reset since we havent pulled anything from initdata
-            if(j > 0){//this fills the partial page since the segments need to be next to each other
-                //TranslateDisk(noffH.initData.virtualAddr, &babyAddr, 1, false);
-                memset(strbuf, '\0', sizeof(strbuf));
-                executable->ReadAt(strbuf/*+j*/, sizeof(char)*(SectorSize-j), noffH.initData.inFileAddr);//put back in +j
-                loc = (SectorSize-j);
-                page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
-                                    for(i = 0; i <= j; i++ ){
-                        DEBUG('j', "%c", strbuf[i]);
-                    }
+                page++;
+                count = 0;
                 memset(strbuf, '\0', sizeof(strbuf));
-
-            }//loc is now equal to the amount written to the partial page, aka the remainder of the size of the page(SectorSize which 
-             //happens to equal the page size) now we must subtract the amount read out of initdata from the over count in the for
-             //loop so we don't go over the amount we need to read out
-            
-            for(j=noffH.initData.size-loc; j >= 0; j-=128){
-                if(j < 128 && j > 0){
-                    fprintf(stderr, "LastIter\n");
-                    //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
-                    executable->ReadAt(strbuf, sizeof(char)*j, noffH.initData.inFileAddr+loc*sizeof(char));
-                    page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
-                    synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
-                    for(i = 0; i < 128; i++ ){
-                        DEBUG('j', "%c", strbuf[i]);
-                    }
-                    break;
-                }
-                else{
-                    fprintf(stderr, "j: %u\n", j);
-                    //TranslateDisk(noffH.initData.virtualAddr + loc*sizeof(char), &babyAddr, 1, false);
-                    executable->ReadAt(strbuf, sizeof(char)*SectorSize, noffH.initData.inFileAddr+loc*sizeof(char));
-                    loc+=128;
-                    page = (unsigned) (noffH.code.virtualAddr+loc*sizeof(char)) / SectorSize;
-                    synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
-                    for(i = 0; i < 128; i++ ){
-                        DEBUG('j', "%c", strbuf[i]);
-                    }
-                    memset(strbuf, '\0', sizeof(strbuf));
-                }
             }
-
         }
-        fprintf(stderr, "I SAY HEYHEYHEYHEY\n");
+        if(count == 128){
+            for(i = 0; i < 128; i++ ){
+                // DEBUG('j', "%c", strbuf[i]);
+            }            
+            synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+            page++;
+            count = 0;
+            memset(strbuf, '\0', sizeof(strbuf));
+        }
+        for(j = 0; j < noffH.initData.size; j++){
+            executable->ReadAt(&strbuf[count], sizeof(char), noffH.initData.inFileAddr+j * sizeof(char));
+            count++;
+            if(count == 128){
+                for(i = 0; i < 128; i++ ){
+                    // DEBUG('j', "%c", strbuf[i]);
+                }                
+                synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+                page++;
+                count = 0;
+                memset(strbuf, '\0', sizeof(strbuf));
+                lastToWrite = true;
+            }
+            else{            
+                lastToWrite = false;
+            }
+        }
+        if(lastToWrite == false){
+            for(i = 0; i < count; i++ ){
+                // DEBUG('j', "%c", strbuf[i]);
+            }
+            synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
+            page++;
+            count = 0;
+            memset(strbuf, '\0', sizeof(strbuf));
+        }
     }
-
     /*End Writing to Disk directly*/
 
 /*OC ---------------------------
@@ -486,8 +543,9 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
             }
         }
     }
-
 OC---------------------------------*/
+    // ASSERT(false);
+    // interrupt->Halt();
     clean = false;
     pid = 0;
 
@@ -515,10 +573,13 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPag
 
 AddrSpace::~AddrSpace()
 {
+    fprintf(stderr, "bowowowow");
 #ifndef USE_TLB
     if(!clean){
         for(unsigned int i = 0; i < numPages; i++){
-            bitMap->Clear(pageTable[i].physicalPage);
+            if(pageTable[i].physicalPage >= 0 && pageTable[i].physicalPage < numPages){
+                bitMap->Clear(pageTable[i].physicalPage);
+            }
             diskBitMap->Clear(revPageTable[i].physicalPage);
         }
     }
