@@ -250,113 +250,140 @@ void CopyRegs(int k){
 //----------------------------------------
 
 int findReplacement(){
-  int found;
-  int startPos = commutator;
-  // Sweep through and check for free pages
-  TranslationEntry *pageTableEntry = NULL;
-  
-  for (commutator; commutator < NumPhysPages; commutator++) {
-      if (ramPages[commutator]->status == Free) {
-        found = commutator;
-        commutator++;        
-        return found;
-      }
-    }
-    for (commutator = 0; commutator < startPos; commutator++) {
-      if (ramPages[commutator]->status == Free) {
-        found = commutator;
-        commutator++;
+  // int found;
+  // int startPos = commutator;
+  // // Sweep through and check for free pages
+  // TranslationEntry *pageTableEntry = NULL;
+  // // Fancy clock part -- machine seems to set use bits to false when a page has been used -- not sure why this happens 
+  // // -- Changed the clock algorithm to check for use bit true instead of use bit false 
+  // while(1) {
+  //  for (commutator; commutator < NumPhysPages; commutator++) {
+  //     if (ramPages[commutator]->status == Free) {
+  //       found = commutator;
+  //       ramPages[commutator]->status = MarkedForReplacement;
+  //       commutator++;        
+  //       return found;
+  //     }
+  //   }
+  //   for (commutator = 0; commutator < startPos; commutator++) {
+  //     if (ramPages[commutator]->status == Free) {
+  //       found = commutator;
+  //       ramPages[commutator]->status = MarkedForReplacement;
+  //       commutator++;
         
-        return found;
-      }
-    }
-  // Fancy clock part -- machine seems to set use bits to false when a page has been used -- not sure why this happens 
-  // -- Changed the clock algorithm to check for use bit true instead of use bit false 
-  while(1) {
+  //       return found;
+  //     }
+  //   }
 
-    // First scan -- Look for use bit true and dirty bit false
-    for (commutator; commutator < NumPhysPages; commutator++) {
-      int vPage = ramPages[commutator]->vPage;
-      if (ramPages[commutator]->head->current == NULL) {
-        found = commutator;
-        commutator++;
-        
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
 
-        if (pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
-          found = commutator;
-          
-          commutator++;
-          
-          return found;
-        }
-      }
-    }
-    for (commutator = 0; commutator < startPos; commutator++) {
-      int vPage = ramPages[commutator]->vPage;
-      if (ramPages[commutator]->head->current == NULL) {
-        found = commutator;
-        commutator++;
+  //   // First scan -- Look for use bit true and dirty bit false
+  //   for (commutator; commutator < NumPhysPages; commutator++) {
+  //     int vPage = ramPages[commutator]->vPage;
+  //     if (ramPages[commutator]->head->current == NULL) {
+  //       found = commutator;
+  //       ramPages[commutator]->status = MarkedForReplacement;
+  //       commutator++;
         
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
-        if (pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
-          found = commutator;
-          commutator++;
-          return found;
-        }
-      }
-    }
+  //       return found;
+  //     }
+  //     else {
+  //       pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
 
-    // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
-    for (commutator; commutator < NumPhysPages; commutator++) {
-      int vPage = ramPages[commutator]->vPage;
-      if (ramPages[commutator]->head->current == NULL) {
-        found = commutator;
-        commutator++;
-        
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
-        if (pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
-          found = commutator;
-          commutator++;
+  //       if (pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
+  //         found = commutator;
+  //         ramPages[commutator]->head->current->pageTable[vPage].valid = false;  
+  //         ramPages[commutator]->head->current->pageTable[vPage].physicalPage = -1;  
+  //         ramPages[commutator]->status = MarkedForReplacement;
+  //         commutator++;
           
-          return found;
-        }
-        // Set the use bit to true if it is not already
-        pageTableEntry->use = true;
-      }
-    }
-    for (commutator = 0; commutator < startPos; commutator++) {
-      int vPage = ramPages[commutator]->vPage;
-      if (ramPages[commutator]->head->current == NULL) {
-        found = commutator;
-        commutator++;
+  //         return found;
+  //       }
+  //     }
+  //   }
+  //   for (commutator = 0; commutator < startPos; commutator++) {
+  //     int vPage = ramPages[commutator]->vPage;
+  //     if (ramPages[commutator]->head->current == NULL) {
+  //       found = commutator;
+  //       ramPages[commutator]->status = MarkedForReplacement;
+  //       commutator++;
         
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
-        if (pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
-          found = commutator;
-          commutator++;
+  //       return found;
+  //     }
+  //     else {
+  //       pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
+  //       if (pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
+  //         found = commutator;
+  //         ramPages[commutator]->head->current->pageTable[vPage].valid = false;  
+  //         ramPages[commutator]->head->current->pageTable[vPage].physicalPage = -1;  
+  //         ramPages[commutator]->status = MarkedForReplacement;
+  //         commutator++;
+  //         return found;
+  //       }
+  //     }
+  //   }
+
+  //   // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
+  //   for (commutator; commutator < NumPhysPages; commutator++) {
+  //     int vPage = ramPages[commutator]->vPage;
+  //     if (ramPages[commutator]->head->current == NULL) {
+  //       found = commutator;
+  //       ramPages[commutator]->status = MarkedForReplacement;
+  //       commutator++;
+        
+  //       return found;
+  //     }
+  //     else {
+  //       pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
+  //       if (pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
+  //         found = commutator;
+  //         ramPages[commutator]->head->current->pageTable[vPage].valid = false;  
+  //         ramPages[commutator]->head->current->pageTable[vPage].physicalPage = -1;  
+  //         ramPages[commutator]->status = MarkedForReplacement;
+  //         commutator++;
           
-          return found;
-        }
-        // Set the use bit to true if it is not already
-        pageTableEntry->use = true;
-      }
-    }
-  }
+  //         return found;
+  //       }
+  //       // Set the use bit to true if it is not already
+  //       pageTableEntry->use = true;
+  //     }
+  //   }
+  //   for (commutator = 0; commutator < startPos; commutator++) {
+  //     int vPage = ramPages[commutator]->vPage;
+  //     if (ramPages[commutator]->head->current == NULL) {
+  //       found = commutator;
+  //       ramPages[commutator]->status = MarkedForReplacement;
+  //       commutator++;
+        
+  //       return found;
+  //     }
+  //     else {
+  //       pageTableEntry = &(ramPages[commutator]->head->current->pageTable[vPage]);
+  //       if (pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
+  //         found = commutator;
+  //         ramPages[commutator]->head->current->pageTable[vPage].valid = false;  
+  //         ramPages[commutator]->head->current->pageTable[vPage].physicalPage = -1;  
+  //         ramPages[commutator]->status = MarkedForReplacement;
+  //         commutator++;
+          
+  //         return found;
+  //       }
+  //       // Set the use bit to true if it is not already
+  //       pageTableEntry->use = true;
+  //     }
+  //   }
+  // }
 }
 
+
+void outputRamPages(){
+  for(int i = 0; i < NumPhysPages; i++){
+    fprintf(stderr, "RamPage %d for pid %d and vPage %d", i, ramPages[i]->pid, ramPages[i]->vPage);
+    if(ramPages[i]->head->current != NULL){
+      fprintf(stderr, " validity is %s  and dirt is %s", ramPages[i]->head->current->pageTable[ramPages[i]->vPage].valid?"true":"false", ramPages[i]->head->current->pageTable[ramPages[i]->vPage].dirty?"true":"false");
+    }
+    fprintf(stderr, "\n");
+  }
+}
 
 //----------------------------------------
 // END findReplacement
@@ -380,7 +407,7 @@ ExceptionHandler(ExceptionType which)
     AddrSpace *newSpacer;
     Thread *t;
     // Semaphore* die;
-    // IntStatus oldLevel;
+    IntStatus oldLevel;
     FamilyNode *curr;
     // FamilyNode *prev;
     int vpn;
@@ -399,7 +426,7 @@ ExceptionHandler(ExceptionType which)
                 interrupt->Halt();
                 break;
         case SC_Exit:
-                DEBUG('a', "Exit\n");
+                DEBUG('z', "Exit\n");
                 curr = root;
                 DEBUG('a', "Thread exiting %d.\n", currentThread->space->pid);
                 forking->P();
@@ -451,7 +478,7 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('a', "Create\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
-                currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
+                // currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
                 for (i=0; i<127; i++){
                   currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
@@ -477,7 +504,7 @@ ExceptionHandler(ExceptionType which)
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
-                currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);  // Pretending this works.
+                // currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);  // Pretending this works.
                 for (i=0; i<127; i++){
                   currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
                   if(stringArg[i] == '\0') break;
@@ -561,7 +588,7 @@ ExceptionHandler(ExceptionType which)
                         else{
                           descriptor = 0;
                           size = open->Read(stringArg, size);
-                          currentThread->space->WriteMem(whence, sizeof(char), stringArg[0]);
+                          // currentThread->space->WriteMem(whence, sizeof(char), stringArg[0]);
                           for(i=0; i < size; i++){
                             currentThread->space->WriteMem(whence++, sizeof(char), stringArg[i]);
                             if(stringArg[i] == '\0') break;
@@ -577,7 +604,7 @@ ExceptionHandler(ExceptionType which)
                       DEBUG('a', "size: %d %c\n", size, stringArg);
                       for(i = 0; i < size; i++){
                         whee = synchConsole->GetChar();
-                        currentThread->space->WriteMem(whence, sizeof(char), whee);
+                        // currentThread->space->WriteMem(whence, sizeof(char), whee);
                         currentThread->space->WriteMem(whence++, sizeof(char), whee);
                       }
                       machine->WriteRegister(2, i);
@@ -596,6 +623,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Write:
                 DEBUG('a', "Write\n");
+                // fprintf(stderr,"WHEEEEEEEEEEEEEEEEEEEEEEE\n");
                 forking->P();
                 size = machine->ReadRegister(5);
                 if (size > 0){
@@ -613,7 +641,7 @@ ExceptionHandler(ExceptionType which)
                       toInput = 1;
                   }
                   if(size != 1 && !toOutput && !toInput){
-                    currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
+                    // currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
                     for (i=0; i<size; i++){
                       currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
                       // if(stringArg[i] == '\0') break;
@@ -621,7 +649,7 @@ ExceptionHandler(ExceptionType which)
                       //stringArg[size]='\0';
                   }
                   else if(size == 1 && !toOutput && !toInput){
-                    currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
+                    // currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[0]);
                   }
                     DEBUG('a', "Argument string is <%s>\n",stringArg);
@@ -638,7 +666,7 @@ ExceptionHandler(ExceptionType which)
                     }
                   }
                   else if (toOutput) {
-                    currentThread->space->ReadMem(whence, sizeof(char), (int *)&whee);
+                    // currentThread->space->ReadMem(whence, sizeof(char), (int *)&whee);
                     for (i = 0; i < size; i++) {
                       size = machine->ReadRegister(5);
                       if(currentThread->space->ReadMem(whence++, sizeof(char), (int *)&whee)){}
@@ -740,7 +768,7 @@ ExceptionHandler(ExceptionType which)
                 stringArg = new(std::nothrow) char[128];
                 whence = machine->ReadRegister(4);
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
-                currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
+                // currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
                 for (i=0; i<127; i++){
                   currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
                   if(stringArg[i] == '\0') break;
@@ -783,12 +811,12 @@ ExceptionHandler(ExceptionType which)
                       memset(stringArg, 0, sizeof(stringArg));
                       currentThread->space = oldSpacer;
                       currentThread->space->RestoreState();
-                      currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                      // currentThread->space->ReadMem(whence, sizeof(int), &herece);
                       currentThread->space->ReadMem(whence, sizeof(int), &herece);
                       if (herece == 0){
                         break;
                       }
-                      currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
+                      // currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
                       for(j = 0; j < 127; j++){
                         // currentThread->space = oldSpacer;
                         // currentThread->space->RestoreState();
@@ -805,7 +833,7 @@ ExceptionHandler(ExceptionType which)
                       currentThread->space = newSpacer;
                       currentThread->space->RestoreState();
                       for(j = 0; j < len; j++){
-                        newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                        // newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
                         newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
                       }
                       argvAddr[i] = sp;
@@ -820,7 +848,7 @@ ExceptionHandler(ExceptionType which)
                     currentThread->space = newSpacer;
                     currentThread->space->RestoreState();
                     for(i = 0; i < argcount; i++){
-                       newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
+                       // newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
                        newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
                     }
                     delete [] stringArg;
@@ -837,7 +865,6 @@ ExceptionHandler(ExceptionType which)
                     machine->WriteRegister(5, sp);
 
                     machine->WriteRegister(StackReg, sp - (8 * 4));
-     
                     machine->Run();
                   }
                 }
@@ -883,76 +910,152 @@ ExceptionHandler(ExceptionType which)
                 printf("Undefined SYSCALL %d\n", type);
                 ASSERT(false);
       }
-      #ifdef USE_TLB
-        case PageFaultException:
-        HandleTLBFault(machine->ReadRegister(BadVAddrReg));
-        break;
-      #endif
+      // #ifdef USE_TLB  PUT THIS BACK LATER.
+      //   case PageFaultException:
+      //   HandleTLBFault(machine->ReadRegister(BadVAddrReg));
+      //   break;
+      // #endif
 
         case PageFaultException:
-            // fprintf(stderr," CHIll");
-            chillBrother->P();
-            descriptor = findReplacement();
-            stuffing = ramPages[descriptor]->status;
-            ramPages[descriptor]->status = MarkedForReplacement;
-            // Set to currently being replaced.
-            stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
-            memset(stringArg, '\0', sizeof(stringArg));
-            vpn =  machine->ReadRegister(BadVAddrReg) / PageSize;
-            newSpacer = ramPages[descriptor]->head->current;
-            chillBrother->V();
-            if(stuffing != Free){
-              incrementPC = ramPages[descriptor]->vPage; // incrementPC is now the virtual page #
-              if(newSpacer != NULL && newSpacer->pageTable[incrementPC].dirty){
-                  if(incrementPC == 9) {
-                    fprintf(stderr, "Why me? %d    %d \n", currentThread->space->pid, incrementPC);
-                  }
-                  for(j = 0; j < 128; j++){
-                    stringArg[j] = machine->mainMemory[newSpacer->pageTable[incrementPC].physicalPage * PageSize + j];
-                    DEBUG('f', "%c", stringArg[j]);
-                  }
-                  newSpacer->revPageTable[ramPages[descriptor]->vPage].dirty = false;
-
-                  synchDisk->WriteSector(newSpacer->revPageTable[incrementPC].physicalPage, stringArg);
-                  DEBUG('a', "Dirty Page %d written in\n", newSpacer->revPageTable[incrementPC].physicalPage);
+          fromInput = bitMap->Find();
+          oldLevel = interrupt->SetLevel(IntOff); // disable interrupts
+          vpn =  machine->ReadRegister(BadVAddrReg) / PageSize;
+          if(machine->pageTable[vpn].valid == false){
+          stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
+          memset(stringArg, 0, sizeof(stringArg));
+          synchDisk->ReadSector(currentThread->space->revPageTable[vpn].physicalPage, stringArg);
+          if(fromInput == -1){
+            descriptor = Random() % NumPhysPages;
+          }else{
+            descriptor = fromInput;
+          }
+            // fprintf(stderr, "DESCRIPTOR %d\n", descriptor);
+            if(ramPages[descriptor]->head->current != NULL){
+              incrementPC = ramPages[descriptor]->vPage;
+              // ASSERT(ramPages[descriptor]->head->current->pageTable[incrementPC].valid);
+              ramPages[descriptor]->head->current->pageTable[incrementPC].valid = false;
+              if(ramPages[descriptor]->head->current->pageTable[incrementPC].dirty){
+                // ASSERT(ramPages[descriptor]->head->current->pageTable[incrementPC].dirty);
+                // ASSERT(!ramPages[descriptor]->head->current->pageTable[incrementPC].valid);
+                synchDisk->WriteSector(ramPages[descriptor]->head->current->revPageTable[incrementPC].physicalPage, &machine->mainMemory[descriptor * PageSize]);
               }
+              ramPages[descriptor]->head->current->pageTable[incrementPC].dirty = false;
             }
-            memset(stringArg, '\0', sizeof(stringArg));
-            if(newSpacer != NULL){
-              newSpacer->pageTable[ramPages[descriptor]->vPage].valid = false;  
-              newSpacer->pageTable[ramPages[descriptor]->vPage].physicalPage = -1;  
-              DEBUG('a', "Page being replaced %d related to %d\n", newSpacer->pageTable[ramPages[descriptor]->vPage].physicalPage, newSpacer->pid);
-            }
-            // fprintf(stderr, "Reading from %d, %d asshole pulling this shit: %d\n",vpn, currentThread->space->revPageTable[vpn].physicalPage, currentThread->space->pid);
-            synchDisk->ReadSector(currentThread->space->revPageTable[vpn].physicalPage, stringArg);
 
             for(j = 0; j < 128; j++){
               machine->mainMemory[descriptor * PageSize + j] = stringArg[j];
-                // if (vpn == 34 && currentThread->space->pid == 0) {
-                //   // fprintf(stderr, "dododo %d", currentThread->space->revPageTable[0].physicalPage);
-                //   DEBUG('p', "%c", stringArg[j]);
-
-                // }
             }
+
             currentThread->space->pageTable[vpn].valid = true;
+            currentThread->space->pageTable[vpn].dirty = false;
+            // currentThread->space->pageTable[vpn].virtualPage = vpn;
             currentThread->space->pageTable[vpn].physicalPage = descriptor;
-            ramPages[descriptor]->vPage = currentThread->space->pageTable[vpn].virtualPage;
             ramPages[descriptor]->head->current = currentThread->space;
+            ramPages[descriptor]->vPage = vpn;
             ramPages[descriptor]->pid = currentThread->space->pid;
-            ramPages[descriptor]->status = InUse;
-            // fprintf(stderr, "PID: %d\n", currentThread->space->pid);
-            DEBUG('a', "Page %d replaced for VAddr %d, Place on disk is: %d\n", descriptor, machine->ReadRegister(BadVAddrReg), currentThread->space->revPageTable[vpn].physicalPage);
-            // fprintf(stderr, "Page %d replaced for VAddr %d, Place on disk is: %d\n", descriptor, machine->ReadRegister(BadVAddrReg), currentThread->space->revPageTable[vpn].physicalPage);
-            delete[] stringArg;
-            // ramPages[descriptor].
-            // for (i=0; i<127; i++){
-              // currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+            }
+          (void) interrupt->SetLevel(oldLevel); // re-enable interrupts
+
+            // // fprintf(stderr," CHIll");
+            // chillBrother->P();
+            // vpn =  machine->ReadRegister(BadVAddrReg) / PageSize;
+            // if(machine->pageTable[vpn].valid == false){
+            //   descriptor = findReplacement();
+            //   stuffing = ramPages[descriptor]->status;
+            //   ramPages[descriptor]->status = MarkedForReplacement;
+            //   // Set to currently being replaced.
+
+            
+            //   newSpacer = ramPages[descriptor]->head->current;
+            //   if(newSpacer != NULL){
+            //     newSpacer->pageTable[ramPages[descriptor]->vPage].valid = false;  
+            //     newSpacer->pageTable[ramPages[descriptor]->vPage].physicalPage = -1;  
+            //     DEBUG('a', "Page being replaced %d related to %d\n", newSpacer->pageTable[ramPages[descriptor]->vPage].physicalPage, newSpacer->pid);
+            //   }
+            
+            //   if(stuffing != Free){
+            //     incrementPC = ramPages[descriptor]->vPage; // incrementPC is now the virtual page #
+            //     if(newSpacer != NULL && newSpacer->pageTable[incrementPC].dirty){
+            //         // if(incrementPC == 9) {
+            //         // fprintf(stderr, "Why me? %d    %d \n", currentThread->space->pid, incrementPC);
+            //       // }
+            //       for(j = 0; j < 128; j++){
+            //         stringArg[j] = machine->mainMemory[newSpacer->pageTable[incrementPC].physicalPage * PageSize + j];
+            //         DEBUG('f', "%c", stringArg[j]);
+            //       }
+                  
+            //       newSpacer->revPageTable[ramPages[descriptor]->vPage].dirty = false;
+            //       newSpacer->pageTable[ramPages[descriptor]->vPage].dirty = false;
+            //       // fprintf(stderr, "%d\n", incrementPC);
+            //       synchDisk->WriteSector(newSpacer->revPageTable[incrementPC].physicalPage, stringArg);
+            //       DEBUG('a', "Dirty Page %d written in\n", newSpacer->revPageTable[incrementPC].physicalPage);
+            //   }
             // }
-            // if(){
-              // synchDisk->WriteSector(ramPages[descriptor]->addrSpaceNode->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, );]
+            // memset(stringArg, '\0', sizeof(stringArg));
+            
+            // // fprintf(stderr, "Reading from %d, %d asshole pulling this shit: %d\n",vpn, currentThread->space->revPageTable[vpn].physicalPage, currentThread->space->pid);
+            // synchDisk->ReadSector(currentThread->space->revPageTable[vpn].physicalPage, stringArg);
+
+            // for(j = 0; j < 128; j++){
+            //   machine->mainMemory[descriptor * PageSize + j] = stringArg[j];
+            //     // if (vpn == 34 && currentThread->space->pid == 0) {
+            //     //   // fprintf(stderr, "dododo %d", currentThread->space->revPageTable[0].physicalPage);
+            //     //   DEBUG('p', "%c", stringArg[j]);
+
+            //     // }
             // }
-            // fprintf(stderr, "ICE ICE BABY");
+            // currentThread->space->pageTable[vpn].valid = true;
+            // currentThread->space->pageTable[vpn].physicalPage = descriptor;
+            // ramPages[descriptor]->vPage = currentThread->space->pageTable[vpn].virtualPage;
+            // ramPages[descriptor]->head->current = currentThread->space;
+            // ramPages[descriptor]->pid = currentThread->space->pid;
+            // ramPages[descriptor]->status = InUse;
+            // // fprintf(stderr, "PID: %d\n", currentThread->space->pid);
+            // DEBUG('a', "Page %d replaced for VAddr %d, Place on disk is: %d\n", descriptor, machine->ReadRegister(BadVAddrReg), currentThread->space->revPageTable[vpn].physicalPage);
+            // // fprintf(stderr, "Page %d replaced for VAddr %d, Place on disk is: %d\n", descriptor, machine->ReadRegister(BadVAddrReg), currentThread->space->revPageTable[vpn].physicalPage);
+            // delete[] stringArg;
+            // }
+            // chillBrother->V();
+            // // ramPages[descriptor].
+            // // for (i=0; i<127; i++){
+            //   // currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+            // // }
+            // // if(){
+            //   // synchDisk->WriteSector(ramPages[descriptor]->addrSpaceNode->current->revPageTable[ramPages[descriptor]->vPage].physicalPage, );]
+            // // }
+            // // fprintf(stderr, "ICE ICE BABY");
         break;
+        case ReadOnlyException:     // Write attempted to page marked 
+              // "read-only"
+        fprintf(stderr, "READ ONLY EXCEPTION\n");
+        outputRamPages();
+        interrupt->Halt();
+        break;
+        case BusErrorException:     // Translation resulted in an 
+        fprintf(stderr, "BUS ERROR EXCEPTION\n");
+        outputRamPages();
+        interrupt->Halt();
+        break;
+              // invalid physical address
+        case AddressErrorException: // Unaligned reference or one that
+
+        fprintf(stderr, "ADDRESS ERROR EXCEPTION\n");
+        fprintf(stderr, "ADDR %d %d\n", machine->ReadRegister(4),machine->ReadRegister(5));
+        outputRamPages();
+        interrupt->Halt();
+        break;
+              // was beyond the end of the
+              // address space
+         case OverflowException:     // Integer overflow in add or sub.
+         fprintf(stderr, "OVERFLOW ERROR EXCEPTION\n");
+         outputRamPages();
+         interrupt->Halt();
+         break;
+         case IllegalInstrException: // Unimplemented or reserved instr.
+         fprintf(stderr, "ILLEGAL INSTRUCTION ERROR EXCEPTION\n");
+         outputRamPages();
+         interrupt->Halt();
+         break;
       default: ;
     }
 }

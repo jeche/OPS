@@ -342,7 +342,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
             revPageTable[i].use = false;
             revPageTable[i].dirty = false;
             revPageTable[i].readOnly = false;
-            // fprintf(stderr, "RevPage: %d\n", revPageTable[i].physicalPage);
+            fprintf(stderr, "RevPage: %d\n", revPageTable[i].physicalPage);
             pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
             pageTable[i].physicalPage = -1;
             pageTable[i].valid = false;//FC    False;
@@ -481,6 +481,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                 memset(strbuf, '\0', sizeof(strbuf));
             }
         }
+        fprintf(stderr, "CODE IS THIS MANY PAGES LONG: %d\n", page);
         // if(count == 128){
         //     for(i = 0; i < 128; i++ ){
         //         DEBUG('p', "%c", strbuf[i]);
@@ -589,13 +590,18 @@ AddrSpace::~AddrSpace()
         
         for(unsigned int i = 0; i < numPages; i++){
             if(pageTable[i].physicalPage >= 0 && pageTable[i].physicalPage < NumPhysPages){
-                bitMap->Clear(pageTable[i].physicalPage);
                 ramPages[pageTable[i].physicalPage]->status = Free;
-                if(ramPages[pageTable[i].physicalPage]->head->current != NULL &&ramPages[pageTable[i].physicalPage]->head->current->pid == pid){
+                if(ramPages[pageTable[i].physicalPage]->head->current != NULL && ramPages[pageTable[i].physicalPage]->head->current->pid == pid){
                     ramPages[pageTable[i].physicalPage]->head->current = NULL;
+                    ramPages[pageTable[i].physicalPage]->pid = -1;
+                    bitMap->Clear(pageTable[i].physicalPage);
                 }
             }
-            diskBitMap->Clear(revPageTable[i].physicalPage);
+            if(revPageTable[i].physicalPage >= 0 && revPageTable[i].physicalPage < NumSectors){
+                diskBitMap->Clear(revPageTable[i].physicalPage);
+            }else{
+                fprintf(stderr, "FUCKKKK CHOOOOOOOOOO\n");
+            }
         }
 
     }
@@ -603,6 +609,7 @@ AddrSpace::~AddrSpace()
     delete[] pageTable;
     delete[] revPageTable;
     chillBrother->V();
+    fprintf(stderr, "ADDRSPACE WITH PID %d\n", pid);
 
 #endif
 }
@@ -715,9 +722,9 @@ AddrSpace::ReadMem(int addr, int size, int *value)
     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
     
     Exception = Translate(addr, &physicalAddress, size, false);
-    if (Exception != NoException) {
+    while (Exception != NoException) {
     machine->RaiseException(Exception, addr);
-    return false;
+    Exception = Translate(addr, &physicalAddress, size, true);
     }
     switch (size) {
       case 1:
@@ -766,9 +773,10 @@ AddrSpace::WriteMem(int addr, int size, int value)
     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
     Exception = Translate(addr, &physicalAddress, size, true);
-    if (Exception != NoException) {
+    while (Exception != NoException) {
     machine->RaiseException(Exception, addr);
-    return false;
+    Exception = Translate(addr, &physicalAddress, size, true);
+    // return false;
     }
     switch (size) {
       case 1:
@@ -831,6 +839,10 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
 // from the virtual address
     vpn = (unsigned) virtAddr / PageSize;
     offset = (unsigned) virtAddr % PageSize;
+    if(offset + size > 128){
+        fprintf(stderr, "OFFSET %d SIZE %d\n", offset, size);
+        ASSERT(false);
+    }
     
     // => page table => vpn is index into table
     if (vpn >= numPages * PageSize) {
@@ -840,12 +852,14 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     } else if (!pageTable[vpn].valid) {
         DEBUG('a', "Page table miss, virtual address  %d!\n", 
             virtAddr);
+        fprintf(stderr, "ADDRSPACE: %d\n", vpn);
         return PageFaultException;
     }
     entry = &pageTable[vpn];
     
     if (entry == NULL) {                // not found
             DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
+            fprintf(stderr, "ADDRSPACE: %d\n", vpn);
             return PageFaultException;      // really, this is a TLB fault,
                         // the page may be in memory,
                         // but not in the TLB
@@ -978,6 +992,7 @@ AddrSpace* AddrSpace::newSpace(){
             char pagebuf[128];
 // //IfBC      memset(pagebuf, '\0', 128);
 // //IfBC      synchDisk->WriteSector(found, pagebuf);
+            fprintf(stderr, "RevPageTable2 %d\n", found);
 
             revPageTable2[i].virtualPage = i;        // for now, virtual page # != phys page #
             revPageTable2[i].physicalPage = found;
@@ -985,15 +1000,18 @@ AddrSpace* AddrSpace::newSpace(){
             revPageTable2[i].use = false;
             revPageTable2[i].dirty = false;
             revPageTable2[i].readOnly = false;
-
+            IntStatus oldLevel;
+            oldLevel = interrupt->SetLevel(IntOff); // disable interrupts
             if(pageTable[i].dirty == true && pageTable[i].valid == true){
                 for(j = 0; j < PageSize; j ++){
                     pagebuf[j] = machine->mainMemory[pageTable[i].physicalPage * PageSize + j];
                 }    
+                // ASSERT(false);
             }else{
                 synchDisk->ReadSector(revPageTable[i].physicalPage, pagebuf);    
             }
             synchDisk->WriteSector(revPageTable2[i].physicalPage, pagebuf);
+            (void) interrupt->SetLevel(oldLevel); // re-enable interrupts
 //             pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
 //             pageTable[i].physicalPage = -1;
 //             pageTable[i].valid = false;//FC    False;
