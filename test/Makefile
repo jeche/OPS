@@ -34,7 +34,7 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork dupparent
+all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork dupparent ckmatmult rematmult
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -208,3 +208,15 @@ dupparent.o: dupparent.c
 dupparent: dupparent.o start.o
 	$(LD) $(LDFLAGS) start.o dupparent.o -o dupparent.coff
 	../bin/coff2noff dupparent.coff dupparent
+
+ckmatmult.o: ckmatmult.c
+	$(CC) $(CFLAGS) -c ckmatmult.c
+ckmatmult: ckmatmult.o start.o
+	$(LD) $(LDFLAGS) start.o ckmatmult.o -o ckmatmult.coff
+	../bin/coff2noff ckmatmult.coff ckmatmult
+
+rematmult.o: rematmult.c
+	$(CC) $(CFLAGS) -c rematmult.c
+rematmult: rematmult.o start.o
+	$(LD) $(LDFLAGS) start.o rematmult.o -o rematmult.coff
+	../bin/coff2noff rematmult.coff rematmult

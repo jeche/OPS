@@ -986,6 +986,7 @@ ExceptionHandler(ExceptionType which)
 }
 
 #define SC_Dup    10
+#define SC_CheckPoint 11
 #endif
 
 #define SC_Exit   1
