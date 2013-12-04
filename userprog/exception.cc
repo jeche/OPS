@@ -448,7 +448,7 @@ ExceptionHandler(ExceptionType which)
                   curr->exit = whence;
                   forking->V();
                   curr->death->V();
-	          fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
+	          //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
 //                  delete currentThread->space;
                   currentThread->Finish();
                   DEBUG('a', "Failed to exit.  Machine will now terminate.\n");

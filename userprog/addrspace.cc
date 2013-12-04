@@ -483,7 +483,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                 memset(strbuf, '\0', sizeof(strbuf));
             }
         }
-         fprintf(stderr, "I IS THIS MANY PAGES LONG: %d\n", numPages);
+         //fprintf(stderr, "I IS THIS MANY PAGES LONG: %d\n", numPages);
 
         // if(count == 128){
         //     for(i = 0; i < 128; i++ ){
