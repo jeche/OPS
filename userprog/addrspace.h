@@ -35,6 +35,7 @@ class AddrSpace {
     bool WriteMem(int addr, int size, int value);
     ExceptionType Translate(int virtAddr, int* physAddr, int size, bool writing);
 
+
   private:
 #ifndef USE_TLB
     TranslationEntry *pageTable;  // Assume linear page table translation
@@ -140,7 +141,9 @@ class AddrSpace {
     bool ReadMem(int addr, int size, int *value);
     bool WriteMem(int addr, int size, int value);
     TranslationEntry *revPageTable;
-
+    void pageFaultHandler2(int bAddr);
+    bool writeBackDirty();
+    void printAllPages();
   private:
 #ifndef USE_TLB
     //TranslationEntry *pageTable;  // Assume linear page table translation

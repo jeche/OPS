@@ -409,7 +409,7 @@ Initialize(int argc, char **argv)
     synchConsole = new(std::nothrow) SynchConsole("synch console");
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
     forking = new(std::nothrow) Semaphore("forking", 1);
-    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
+    // timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
     // bitMap->Print();
 #endif
 
@@ -443,6 +443,13 @@ void
 Cleanup()
 {
     printf("\nCleaning up...\n");
+//      for(int i = 0; i < NumPhysPages; i++){
+  //  fprintf(stderr, "RamPage %d for pid %d and vPage %d", i, ramPages[i]->pid, ramPages[i]->vPage);
+  //  if(ramPages[i]->head->current != NULL){
+   //   fprintf(stderr, " validity is %s  and dirt is %s", ramPages[i]->head->current->pageTable[ramPages[i]->vPage].valid?"true":"false", ramPages[i]->head->current->pageTable[ramPages[i]->vPage].dirty?"true":"false");
+   // }
+   // fprintf(stderr, "\n");
+//  }
 #ifdef NETWORK
     delete postOffice;
 #endif

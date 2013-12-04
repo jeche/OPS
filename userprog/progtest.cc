@@ -63,7 +63,7 @@ StartProcess(char *filename)
     machine->WriteRegister(5, sp);
 
     machine->WriteRegister(StackReg, sp - 8);
-
+    fprintf(stderr, "finished with progtest\n");
     machine->Run();			// jump to the user progam
     ASSERT(false);			// machine->Run never returns;
 					// the address space exits

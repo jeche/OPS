@@ -193,72 +193,84 @@ class SynchConsole {
 
 enum Status { Free,           // No page here yet!
              InUse,      // Currently in use but not being replaced
-             MarkedForReplacement,    // Found by replacement algorithm to be removed
+             MarkedForReplacement    // Found by replacement algorithm to be removed
 };
 
-class addrSpaceNode{
-public:
-    AddrSpace *current;
-    addrSpaceNode *next;
+// class addrSpaceNode{
+// public:
+//     AddrSpace *current;
+//     addrSpaceNode *next;
 
-    addrSpaceNode(AddrSpace *cur){
-        current = cur;
-        next = NULL;
-    };
-    ~addrSpaceNode(){
-        if(next != NULL){
-            delete next;
-        }
-    };
+//     addrSpaceNode(AddrSpace *cur){
+//         current = cur;
+//         next = NULL;
+//     };
+//     ~addrSpaceNode(){
+//         if(next != NULL){
+//             delete next;
+//         }
+//     };
 
-};
+// };
 
 class ramEntry{ 
+private:
+    Status status;
 public:
     int pid;
-    Status status;
     int refcount;
     int vPage;
-    addrSpaceNode *head;
-    ramEntry(int PID, Status STATUS, int VPage, AddrSpace *first){
+    AddrSpace *head;
+    ramEntry(int PID, Status soso, int VPage, AddrSpace *first){
         pid = PID;
-        status = STATUS;
-        refcount = 1;
+        status = soso;
+        //refcount = 1;
         vPage = VPage;
-        head = new(std::nothrow) addrSpaceNode(first);
+        head = first;
     };
     ~ramEntry(){
-        delete head;
-    };
-    int removeAddrSpaceNode(AddrSpace *del){
-        addrSpaceNode *cur, *prev;
-        cur = head;
-        while(cur->current != del && cur->next != NULL){
-            prev = cur;
-            cur = cur->next;
-        }
-        if(cur->current == del){
-            prev->next = cur->next;
-            cur->next = NULL;
-            delete cur;
-            refcount--;
-            return refcount;
-        }
-        else{
-            fprintf(stderr, "You Done Goofed Gender Neutral Spawn of Universe\n");
-            return -1;
-        }
+      //  delete head;
     };
 
-    int addAddrSpaceNode(AddrSpace *addr){
-        addrSpaceNode *newHead;
-        newHead = new(std::nothrow) addrSpaceNode(addr);
-        newHead->next = head; 
-        head = newHead;
-        refcount++;
-        return refcount;
-
+    Status getStatus(){
+//        fprintf(stderr, "Get status %d\n", status);
+        return status;
     };
+
+    void setStatus(Status s){
+  //      fprintf(stderr, "Set status to %d, formerly %d\n", s, status);
+        status = s;
+    //    fprintf(stderr, "Success status to %d\n", status);
+    }
+    // int removeAddrSpaceNode(AddrSpace *del){
+    //     addrSpaceNode *cur, *prev;
+    //     cur = head;
+    //     while(cur->current != del && cur->next != NULL){
+    //         prev = cur;
+    //         cur = cur->next;
+    //     }
+    //     if(cur->current == del){
+    //         prev->next = cur->next;
+    //         cur->next = NULL;
+    //         delete cur;
+    //         refcount--;
+    //         return refcount;
+    //     }
+    //     else{
+    //         fprintf(stderr, "You Done Goofed Gender Neutral Spawn of Universe\n");
+    //         return -1;
+    //     }
+    // };
+
+    // int addAddrSpaceNode(AddrSpace *addr){
+    //     addrSpaceNode *newHead;
+    //     newHead = new(std::nothrow) addrSpaceNode(addr);
+    //     newHead->next = head; 
+    //     head = newHead;
+    //     refcount++;
+    //     return refcount;
+
+    // };
 
 
 };

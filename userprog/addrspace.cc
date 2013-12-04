@@ -245,7 +245,9 @@ void AddrSpace::RestoreState()
 #include "system.h"
 #include "addrspace.h"
 #include "noff.h"
+// #include "exception.cc"
 #include <new>
+
 
 //----------------------------------------------------------------------
 // SwapHeader
@@ -292,7 +294,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 // #ifndef USE_TLB
     
 // #endif
-    currentThread;
+//    currentThread;
     enoughSpace = 1;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) &&
@@ -342,7 +344,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
             revPageTable[i].use = false;
             revPageTable[i].dirty = false;
             revPageTable[i].readOnly = false;
-            fprintf(stderr, "RevPage: %d\n", revPageTable[i].physicalPage);
+            //fprintf(stderr, "RevPage: %d\n", revPageTable[i].physicalPage);
             pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
             pageTable[i].physicalPage = -1;
             pageTable[i].valid = false;//FC    False;
@@ -461,18 +463,18 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         memset(strbuf, '\0', sizeof(strbuf));
         int count = 0;
         int page = 0;
-        int j;
+        int m;
         bool lastToWrite = false;
-        for(j = 0; j < noffH.code.size; j++){
-            executable->ReadAt(&strbuf[count], sizeof(char), noffH.code.inFileAddr + (j* sizeof(char)));
+        IntStatus oldLevel = interrupt->SetLevel(IntOff);
+            DEBUG('p', "StartOfCodeAndInit");
+        for(m = 0; m < noffH.code.size; m++){
+            executable->ReadAt(&strbuf[count], sizeof(char), noffH.code.inFileAddr + (m* sizeof(char)));
             count++;
             if(count == 128){
-                if (page == 9 ) {
                     for(i = 0; i < 128; i++ ){
-                        DEBUG('e', "%c", strbuf[i]);
+                        DEBUG('p', "%c", strbuf[i]);
                     }
-                }
-                // pageTable[page].readOnly = true;
+                pageTable[page].readOnly = false;//I was TRUE!!!!
                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
                 // fprintf(stderr, "pageNum %d\n", page);
                 page++;
@@ -481,7 +483,8 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                 memset(strbuf, '\0', sizeof(strbuf));
             }
         }
-        fprintf(stderr, "CODE IS THIS MANY PAGES LONG: %d\n", page);
+         fprintf(stderr, "I IS THIS MANY PAGES LONG: %d\n", numPages);
+
         // if(count == 128){
         //     for(i = 0; i < 128; i++ ){
         //         DEBUG('p', "%c", strbuf[i]);
@@ -490,17 +493,20 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         //     page++;
         //     count = 0;
         //     memset(strbuf, '\0', sizeof(strbuf));
+        // ASSERT(false);
         // }
         int poo;
         poo = count;
-        for(j = 0; j < noffH.initData.size; j++){
-            executable->ReadAt(&strbuf[count], sizeof(char), noffH.initData.inFileAddr+ j * sizeof(char));
+        
+        for(m = 0; m < noffH.initData.size; m++){
+            executable->ReadAt(&strbuf[count], sizeof(char), noffH.initData.inFileAddr+ m * sizeof(char));
             count++;
             if(count == 128){
-                //for(i = 0; i < 128; i++ ){
-                   // DEBUG('p', "%c", strbuf[i]);
+                for(i = 0; i < 128; i++ ){
+                   DEBUG('p', "%c", strbuf[i]);
                     // fprintf(stderr, "%c", strbuf[i]);
-               // }                
+               }                
+                pageTable[page].readOnly = false;//I was True!!!!!!
                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
                 page++;
                 count = 0;
@@ -513,16 +519,20 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
             }
         }
         if(lastToWrite == false){
-           // for(i = 0; i < count; i++ ){
-                //DEBUG('p', "%c", strbuf[i]);
+           for(i = 0; i < count; i++ ){
+                DEBUG('p', "%c", strbuf[i]);
                 // fprintf(stderr, "%c", strbuf[i]);
-            //}
+            }
+            // pageTable[page].readOnly = true;
             synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
             page++;
             count = 0;
             memset(strbuf, '\0', sizeof(strbuf));
         }
+        DEBUG('p', "EndOfCodeAndInit");
+    interrupt->SetLevel(oldLevel);
     }
+
     /*End Writing to Disk directly*/
 
 /*OC ---------------------------
@@ -585,31 +595,33 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPag
 AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
-    chillBrother->P();
-    if(!clean){
+    //IntStatus oldLevel = interrupt->SetLevel(IntOff);
+//    if(!clean){
         
         for(unsigned int i = 0; i < numPages; i++){
-            if(pageTable[i].physicalPage >= 0 && pageTable[i].physicalPage < NumPhysPages){
-                ramPages[pageTable[i].physicalPage]->status = Free;
-                if(ramPages[pageTable[i].physicalPage]->head->current != NULL && ramPages[pageTable[i].physicalPage]->head->current->pid == pid){
-                    ramPages[pageTable[i].physicalPage]->head->current = NULL;
-                    ramPages[pageTable[i].physicalPage]->pid = -1;
-                    bitMap->Clear(pageTable[i].physicalPage);
+            if(pageTable[i].physicalPage >= 0 && pageTable[i].physicalPage < NumPhysPages && ramPages[pageTable[i].physicalPage]->getStatus() != MarkedForReplacement){
+                ramPages[pageTable[i].physicalPage]->setStatus(Free);
+                if(ramPages[pageTable[i].physicalPage]->head != NULL && ramPages[pageTable[i].physicalPage]->head->pid == pid){
+                    ramPages[pageTable[i].physicalPage]->head = NULL;
+                    ramPages[pageTable[i].physicalPage]->pid = 4500;
+                    //bitMap->Clear(pageTable[i].physicalPage);
                 }
             }
             if(revPageTable[i].physicalPage >= 0 && revPageTable[i].physicalPage < NumSectors){
                 diskBitMap->Clear(revPageTable[i].physicalPage);
             }else{
-                fprintf(stderr, "FUCKKKK CHOOOOOOOOOO\n");
+                fprintf(stderr, "Ran out of Disk space\n");
+                ASSERT(false);
             }
         }
 
-    }
+  //  }
+   // (void) interrupt->SetLevel(oldLevel);
     delete[] fileDescriptors;
     delete[] pageTable;
     delete[] revPageTable;
-    chillBrother->V();
-    fprintf(stderr, "ADDRSPACE WITH PID %d\n", pid);
+    // chillBrother->V();
+    //fprintf(stderr, "ADDRSPACE WITH PID %d\n", pid);
 
 #endif
 }
@@ -722,10 +734,11 @@ AddrSpace::ReadMem(int addr, int size, int *value)
     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
     
     Exception = Translate(addr, &physicalAddress, size, false);
-    while (Exception != NoException) {
-    machine->RaiseException(Exception, addr);
-    Exception = Translate(addr, &physicalAddress, size, true);
-    }
+    // fprintf(stderr, "%u %d\n", physicalAddress, physicalAddress);
+    // while (Exception != NoException) {
+    // machine->RaiseException(Exception, addr);
+    // Exception = Translate(addr, &physicalAddress, size, true);
+    // }
     switch (size) {
       case 1:
     data = machine->mainMemory[physicalAddress];
@@ -746,6 +759,7 @@ AddrSpace::ReadMem(int addr, int size, int *value)
     }
     
     DEBUG('a', "\tvalue read = %8.8x\n", *value);
+    //ramPages[physicalAddress / 128]->status = Free;
     return (true);
 }
 
@@ -773,11 +787,11 @@ AddrSpace::WriteMem(int addr, int size, int value)
     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
     Exception = Translate(addr, &physicalAddress, size, true);
-    while (Exception != NoException) {
-    machine->RaiseException(Exception, addr);
-    Exception = Translate(addr, &physicalAddress, size, true);
-    // return false;
-    }
+    // while (Exception != NoException) {
+    // machine->RaiseException(Exception, addr);
+    // Exception = Translate(addr, &physicalAddress, size, true);
+    // // return false;
+    // }
     switch (size) {
       case 1:
     machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
@@ -795,7 +809,7 @@ AddrSpace::WriteMem(int addr, int size, int value)
     
       default: ASSERT(false);
     }
-    
+    //ramPages[physicalAddress / 128]->status = Free;
     return true;
 }
 
@@ -829,6 +843,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
 
 // check for alignment errors
     if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
+        ASSERT(false);
     DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
     return AddressErrorException;
     }
@@ -839,30 +854,36 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
 // from the virtual address
     vpn = (unsigned) virtAddr / PageSize;
     offset = (unsigned) virtAddr % PageSize;
-    if(offset + size > 128){
-        fprintf(stderr, "OFFSET %d SIZE %d\n", offset, size);
-        ASSERT(false);
+    if(offset + size == 128){
+        // fprintf(stderr, "OFFSET %d SIZE %d\n", offset, size);
+        // ASSERT(false);
     }
     
     // => page table => vpn is index into table
     if (vpn >= numPages * PageSize) {
+        ASSERT(false);
+        DEBUG('y', "Machine AddressErrorException");
         DEBUG('a', "virtual page # %d, %d too large for page table size %d!\n", 
             virtAddr, virtAddr, numPages * PageSize);
         return AddressErrorException;
     } else if (!pageTable[vpn].valid) {
         DEBUG('a', "Page table miss, virtual address  %d!\n", 
             virtAddr);
-        fprintf(stderr, "ADDRSPACE: %d\n", vpn);
-        return PageFaultException;
+        chillBrother->P();
+        pageFaultHandler2(virtAddr);
+        chillBrother->V();
+        if(pid == 1 && vpn == 51){
+         fprintf(stderr, "%d pageTableEntryPhysPage\n", pageTable[51].physicalPage);
+}
+        //fprintf(stderr, "ADDRSPACE: %d\n", vpn);
+
     }
-    entry = &pageTable[vpn];
+    entry = &(this->pageTable[vpn]);
     
     if (entry == NULL) {                // not found
             DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
-            fprintf(stderr, "ADDRSPACE: %d\n", vpn);
-            return PageFaultException;      // really, this is a TLB fault,
-                        // the page may be in memory,
-                        // but not in the TLB
+            //fprintf(stderr, "ADDRSPACE: %d\n", vpn);
+            ASSERT(false);
     }
     
 
@@ -875,7 +896,11 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     // if the pageFrame is too big, there is something really wrong! 
     // An invalid translation was loaded into the page table or TLB. 
     if (pageFrame >= NumPhysPages) { 
+    DEBUG('a', "ADDRSPACE ");
     DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
+    fprintf(stderr, "%d\n", vpn);
+    fprintf(stderr, "%d  %d %d %d\n", entry->physicalPage, numPages, pageTable[51].physicalPage, pid);
+    ASSERT(false);
     return BusErrorException;
     }
     entry->use = false;     // set the use, dirty bits
@@ -960,6 +985,68 @@ unsigned int AddrSpace::getNumPages(){
     return numPages;
 }
 
+void AddrSpace::pageFaultHandler2(int badVAddr) {
+
+  char* stringArg;
+  stringArg = new(std::nothrow) char[128];
+  int vpn = badVAddr / PageSize;
+  stats->numPageFaults++;
+  if(!pageTable[vpn].valid){
+    int victim = Random() % NumPhysPages;
+    while(ramPages[victim]->getStatus() == MarkedForReplacement){
+       victim = Random() % NumPhysPages;
+    }
+//    fprintf(stderr, "victim: %d\n", victim);
+  //  fprintf(stderr, "victim->vpage %d\n", ramPages[victim]->vPage);
+   // fprintf(stderr, "page going in %d\n", vpn);
+    /*fprintf(stderr, "status: %d\n", ramPages[victim]->status);
+    fprintf(stderr, "ramPages[3]->status %d\n", ramPages[3]->status);*/
+//    if(ramPages[victim]->vPage != -1 && ramPages[victim]->status == Free){
+//        ramPages[victim]->status = InUse;
+//    }
+    if(ramPages[victim]->head != NULL && ramPages[victim]->getStatus() == InUse){
+      memset(stringArg, 0, sizeof(stringArg));
+      ramPages[victim]->head->pageTable[ramPages[victim]->vPage].valid = false;
+      //fprintf(stderr, "ramPages[victim] = %d\n", ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage);
+        ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage = -1;
+              //fprintf(stderr, "AftramPages[victim] = %d\n", ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage);
+      if(ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty){
+        ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty = false;
+        for(int q = 0; q < PageSize; q++){
+           stringArg[q] = machine->mainMemory[victim * PageSize + q];
+
+        }
+        // fprintf(stderr, "%d\n", victim);
+        ramPages[victim]->setStatus(MarkedForReplacement);
+        synchDisk->WriteSector(ramPages[victim]->head->revPageTable[ramPages[victim]->vPage].physicalPage, stringArg);
+      }
+    }
+    memset(stringArg, 0, sizeof(stringArg));
+    ramPages[victim]->setStatus(MarkedForReplacement);
+    synchDisk->ReadSector(revPageTable[vpn].physicalPage, stringArg);
+    for(int q = 0; q < PageSize; q++){
+      machine->mainMemory[victim * PageSize + q] = stringArg[q];
+    }
+
+    ramPages[victim]->vPage = vpn;
+    ramPages[victim]->pid = pid;
+    ramPages[victim]->head = this;
+    pageTable[vpn].valid = true;
+    // pageTable[vpn].valid = true;
+    pageTable[vpn].physicalPage = victim;
+
+
+    ramPages[victim]->setStatus(InUse);
+    /*fprintf(stderr, "status: %d\n", ramPages[victim]->status);
+    fprintf(stderr, "ramPages[3]->status %d\n", ramPages[3]->status);
+
+        fprintf(stderr, "finished pageFaultHandler\n\n");*/
+
+  // fprintf(stderr, "\n");
+
+  }
+}
+
 //----------------------------------------------------------------------
 // AddrSpace::newSpace
 //  Creates a new address space for a process that has been forked
@@ -992,7 +1079,7 @@ AddrSpace* AddrSpace::newSpace(){
             char pagebuf[128];
 // //IfBC      memset(pagebuf, '\0', 128);
 // //IfBC      synchDisk->WriteSector(found, pagebuf);
-            fprintf(stderr, "RevPageTable2 %d\n", found);
+            //fprintf(stderr, "RevPageTable2 %d\n", found);
 
             revPageTable2[i].virtualPage = i;        // for now, virtual page # != phys page #
             revPageTable2[i].physicalPage = found;
@@ -1008,9 +1095,11 @@ AddrSpace* AddrSpace::newSpace(){
                 }    
                 // ASSERT(false);
             }else{
-                synchDisk->ReadSector(revPageTable[i].physicalPage, pagebuf);    
+                synchDisk->ReadSector(revPageTable[i].physicalPage, pagebuf); 
+                interrupt->SetLevel(IntOff);   
             }
             synchDisk->WriteSector(revPageTable2[i].physicalPage, pagebuf);
+            interrupt->SetLevel(IntOff);
             (void) interrupt->SetLevel(oldLevel); // re-enable interrupts
 //             pageTable[i].virtualPage = i;        // for now, virtual page # != phys page #
 //             pageTable[i].physicalPage = -1;
@@ -1052,9 +1141,53 @@ AddrSpace* AddrSpace::newSpace(){
             fileDescriptors2[k] = NULL;
         }
     }
+    if(numPages == 23){
+	DEBUG('r', "NumPages is 23 for pid\n");
+}else{
+    DEBUG('r', "NumPages is %d\n", numPages);
+}
+
 
     return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace);
 
 }
+bool AddrSpace::writeBackDirty(){
+    int i, j, rc;
+    Status pstat;
+    char pageBuf[128];
+    
+    for(i=0;i<NumPhysPages;i++){//*************** if in use the use bit is false right?
+        //fprintf(stderr, "HERP DERP HEERP DEEEERP\n");
+        //if(pageTable[i].valid == true && pageTable[i].dirty == true && pageTable[i].use == false){
+            //fprintf(stderr, "I needs a semaphore or to be monitorized\n");
+        fprintf(stderr, "i: %d\n", i);
+        if(ramPages[i]->pid == currentThread->space->pid){
+            fprintf(stderr, "writing back to disk\n");
+            //pstat = ramPages[i]->status;
+            //ramPages[i]->status = MarkedForReplacement;
+            for(j=0;j<128;j++){
+                pageBuf[j] = machine->mainMemory[ramPages[i]->vPage * PageSize +j];
+            }
+            synchDisk->WriteSector(revPageTable[ramPages[i]->vPage].physicalPage, pageBuf);
+            //ramPages[i]->status = pstat;
+        }
+    }
+    
+    return true;
+}
+
+void AddrSpace::printAllPages(){
+    int i;
+    char pageBuf[128];
+
+    for(i=0;i<numPages;i++){
+        synchDisk->ReadSector(revPageTable[i].physicalPage, pageBuf);
+        for(int j = 0; j < 128; j++){
+         DEBUG('y', "%c", pageBuf[j]);   
+        }
+        // DEBUG('y', "%s", pageBuf);
+    }
+}
+
 
 #endif // CHANGED
