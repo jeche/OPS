@@ -7,14 +7,12 @@
 #include "syscall.h"
 
 int
-main(int argc, char **argv)
+main()
 {
   int i, j;
 
   prints("KID exists\n", ConsoleOutput);
-  /*prints("killme\n", ConsoleOutput);*/
-  for (i=0; i<10000; i++){j++;}
-  /*prints("lolwut\n", ConsoleOutput);*/
+  for (i=0; i<100000; i++) j++ ;
   /* loop to delay kid initially; hope parent gets to Join and sleeps */
   Exit(17);
   /* Should not get past here */

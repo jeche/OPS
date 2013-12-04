@@ -12,20 +12,18 @@ main()
 
   SpaceId kid;
   int joinval;
-  char *args[4];
+  char *args[3];
 
   args[0] = "argument1";
   args[1] = "argument2";
-  args[2] = "argument3";
-  args[3] = (char *)0;
+  args[2] = (char *)0;
 
   prints("PARENT exists\n", ConsoleOutput);
-  if ((kid = Fork()) == 0) {
+  if ((kid=Fork()) == 0) {
     Exec("argkid",args);
-    Halt();
+    Exit(3);
   }
-
-  prints("PARENT after Fork/Exec; argkid pid is ", ConsoleOutput);
+  prints("PARENT after fork/exec; argkid pid is ", ConsoleOutput);
   printd((int)kid, ConsoleOutput);
   prints("\n", ConsoleOutput);
 
@@ -34,24 +32,28 @@ main()
   prints("PARENT off Join with value of ", ConsoleOutput);
   printd(joinval, ConsoleOutput);
   prints("\n", ConsoleOutput);
-  Exit(5);
+
   Halt();
   /* not reached */
 }
 
-/* Print a null-terminated string "s" on open file
-   descriptor "file". */
+
+/* Print a null-terminated string "s" on open file descriptor "file". */
 
 prints(s,file)
 char *s;
 OpenFileId file;
 
 {
-  while (*s != '\0') {
-    Write(s,1,file);
-    s++;
-  }
+  int count = 0;
+  char *p;
+
+  p = s;
+  while (*p++ != '\0') count++;
+  Write(s, count, file);  
+
 }
+
 
 /* Print an integer "n" on open file descriptor "file". */
 

@@ -34,7 +34,7 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork dupparent ckmatmult rematmult
+all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork dupparent ckmatmult rematmult vmtoobig huge qmatmult qsort Xkid vmtorture
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -220,3 +220,40 @@ rematmult.o: rematmult.c
 rematmult: rematmult.o start.o
 	$(LD) $(LDFLAGS) start.o rematmult.o -o rematmult.coff
 	../bin/coff2noff rematmult.coff rematmult
+
+vmtoobig.o: vmtoobig.c
+	$(CC) $(CFLAGS) -c vmtoobig.c
+vmtoobig: vmtoobig.o start.o
+	$(LD) $(LDFLAGS) start.o vmtoobig.o -o vmtoobig.coff
+	../bin/coff2noff vmtoobig.coff vmtoobig
+
+huge.o: huge.c
+	$(CC) $(CFLAGS) -c huge.c
+huge: huge.o start.o
+	$(LD) $(LDFLAGS) start.o huge.o -o huge.coff
+	../bin/coff2noff huge.coff huge
+
+qmatmult.o: qmatmult.c
+	$(CC) $(CFLAGS) -c qmatmult.c
+qmatmult: qmatmult.o start.o
+	$(LD) $(LDFLAGS) start.o qmatmult.o -o qmatmult.coff
+	../bin/coff2noff qmatmult.coff qmatmult
+
+qsort.o: qsort.c
+	$(CC) $(CFLAGS) -c qsort.c
+qsort: qsort.o start.o
+	$(LD) $(LDFLAGS) start.o qsort.o -o qsort.coff
+	../bin/coff2noff qsort.coff qsort
+
+Xkid.o: Xkid.c
+	$(CC) $(CFLAGS) -c Xkid.c
+Xkid: Xkid.o start.o
+	$(LD) $(LDFLAGS) start.o Xkid.o -o Xkid.coff
+	../bin/coff2noff Xkid.coff Xkid
+
+
+vmtorture.o: vmtorture.c
+	$(CC) $(CFLAGS) -c vmtorture.c
+vmtorture: vmtorture.o start.o
+	$(LD) $(LDFLAGS) start.o vmtorture.o -o vmtorture.coff
+	../bin/coff2noff vmtorture.coff vmtorture

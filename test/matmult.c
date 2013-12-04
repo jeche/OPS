@@ -3,14 +3,13 @@
  *
  *    Intended to stress virtual memory system.
  *
- *    Ideally, we could read the matrices off of the file system,
- *	and store the result back to the file system!
+ *    Provides lots of real-time feedback on Console.
  */
 
 #include "syscall.h"
 
-#define Dim 	30	/* sum total of the arrays doesn't fit in 
-			 * physical memory (even if 64 page frames)
+#define Dim 	30	/*  sum total of the arrays doesn't fit in 
+			 *  primary memory.
 			 */
 
 int A[Dim][Dim];
@@ -44,7 +43,7 @@ main()
     prints(",", ConsoleOutput); printd(Dim-1, ConsoleOutput);
     prints("] = ", ConsoleOutput); printd(C[Dim-1][Dim-1], ConsoleOutput);
     prints("\n", ConsoleOutput);
-    Exit(0);		/* and then we're done */
+    Halt();		/* and then we're done */
 }
 
 /* Print a null-terminated string "s" on open file
@@ -53,7 +52,6 @@ main()
 prints(s,file)
 char *s;
 OpenFileId file;
-
 {
   while (*s != '\0') {
     Write(s,1,file);
@@ -66,9 +64,7 @@ OpenFileId file;
 printd(n,file)
 int n;
 OpenFileId file;
-
 {
-
   int i;
   char c;
 

@@ -1,4 +1,4 @@
-/* parent_child.c
+/* fork.c
  *
  * Simple parent/child system with an Exec()
  *
@@ -11,12 +11,12 @@ main()
 {
 
   SpaceId kid;
-  int joinval, i;
-  char *args[1];
-
-  args[0] = (char *)0;;
+  int joinval;
+  char *args[2];
 
   prints("PARENT exists\n", ConsoleOutput);
+  args[0] = "kid";
+  args[1] = (char *)0;
   kid = Fork();
   if (kid != 0) {
     prints("PARENT after fork; kid pid is ", ConsoleOutput);
@@ -28,11 +28,10 @@ main()
     prints("PARENT off Join with value of ", ConsoleOutput);
     printd(joinval, ConsoleOutput);
     prints("\n", ConsoleOutput);
-    Exit(45);
+
     Halt();
   /* not reached */
   } else 
-    i = 1; /*added to make compiler happy.  Remove later*/
     Exec("kid", args);
 }
 
