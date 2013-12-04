@@ -472,7 +472,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
             count++;
             if(count == 128){
                     for(i = 0; i < 128; i++ ){
-                        DEBUG('p', "%c", strbuf[i]);
+                        //DEBUG('p', "%c", strbuf[i]);
                     }
                 pageTable[page].readOnly = false;//I was TRUE!!!!
                 synchDisk->WriteSector(revPageTable[page].physicalPage, strbuf);
@@ -611,6 +611,7 @@ AddrSpace::~AddrSpace()
                 diskBitMap->Clear(revPageTable[i].physicalPage);
             }else{
                 fprintf(stderr, "Ran out of Disk space\n");
+                diskBitMap->Print();
                 ASSERT(false);
             }
         }

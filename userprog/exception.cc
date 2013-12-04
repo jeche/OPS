@@ -449,7 +449,7 @@ ExceptionHandler(ExceptionType which)
                   forking->V();
                   curr->death->V();
 	          //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
-//                  delete currentThread->space;
+                delete currentThread->space;
                   currentThread->Finish();
                   DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
                 }
@@ -792,6 +792,7 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);  
                 break;
         case SC_Exec:
+                forking->P();
                 DEBUG('a', "Exec\n");
                 argcount = 1;
                 stringArg = new(std::nothrow) char[128];
@@ -842,13 +843,16 @@ ExceptionHandler(ExceptionType which)
                       if (herece == 0){
                         break;
                       }
+                      fprintf(stderr, "Original argument\n");
                       // currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
                       for(j = 0; j < 127; j++){
                         // currentThread->space = oldSpacer;
                         // currentThread->space->RestoreState();
                         currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
+                        fprintf(stderr, "'%c'", stringArg[j]);
                         if(stringArg[j] == '\0') break;
                       }
+                      fprintf(stderr, "\n");
                       DEBUG('a', "STRINGARG %s\n",stringArg);
                       // for( j = 0; j < 110; j++){
                         // fprintf(stderr, "PAGETABLE: %d %d\n", currentThread->space->revPageTable[j].physicalPage, currentThread->space->pid);
@@ -856,10 +860,13 @@ ExceptionHandler(ExceptionType which)
                       len = strlen(stringArg) + 1;
                       sp -= len;
 
+                      fprintf(stderr, "Here is args:");
                       for(j = 0; j < len; j++){
                          //newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
                         newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                        fprintf(stderr, "'%c'", stringArg[j]);
                       }
+                      fprintf(stderr, "\n");
                       argvAddr[i] = sp;
                       whence = whence + sizeof(int);
 
@@ -887,10 +894,11 @@ ExceptionHandler(ExceptionType which)
                     machine->WriteRegister(5, sp);
 
                     machine->WriteRegister(StackReg, sp - (8 * 4));
-
+                    forking->V();
                     machine->Run();
                   }
                 }
+                forking->V();
                 delete [] stringArg;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
