@@ -250,67 +250,71 @@ void CopyRegs(int k){
 //----------------------------------------
 
 int findReplacement(){
-/*  int found;
+  int found;
   int i;
   // Sweep through and check for free pages
   TranslationEntry *pageTableEntry = NULL;
   // Fancy clock part -- machine seems to set use bits to false when a page has been used -- not sure why this happens 
   // -- Changed the clock algorithm to check for use bit true instead of use bit false 
   while(1) {
-   for (i = 0; i < NumPhysPages; i++) {
-      if (ramPages[commutator]->status == Free) {
+    //fprintf(stderr, "Here\n");
+    for (i = 0; i <= NumPhysPages; i++) {
+      commutator = (commutator + 1) % NumPhysPages; 
+      if (ramPages[commutator]->getStatus() == Free) {
+        //fprintf(stderr, "free\n");
         found = commutator;
-        ramPages[commutator]->status = MarkedForReplacement; 
-        commutator = (commutator + 1) % NumPhysPages;    
+        // Head should be null, so we can't set the valid and physical page
+        ramPages[found]->setStatus(MarkedForReplacement); 
         return found;
+      }
+    }
 
     // First scan -- Look for use bit true and dirty bit false
-    for (i = 0; i < NumPhysPages; i++) {
-      int vPage = ramPages[commutator]->vPage;
+    for (i = 0; i <= NumPhysPages; i++) {
+      commutator = (commutator + 1) % NumPhysPages; 
       if (ramPages[commutator]->head == NULL) {
+        //fprintf(stderr, "NULL\n");
         found = commutator;
-        ramPages[commutator]->status = MarkedForReplacement;
-        commutator = (commutator + 1) % NumPhysPages;
+        ramPages[found]->setStatus(MarkedForReplacement);
         return found;
       }
       else {
-        pageTableEntry = &(ramPages[commutator]->head->pageTable[vPage]);
+        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
 
-        if (pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
+        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty) {
+          //fprintf(stderr, "Not used and not dirty\n");
           found = commutator;
-          ramPages[commutator]->head->pageTable[vPage].valid = false;  
-          ramPages[commutator]->head->pageTable[vPage].physicalPage = -1;  
-          ramPages[commutator]->status = MarkedForReplacement;
-          commutator = (commutator + 1) % NumPhysPages;     
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+          ramPages[found]->setStatus(MarkedForReplacement); 
           return found;
         }
       }
     }
 
     // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
-    for (i = 0; i < NumPhysPages; i++) {
-      int vPage = ramPages[commutator]->vPage;
+    for (i = 0; i <= NumPhysPages; i++) {
+      commutator = (commutator + 1) % NumPhysPages; 
       if (ramPages[commutator]->head == NULL) {
         found = commutator;
-        ramPages[commutator]->status = MarkedForReplacement;
-        commutator = (commutator + 1) % NumPhysPages;
+        ramPages[commutator]->setStatus(MarkedForReplacement);
         return found;
       }
       else {
-        pageTableEntry = &(ramPages[commutator]->head->pageTable[vPage]);
-        if (pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->status != MarkedForReplacement) {
+        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
+        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty) {
           found = commutator;
-          ramPages[commutator]->head->pageTable[vPage].valid = false;  
-          ramPages[commutator]->head->pageTable[vPage].physicalPage = -1;  
-          ramPages[commutator]->status = MarkedForReplacement;
-          commutator = (commutator + 1) % NumPhysPages;
+          //fprintf(stderr, "Not used and dirty\n");
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+          ramPages[found]->setStatus(MarkedForReplacement);
           return found;
         }
         // Set the use bit to true if it is not already
         pageTableEntry->use = true;
       }
     }
-  }*/ return 0;
+  }
 }
 
 void pageFaultHandler(int badVAddr) {
@@ -319,10 +323,11 @@ void pageFaultHandler(int badVAddr) {
   int vpn = badVAddr / PageSize;
   stats->numPageFaults++;
   if(!machine->pageTable[vpn].valid){
-    int victim = Random() % NumPhysPages;
-    while(ramPages[victim]->getStatus() == MarkedForReplacement){
-      victim = Random() % NumPhysPages;
-    }
+    int victim = findReplacement();//Random() % NumPhysPages;
+    //fprintf(stderr, "victim: %d\n", victim );
+    //while(ramPages[victim]->getStatus() == MarkedForReplacement){
+      //victim = Random() % NumPhysPages;
+    //}
   //  fprintf(stderr, "victim: %d\n", victim);
   //  fprintf(stderr, "victim->vpage %d\n", ramPages[victim]->vPage);
   //  fprintf(stderr, "exception: page going in %d\n", vpn);
@@ -332,12 +337,12 @@ void pageFaultHandler(int badVAddr) {
 //    if(ramPages[victim]->vPage != -1 && ramPages[victim]->status == Free){
 //        ramPages[victim]->status = InUse;
 //    }
-    if(ramPages[victim]->head != NULL && ramPages[victim]->getStatus() == InUse){
+    if(ramPages[victim]->head != NULL){  //Removed this && ramPages[victim]->getStatus() == InUse
       memset(stringArg, 0, sizeof(stringArg));
-      ramPages[victim]->head->pageTable[ramPages[victim]->vPage].valid = false;
+      //ramPages[victim]->head->pageTable[ramPages[victim]->vPage].valid = false;
             //fprintf(stderr, "ramPages[victim] = %d\n", ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage);
 
-      ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage = -1;
+      //ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage = -1;
             //fprintf(stderr, "AftramPages[victim] = %d\n", ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage);
 
       if(ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty){
@@ -347,12 +352,12 @@ void pageFaultHandler(int badVAddr) {
 
         }
         // fprintf(stderr, "%d\n", victim);
-        ramPages[victim]->setStatus( MarkedForReplacement);
+        //ramPages[victim]->setStatus( MarkedForReplacement);
         synchDisk->WriteSector(ramPages[victim]->head->revPageTable[ramPages[victim]->vPage].physicalPage, stringArg);
       }
     }
     memset(stringArg, 0, sizeof(stringArg));
-    ramPages[victim]->setStatus( MarkedForReplacement);
+    //ramPages[victim]->setStatus( MarkedForReplacement);
     synchDisk->ReadSector(currentThread->space->revPageTable[vpn].physicalPage, stringArg);
     for(int q = 0; q < PageSize; q++){
       machine->mainMemory[victim * PageSize + q] = stringArg[q];
@@ -843,16 +848,16 @@ ExceptionHandler(ExceptionType which)
                       if (herece == 0){
                         break;
                       }
-                      fprintf(stderr, "Original argument\n");
+                      //fprintf(stderr, "Original argument\n");
                       // currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
                       for(j = 0; j < 127; j++){
                         // currentThread->space = oldSpacer;
                         // currentThread->space->RestoreState();
                         currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
-                        fprintf(stderr, "'%c'", stringArg[j]);
+                        //fprintf(stderr, "'%c'", stringArg[j]);
                         if(stringArg[j] == '\0') break;
                       }
-                      fprintf(stderr, "\n");
+                      //fprintf(stderr, "\n");
                       DEBUG('a', "STRINGARG %s\n",stringArg);
                       // for( j = 0; j < 110; j++){
                         // fprintf(stderr, "PAGETABLE: %d %d\n", currentThread->space->revPageTable[j].physicalPage, currentThread->space->pid);
@@ -860,13 +865,13 @@ ExceptionHandler(ExceptionType which)
                       len = strlen(stringArg) + 1;
                       sp -= len;
 
-                      fprintf(stderr, "Here is args:");
+                      //fprintf(stderr, "Here is args:");
                       for(j = 0; j < len; j++){
                          //newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
                         newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
-                        fprintf(stderr, "'%c'", stringArg[j]);
+                        //fprintf(stderr, "'%c'", stringArg[j]);
                       }
-                      fprintf(stderr, "\n");
+                     // fprintf(stderr, "\n");
                       argvAddr[i] = sp;
                       whence = whence + sizeof(int);
 

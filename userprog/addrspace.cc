@@ -986,6 +986,74 @@ unsigned int AddrSpace::getNumPages(){
     return numPages;
 }
 
+int AddrSpace::findReplacement2(){
+  int found;
+  int i;
+  // Sweep through and check for free pages
+  TranslationEntry *pageTableEntry = NULL;
+  // Fancy clock part -- machine seems to set use bits to false when a page has been used -- not sure why this happens 
+  // -- Changed the clock algorithm to check for use bit true instead of use bit false 
+  while(1) {
+    //fprintf(stderr, "Here\n");
+    for (i = 0; i <= NumPhysPages; i++) {
+      commutator = (commutator + 1) % NumPhysPages; 
+      if (ramPages[commutator]->getStatus() == Free) {
+        //fprintf(stderr, "free\n");
+        found = commutator;
+        // Head should be null, so we can't set the valid and physical page
+        ramPages[found]->setStatus(MarkedForReplacement); 
+        return found;
+      }
+    }
+
+    // First scan -- Look for use bit true and dirty bit false
+    for (i = 0; i <= NumPhysPages; i++) {
+      commutator = (commutator + 1) % NumPhysPages; 
+      if (ramPages[commutator]->head == NULL) {
+        //fprintf(stderr, "NULL\n");
+        found = commutator;
+        ramPages[found]->setStatus(MarkedForReplacement);
+        return found;
+      }
+      else {
+        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
+
+        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty) {
+          //fprintf(stderr, "Not used and not dirty\n");
+          found = commutator;
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+          ramPages[found]->setStatus(MarkedForReplacement); 
+          return found;
+        }
+      }
+    }
+
+    // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
+    for (i = 0; i <= NumPhysPages; i++) {
+      commutator = (commutator + 1) % NumPhysPages; 
+      if (ramPages[commutator]->head == NULL) {
+        found = commutator;
+        ramPages[commutator]->setStatus(MarkedForReplacement);
+        return found;
+      }
+      else {
+        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
+        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty) {
+          found = commutator;
+          //fprintf(stderr, "Not used and dirty\n");
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+          ramPages[found]->setStatus(MarkedForReplacement);
+          return found;
+        }
+        // Set the use bit to true if it is not already
+        pageTableEntry->use = true;
+      }
+    }
+  }
+}
+
 void AddrSpace::pageFaultHandler2(int badVAddr) {
 
   char* stringArg;
@@ -993,11 +1061,13 @@ void AddrSpace::pageFaultHandler2(int badVAddr) {
   int vpn = badVAddr / PageSize;
   stats->numPageFaults++;
   if(!pageTable[vpn].valid){
-    int victim = Random() % NumPhysPages;
-    while(ramPages[victim]->getStatus() == MarkedForReplacement){
-       victim = Random() % NumPhysPages;
-    }
-//    fprintf(stderr, "victim: %d\n", victim);
+    //int victim = Random() % NumPhysPages;
+    //while(ramPages[victim]->getStatus() == MarkedForReplacement){
+      // victim = Random() % NumPhysPages;
+    //}
+    int victim = findReplacement2();
+
+    //fprintf(stderr, "victim: %d\n", victim);
   //  fprintf(stderr, "victim->vpage %d\n", ramPages[victim]->vPage);
    // fprintf(stderr, "page going in %d\n", vpn);
     /*fprintf(stderr, "status: %d\n", ramPages[victim]->status);
@@ -1005,11 +1075,11 @@ void AddrSpace::pageFaultHandler2(int badVAddr) {
 //    if(ramPages[victim]->vPage != -1 && ramPages[victim]->status == Free){
 //        ramPages[victim]->status = InUse;
 //    }
-    if(ramPages[victim]->head != NULL && ramPages[victim]->getStatus() == InUse){
+    if(ramPages[victim]->head != NULL ){ //&& ramPages[victim]->getStatus() == InUse
       memset(stringArg, 0, sizeof(stringArg));
-      ramPages[victim]->head->pageTable[ramPages[victim]->vPage].valid = false;
+      //ramPages[victim]->head->pageTable[ramPages[victim]->vPage].valid = false;
       //fprintf(stderr, "ramPages[victim] = %d\n", ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage);
-        ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage = -1;
+        //ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage = -1;
               //fprintf(stderr, "AftramPages[victim] = %d\n", ramPages[victim]->head->pageTable[ramPages[victim]->vPage].physicalPage);
       if(ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty){
         ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty = false;
@@ -1018,12 +1088,12 @@ void AddrSpace::pageFaultHandler2(int badVAddr) {
 
         }
         // fprintf(stderr, "%d\n", victim);
-        ramPages[victim]->setStatus(MarkedForReplacement);
+        //ramPages[victim]->setStatus(MarkedForReplacement);
         synchDisk->WriteSector(ramPages[victim]->head->revPageTable[ramPages[victim]->vPage].physicalPage, stringArg);
       }
     }
     memset(stringArg, 0, sizeof(stringArg));
-    ramPages[victim]->setStatus(MarkedForReplacement);
+    //ramPages[victim]->setStatus(MarkedForReplacement);
     synchDisk->ReadSector(revPageTable[vpn].physicalPage, stringArg);
     for(int q = 0; q < PageSize; q++){
       machine->mainMemory[victim * PageSize + q] = stringArg[q];

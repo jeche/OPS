@@ -314,7 +314,7 @@ main(int argc, char*argv[])
                                                         prints(">", output);*/
 
                             Exec(args[0], args);
-                            Halt();
+                            Exit(-1);
                             
                             
                         }

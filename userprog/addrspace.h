@@ -141,6 +141,7 @@ class AddrSpace {
     bool ReadMem(int addr, int size, int *value);
     bool WriteMem(int addr, int size, int value);
     TranslationEntry *revPageTable;
+    int findReplacement2();
     void pageFaultHandler2(int bAddr);
     bool writeBackDirty();
     void printAllPages();

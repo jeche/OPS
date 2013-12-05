@@ -1,0 +1,3 @@
+#SCROPT
+cp file1 file2
+cat file2

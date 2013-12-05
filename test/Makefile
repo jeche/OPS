@@ -34,7 +34,7 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork ckmatmult rematmult vmtoobig huge qmatmult qsort Xkid vmtorture
+all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork ckmatmult rematmult vmtoobig huge qmatmult qsort Xkid vmtorture bogus1 atomicfile atomicfile2
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -245,9 +245,26 @@ Xkid: Xkid.o start.o
 	$(LD) $(LDFLAGS) start.o Xkid.o -o Xkid.coff
 	../bin/coff2noff Xkid.coff Xkid
 
-
 vmtorture.o: vmtorture.c
 	$(CC) $(CFLAGS) -c vmtorture.c
 vmtorture: vmtorture.o start.o
 	$(LD) $(LDFLAGS) start.o vmtorture.o -o vmtorture.coff
 	../bin/coff2noff vmtorture.coff vmtorture
+
+bogus1.o: bogus1.c
+	$(CC) $(CFLAGS) -c bogus1.c
+bogus1: bogus1.o start.o
+	$(LD) $(LDFLAGS) start.o bogus1.o -o bogus1.coff
+	../bin/coff2noff bogus1.coff bogus1
+
+atomicfile.o: atomicfile.c
+	$(CC) $(CFLAGS) -c atomicfile.c
+atomicfile: atomicfile.o start.o
+	$(LD) $(LDFLAGS) start.o atomicfile.o -o atomicfile.coff
+	../bin/coff2noff atomicfile.coff atomicfile
+
+atomicfile2.o: atomicfile2.c
+	$(CC) $(CFLAGS) -c atomicfile2.c
+atomicfile2: atomicfile2.o start.o
+	$(LD) $(LDFLAGS) start.o atomicfile2.o -o atomicfile2.coff
+	../bin/coff2noff atomicfile2.coff atomicfile2
