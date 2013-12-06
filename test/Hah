@@ -1,0 +1,13 @@
+KID about to read from inherited file
+Past the Create()
+Argument string is <fileio.out>
+Output Open returned descriptor 2
+Argument string is <fileio.input>
+Input Open returned descriptor 3
+Copy loop escaped: 27 bytes copied
+Read from closed file returned -1
+Exit 143872144
+
+Cleaning up...
+
+PARENT off Join with value of 10

@@ -193,25 +193,26 @@ class SynchConsole {
 
 enum Status { Free,           // No page here yet!
              InUse,      // Currently in use but not being replaced
-             MarkedForReplacement    // Found by replacement algorithm to be removed
+             MarkedForReplacement,    // Found by replacement algorithm to be removed
+             Cow
 };
 
-// class addrSpaceNode{
-// public:
-//     AddrSpace *current;
-//     addrSpaceNode *next;
+class addrSpaceNode{
+public:
+    AddrSpace *current;
+    addrSpaceNode *next;
 
-//     addrSpaceNode(AddrSpace *cur){
-//         current = cur;
-//         next = NULL;
-//     };
-//     ~addrSpaceNode(){
-//         if(next != NULL){
-//             delete next;
-//         }
-//     };
+    addrSpaceNode(AddrSpace *cur){
+        current = cur;
+        next = NULL;
+    };
+    ~addrSpaceNode(){
+        if(next != NULL){
+            delete next;
+        }
+    };
 
-// };
+};
 
 class ramEntry{ 
 private:
@@ -220,28 +221,29 @@ public:
     int pid;
     int refcount;
     int vPage;
-    AddrSpace *head;
-    ramEntry(int PID, Status soso, int VPage, AddrSpace *first){
+    int pPage
+    addrSpaceNode *head;
+
+    ramEntry(int PID, Status soso, int VPage, int, PPage, AddrSpace *first){
         pid = PID;
         status = soso;
-        //refcount = 1;
+        refcount = 1;
         vPage = VPage;
-        head = first;
+        pPage = PPage;
+        head = new(std::nothrow) addrSpaceNode(first);
     };
     ~ramEntry(){
-      //  delete head;
+      delete head;
     };
 
     Status getStatus(){
-//        fprintf(stderr, "Get status %d\n", status);
         return status;
     };
 
     void setStatus(Status s){
-  //      fprintf(stderr, "Set status to %d, formerly %d\n", s, status);
         status = s;
-    //    fprintf(stderr, "Success status to %d\n", status);
     }
+
     // int removeAddrSpaceNode(AddrSpace *del){
     //     addrSpaceNode *cur, *prev;
     //     cur = head;
@@ -274,14 +276,6 @@ public:
 
 
 };
-
-// class RAM{
-//     public:
-//         RAM(){
-            
-//         }
-// };
-
 
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,

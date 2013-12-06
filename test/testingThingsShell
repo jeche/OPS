@@ -1,0 +1,10 @@
+
+                    else {
+                     newProc = Fork();
+              if (newProc == 0) Exec(buffer);
+                     else Join(newProc);
+             }
+
+
+
+                    

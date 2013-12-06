@@ -418,6 +418,7 @@ Initialize(int argc, char **argv)
     diskBitMap = new(std::nothrow) BitMap(NumSectors);
     ramPages = new(std::nothrow) ramEntry*[NumPhysPages];
     chillBrother = new(std::nothrow) Semaphore("chillBrother", 1);
+    int diskRefCount [NumSectors] = {};
     execing = new(std::nothrow) Semaphore("execing", 1);
     for(int i = 0; i < NumPhysPages; i++){
         ramPages[i] = new(std::nothrow) ramEntry(-1, Free, -1, NULL);
