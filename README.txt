@@ -131,3 +131,49 @@ The cat program takes in a list of files as arguments from the shell that exec-e
 cp.c
 --------------------------------------
 The cp program takes in two arguments aside from "cp".  One is the file to read from and the other is the file to write to.  If the number of arguments is incorrect or the file to be read from cannot be opened, cp exits with a -1 value.  Otherwise, cp tries to open the file to write to.  If it cannot, it creates the file and then opens it.  Once we have an open file, cp reads a character from the first file and writes it to the second file until the read returns no more characters.  Once cp has finished, it closes both files and exits.  It should be noted that, like shell, if the file to be written into contains more characters than are being written from the first file, then there will be remnants of the old file after the copy has completed.
+
+
+----------------------------------------------------------------------------- README -- Nachos 3 
+---------------------------------------------------------Aslyn Blohm, Andrew Jones, Jessica Chen
+
+Virtual Memory Implementation
+---
+
+CheckPoint Implementation
+---
+
+Progression when CheckPoint(char *name) is called
+------
+Under the usage pattern below, the progression of a call to CheckPoint is as follows.
+	
+	if (CheckPoint("ckptfile")) {
+	/* stuff to do if being reinstantiated */
+	. . .
+	} else {
+	/* stuff to do if taking the checkpoint */
+	. . .
+	}
+
+When the call to CheckPoint gets to 
+
+Progression when a checkpoint file "ckpt" is exec'd
+------
+
+
+Non-Trivial Modifications to Files to Implement
+---------
+
+addrspace.h 
+------------
+	-Added new Constructor
+		- AddrSpace(OpenFile *chkpt, int numpages);
+	-Added class methods: 
+		- void printAllPages();
+		- bool writeBackDirty();
+
+addrspace.cc
+------------
+
+exception.cc
+------------
+

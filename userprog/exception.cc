@@ -166,6 +166,8 @@ ExceptionHandler(ExceptionType which)
 #include "addrspace.h"
 #include "machine.h"
 
+#include <string.h>
+#include <stdlib.h>
 #ifdef USE_TLB
 
 //----------------------------------------------------------------------
@@ -252,14 +254,45 @@ void CopyRegs(int k){
 int findReplacement(){
   int found;
   int i;
+  int start = commutator;
   // Sweep through and check for free pages
   TranslationEntry *pageTableEntry = NULL;
   // Fancy clock part -- machine seems to set use bits to false when a page has been used -- not sure why this happens 
   // -- Changed the clock algorithm to check for use bit true instead of use bit false 
-  while(1) {
-    //fprintf(stderr, "Here\n");
+
+/*     found = Random() % NumPhysPages;
+
+    while(ramPages[found]->getStatus() == MarkedForReplacement){
+      found = Random() % NumPhysPages;
+    }
+
+    if (ramPages[found]->head == NULL && ramPages[found]->getStatus() != MarkedForReplacement) {
+        //fprintf(stderr, "NULL\n");
+        //found = commutator;
+        ramPages[found]->setStatus(MarkedForReplacement);
+        return found;
+      }
+    else {
+      pageTableEntry = &(ramPages[found]->head->pageTable[ramPages[found]->vPage]);
+
+      //if (ramPages[found]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty) {
+        //fprintf(stderr, "Not used and not dirty\n");
+        //found = commutator;
+        ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+        ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+        ramPages[found]->setStatus(MarkedForReplacement); 
+        return found;
+      //}
+    }
+    //return found;
+*/
+    //fprintf(stderr, "%d\n", ramPages[16]->getStatus() );
     for (i = 0; i <= NumPhysPages; i++) {
       commutator = (commutator + 1) % NumPhysPages; 
+      if (commutator == start) {
+        continue;
+      }
+      //fprintf(stderr, "commutator: %d\n", commutator);
       if (ramPages[commutator]->getStatus() == Free) {
         //fprintf(stderr, "free\n");
         found = commutator;
@@ -269,10 +302,18 @@ int findReplacement(){
       }
     }
 
+  while(1) {
+
+     
     // First scan -- Look for use bit true and dirty bit false
     for (i = 0; i <= NumPhysPages; i++) {
+      //fprintf(stderr, "thererererherer\n");
       commutator = (commutator + 1) % NumPhysPages; 
-      if (ramPages[commutator]->head == NULL) {
+      if (commutator == start) {
+        continue;
+      }
+      //fprintf(stderr, "commutator: %d\n", commutator);
+      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement) {
         //fprintf(stderr, "NULL\n");
         found = commutator;
         ramPages[found]->setStatus(MarkedForReplacement);
@@ -294,10 +335,15 @@ int findReplacement(){
 
     // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
     for (i = 0; i <= NumPhysPages; i++) {
-      commutator = (commutator + 1) % NumPhysPages; 
-      if (ramPages[commutator]->head == NULL) {
+       //fprintf(stderr, "hererererererehrer\n");
+      commutator = (commutator + 1) % NumPhysPages;
+      if (commutator == start) {
+        continue;
+      }
+      //fprintf(stderr, "commutator: %d\n", commutator); 
+      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement) {
         found = commutator;
-        ramPages[commutator]->setStatus(MarkedForReplacement);
+        ramPages[found]->setStatus(MarkedForReplacement);
         return found;
       }
       else {
@@ -325,6 +371,7 @@ void pageFaultHandler(int badVAddr) {
   if(!machine->pageTable[vpn].valid){
     int victim = findReplacement();//Random() % NumPhysPages;
     //fprintf(stderr, "victim: %d\n", victim );
+//    fprintf(stderr, "victim vPage: %d\n", ramPages[victim]->vPage);
     //while(ramPages[victim]->getStatus() == MarkedForReplacement){
       //victim = Random() % NumPhysPages;
     //}
@@ -376,6 +423,8 @@ void pageFaultHandler(int badVAddr) {
 
     fprintf(stderr, "finished pageFaultHandler\n\n");*/
 //    fprintf(stderr, "\n");
+      DEBUG('j', "PageFaultHandled\n");
+//      fprintf(stderr, "PageFaultHandled\n");
 
 
   }
@@ -409,12 +458,15 @@ ExceptionHandler(ExceptionType which)
     int fromInput = 0;
     int fromOutput = 0;
     char* stringArg;
+    char pageBuf[128];
     OpenFile* open;
     int descriptor = -1;
     int incrementPC;
     char whee;
     char *whee2;
     int i, j;
+    int numPages;
+    int flag = 0;
     AddrSpace *newSpacer;
     Thread *t;
     // Semaphore* die;
@@ -428,6 +480,9 @@ ExceptionHandler(ExceptionType which)
     Status stuffing;
     AddrSpace *oldSpacer;
 
+    int pos=0, divisor=1000000000, d, zflag=1;
+    char c;
+    char buffer[20];
 
   switch (which) {
       case SyscallException:
@@ -437,16 +492,18 @@ ExceptionHandler(ExceptionType which)
                 interrupt->Halt();
                 break;
         case SC_Exit:
-                DEBUG('y', "Exit\n");
+                        DEBUG('j', "Exit\n");
+
+                forking->P();//*******
                 curr = root;
-                DEBUG('a', "Thread exiting %d.\n", currentThread->space->pid);
-                forking->P();
+                DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
+                
                 while(curr->child != currentThread->space->pid && curr->next !=NULL){
                   curr = curr->next;  // Iterate to find the correct semphore to V
                 }
                 if(curr->child != currentThread->space->pid){
                   DEBUG('a', "How the hell do you break an exit?\n");
-                  fprintf(stderr, "How the hell do you break an exit?\n");
+                  //fprintf(stderr, "How the hell do you break an exit?\n");
                 }
                 else{
                   whence = machine->ReadRegister(4); // whence is the exit value for the thread.
@@ -456,14 +513,16 @@ ExceptionHandler(ExceptionType which)
 	          //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
                 delete currentThread->space;
                   currentThread->Finish();
+
                   DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
                 }
                 break;
         case SC_Join:
-                DEBUG('a', "Join\n");
+                DEBUG('j', "Join\n");
                 whence = machine->ReadRegister(4);
                 curr = root;
                 forking->P();
+                                DEBUG('j', "Join\n");
                 while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
                   curr = curr->next;  // Iterate to find the correct semapohre to P on
                 }
@@ -478,6 +537,8 @@ ExceptionHandler(ExceptionType which)
                   forking->V();
                   DEBUG('a', "Parent %d, joining for %d.\n", curr->parent, curr->child);
                   curr->death->P(); // Wait for child to die.
+                                  DEBUG('j', "Join\n");
+
                   machine->WriteRegister(2, curr->exit); // Return the exit value.
                 }
 
@@ -487,7 +548,7 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         case SC_Create:/*Checks for -> Filename given is a single \0*/
-                DEBUG('a', "Create\n");
+                DEBUG('j', "Create\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
                 // currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
@@ -512,7 +573,7 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         case SC_Open:
-                DEBUG('a', "Open\n");
+                DEBUG('j', "Open\n");
                 stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
                 whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
@@ -569,7 +630,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Read:
                 
-                DEBUG('a', "Read\n");
+                DEBUG('j', "Read\n");
                 size = machine->ReadRegister(5);
                 whence = machine->ReadRegister(4);
                 descriptor = machine->ReadRegister(6);
@@ -641,7 +702,7 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
         case SC_Write:
-                DEBUG('a', "Write\n");
+                DEBUG('j', "Write\n");
                 // fprintf(stderr, "\n\n\n\n\n\n<%d>\n", sizeof(char));
                 // fprintf(stderr,"WHEEEEEEEEEEEEEEEEEEEEEEE\n");
                 forking->P();
@@ -727,7 +788,7 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);            
                 break;
         case SC_Close:/*Cases Handled -> invalid openfileid, and no file associated with the openfileid*/
-                DEBUG('a', "Close\n");
+                DEBUG('j', "Close\n");
                 descriptor = machine->ReadRegister(4);
                 if(descriptor < 0 || descriptor > 15){
                   DEBUG('a', "Invalid OpenFileId"); 
@@ -755,9 +816,9 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);            
                 break;
         case SC_Fork:
-                DEBUG('a', "Fork\n");
+                DEBUG('j', "Fork\n");
                 if(root==NULL){
-                  DEBUG('a', "Root for the family tree is nonexistent.\n");
+                  DEBUG('j', "Root for the family tree is nonexistent.\n");
                 }
                 curr = root;
                 forking->P();
@@ -772,9 +833,10 @@ ExceptionHandler(ExceptionType which)
                 newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
-                  DEBUG('a', "Not enough space to fork child.\n");
+                  DEBUG('j', "Not enough space to fork child.\n");
                   machine->WriteRegister(2, -1);
                   pid--;
+                  delete newSpacer;
                   forking->V();
                 }
                 else {
@@ -783,14 +845,18 @@ ExceptionHandler(ExceptionType which)
                   t->space = newSpacer; // Give child its brand new space.
                   t->SaveUserState(); // Write all current machine registers to userRegisters for child.
                   currentThread->SaveUserState(); // Save just in case the Fork gets weird.
-                  forking->V();
+  
                   t->Fork(CopyRegs, (int)currentThread); // Fork child.
+                  forking->V();
+                  //Move back maybe
                   machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
                   currentThread->SaveUserState(); // Save again in case of weirdness.
+                  DEBUG('j', "ForkEnd\n");
+                  
                 }
-                if(newSpacer->enoughSpace == 0){
-                  delete newSpacer;
-                }
+                // if(newSpacer->enoughSpace == 0){
+                //   delete newSpacer;
+                // }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -798,12 +864,12 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exec:
                 forking->P();
-                DEBUG('a', "Exec\n");
+                DEBUG('j', "Exec\n");
                 argcount = 1;
                 stringArg = new(std::nothrow) char[128];
                 whence = machine->ReadRegister(4);
                 DEBUG('a',"String starts at address %d in user VAS\n", whence);
-                // currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
+                //currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
                 for (i=0; i<127; i++){
                   currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);
                   if(stringArg[i] == '\0') break;
@@ -820,88 +886,157 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
                 else{
-                  newSpacer = new AddrSpace(open);
-                  delete open;
-                  newSpacer->pid = currentThread->space->pid; // Transfer pid
-                  // fprintf(stderr, "PID = %d\n", newSpacer->pid);
-                  
-                  if (newSpacer->enoughSpace == 0) {
-                    // There was not enough room, return a -1
-                    DEBUG('a', "Not enough room to create new Address Space.\n");
-                    machine->WriteRegister(2, -1);
-                  }
-                  else {
-                    for(i = 0; i < 16; i++){
-                      if(currentThread->space->fileDescriptors[i]!= NULL){
-                        newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
+                  open->Read(pageBuf, 12);
+                  if(!strncmp(pageBuf, "#Checkpoint\n", 12)){/*Checkpoint ****************/
+                    /*This is the case of reconstituting a checkpoint file*/
+                    //Read in the Register Values and Put them in the registers
+                    //fprintf(stderr, "I take a deep breath\n");
+                    currentThread->SaveUserState();//Save the current user's registers so it can return if it fails
+                    //newSpacer->InitRegisters();
+                    for(i=0;i<NumTotalRegs;i++){
+                      j=0;
+                      //fprintf(stderr, "-------\n");
+                      while(open->Read(&c, 1)){
+                        if(c=='\n'){break;}
+                        //fprintf(stderr, "%c", c);
+                        buffer[j]=c;
+                        j++;
+                        if(j>19){fprintf(stderr, "Exec Error\n");currentThread->RestoreUserState();flag = 1;break;}
                       }
+                      //fprintf(stderr, "What what\n");
+                      j = atoi(buffer);
+                      //fprintf(stderr, "j: %d\n", j);
+                      memset(buffer, '\0', sizeof(buffer));
+                      machine->WriteRegister(i, j);
                     }
-                    whence = machine->ReadRegister(5);
-                    
-                    newSpacer->InitRegisters();
-                    sp = machine->ReadRegister(StackReg);
+                    //fprintf(stderr, "I get real high\n");
+                    //Read in the numPages
+                    while(open->Read(&c, 1)){
+                      if(c=='\n'){break;}
+                      buffer[j]=c;
+                      j++;
+                      if(j>19){currentThread->RestoreUserState(); flag = 1;}
+                    }
+                    numPages = atoi(buffer);
+                    memset(buffer, '\0', sizeof(buffer));
+                    if(numPages<=0){currentThread->RestoreUserState(); flag = 1;}
+                    oldSpacer = currentThread->space;
+                    newSpacer = new AddrSpace(open, numPages);//AddrSpace Constructer reads in the pages
+                    if(!newSpacer->enoughSpace){currentThread->RestoreUserState(); flag = 1;}
+                    if(flag){fprintf(stderr, "Exec Error\n");machine->WriteRegister(2, -1);forking->V();}
+                    else{
+                      //forking->P();
+                      newSpacer->pid = currentThread->space->pid;
+                      //forking->V();
+                      currentThread->space = newSpacer;
+                      currentThread->space->RestoreState();
+                      // forking->V();
+                      delete [] stringArg;
 
-                    for(i = 0; i < 16; i++){
-                      memset(stringArg, 0, sizeof(stringArg));
-                      // currentThread->space->ReadMem(whence, sizeof(int), &herece);
-                      currentThread->space->ReadMem(whence, sizeof(int), &herece);
-                      if (herece == 0){
-                        break;
+                      delete oldSpacer;
+                      
+                      currentThread->space = newSpacer;
+                      
+                      newSpacer->RestoreState();
+                      //fprintf(stderr, "WHATS GOING ON!\n");
+                      forking->V();
+                      machine->Run();
+                    }
+                  }/* Checkpoint End ***************/
+                  else{/* Normal Exec *************/
+                    open = fileSystem->Open(stringArg);
+                    oldSpacer = currentThread->space;
+                    newSpacer = new AddrSpace(open);
+                    delete open;
+                    newSpacer->pid = currentThread->space->pid; // Transfer pid
+                    // fprintf(stderr, "PID = %d\n", newSpacer->pid);
+                    
+                    if (newSpacer->enoughSpace == 0) {
+                      // There was not enough room, return a -1
+                      DEBUG('a', "Not enough room to create new Address Space.\n");
+                      machine->WriteRegister(2, -1);
+                      delete newSpacer;
+
+                    }
+                    else {
+                      
+                      DEBUG('j', "NormalExec\n");
+                      
+                      for(i = 0; i < 16; i++){
+                        if(currentThread->space->fileDescriptors[i]!= NULL){
+                          newSpacer->fileDescriptors[i] = currentThread->space->fileDescriptors[i];
+                        }
                       }
-                      //fprintf(stderr, "Original argument\n");
-                      // currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
-                      for(j = 0; j < 127; j++){
-                        // currentThread->space = oldSpacer;
-                        // currentThread->space->RestoreState();
-                        currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
-                        //fprintf(stderr, "'%c'", stringArg[j]);
-                        if(stringArg[j] == '\0') break;
+                      whence = machine->ReadRegister(5);
+                      
+                      newSpacer->InitRegisters();
+                      sp = machine->ReadRegister(StackReg);
+
+                      for(i = 0; i < 16; i++){
+                        memset(stringArg, 0, sizeof(stringArg));
+                        currentThread->space = oldSpacer;
+                        currentThread->space->RestoreState();
+                        currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                        currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                        if (herece == 0){
+                          break;
+                        }
+                        currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
+                        for(j = 0; j < 127; j++){
+                          // currentThread->space = oldSpacer;
+                          // currentThread->space->RestoreState();
+                          currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
+                          if(stringArg[j] == '\0') break;
+                        }
+                        DEBUG('a', "STRINGARG %s\n",stringArg);
+                        // for( j = 0; j < 110; j++){
+                          // fprintf(stderr, "PAGETABLE: %d %d\n", currentThread->space->revPageTable[j].physicalPage, currentThread->space->pid);
+                        // }
+                        len = strlen(stringArg) + 1;
+                        sp -= len;
+
+                        currentThread->space = newSpacer;
+                        currentThread->space->RestoreState();
+                        for(j = 0; j < len; j++){
+                          newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                          newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                        }
+                        argvAddr[i] = sp;
+                        whence = whence + sizeof(int);
+
                       }
-                      //fprintf(stderr, "\n");
-                      DEBUG('a', "STRINGARG %s\n",stringArg);
+                      argcount = i;
+                      sp = sp & ~3;
+                      DEBUG('a', "argcount %d\n", argcount);
+                      sp -= sizeof(int) * argcount;
+
+                      currentThread->space = newSpacer;
+                      currentThread->space->RestoreState();
+                      for(i = 0; i < argcount; i++){
+                         newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
+                         newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
+                      }
+                      
+                      delete [] stringArg;
+
+                      delete oldSpacer;
+                      
+                      currentThread->space = newSpacer;
+                      
+                      newSpacer->RestoreState();
+                      forking->V();
                       // for( j = 0; j < 110; j++){
-                        // fprintf(stderr, "PAGETABLE: %d %d\n", currentThread->space->revPageTable[j].physicalPage, currentThread->space->pid);
+                          // fprintf(stderr, "PAGETABLE2: %d %d\n", currentThread->space->revPageTable[j].physicalPage, currentThread->space->pid);
                       // }
-                      len = strlen(stringArg) + 1;
-                      sp -= len;
+                      machine->WriteRegister(4, argcount);
+                      machine->WriteRegister(5, sp);
 
-                      //fprintf(stderr, "Here is args:");
-                      for(j = 0; j < len; j++){
-                         //newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
-                        newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
-                        //fprintf(stderr, "'%c'", stringArg[j]);
-                      }
-                     // fprintf(stderr, "\n");
-                      argvAddr[i] = sp;
-                      whence = whence + sizeof(int);
-
-                    }
-                    argcount = i;
-                    sp = sp & ~3;
-                    DEBUG('a', "argcount %d\n", argcount);
-                    sp -= sizeof(int) * argcount;
-
-                    for(i = 0; i < argcount; i++){
-                       // newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
-                       newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
-                    }
-                    delete [] stringArg;
-
-                    delete currentThread->space;
+                      machine->WriteRegister(StackReg, sp - (8 * 4));
+       
+                      machine->Run();
                     
-                    currentThread->space = newSpacer;
-                    
-                    newSpacer->RestoreState();
-                    // for( j = 0; j < 110; j++){
-                        // fprintf(stderr, "PAGETABLE2: %d %d\n", currentThread->space->revPageTable[j].physicalPage, currentThread->space->pid);
-                    // }
-                    machine->WriteRegister(4, argcount);
-                    machine->WriteRegister(5, sp);
-
-                    machine->WriteRegister(StackReg, sp - (8 * 4));
-                    forking->V();
-                    machine->Run();
-                  }
+                    }
+                  }/*Normal Exec End ***************/
                 }
                 forking->V();
                 delete [] stringArg;
@@ -911,6 +1046,7 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);  
                 break;
         case SC_Dup:
+                DEBUG('j', "Dup\n");
                 descriptor = machine->ReadRegister(4);
                 if(descriptor < 0 || descriptor > 15){
                   DEBUG('a', "Invalid OpenFileId.\n");
@@ -942,6 +1078,67 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);
                 break;
+        case SC_CheckPoint:
+                DEBUG('j', "CheckPoint\n");
+                //fprintf(stderr, "PrevPCReg: %d\nPCReg: %d\nNextPCReg: %d\n", machine->ReadRegister(PrevPCReg), machine->ReadRegister(PCReg), machine->ReadRegister(NextPCReg));
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);
+                //fprintf(stderr, "PrevPCReg: %d\nPCReg: %d\nNextPCReg: %d\n", machine->ReadRegister(PrevPCReg), machine->ReadRegister(PCReg), machine->ReadRegister(NextPCReg));
+                stringArg = new(std::nothrow) char[128]; // Limit on names is 128 characters
+                whence = machine->ReadRegister(4); // whence is the Virtual address of first byte of arg string in the single case where virtual == physical.  We will have to translate stuff later.
+                currentThread->space->ReadMem(whence, sizeof(char), (int *)&stringArg[0]);
+                DEBUG('a',"String starts at address %d in user VAS\n", whence);
+                for (i=0; i<127; i++){
+                  currentThread->space->ReadMem(whence++, sizeof(char), (int *)&stringArg[i]);  // Pretending this works.
+                }
+                if(i==0){
+                  DEBUG('a', "Invalid File Name: Must be longer than 0\n");
+                  machine->WriteRegister(2, -1);  // If file name is invalid return -1.
+                } // User puts a single \0 for the string name of the file, this should not be allowed
+                stringArg[127]='\0';
+                DEBUG('a', "Argument string is <%s>\n",stringArg);
+                if(!fileSystem->Create(stringArg, 16)){
+                  DEBUG('a', "Checkpoint Failed\n");
+                  machine->WriteRegister(2, -1);  // If file name is invalid return -1.
+                }
+
+                open = fileSystem->Open(stringArg);
+                if(open == NULL){
+                  DEBUG('a', "Checkpoint Failed\n");
+                  machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
+                }
+                else{
+                  //outputRamPages();
+                  currentThread->space->writeBackDirty();
+                  open->Write("#Checkpoint\n", 12);
+                  machine->WriteRegister(2, 1);
+                  for(i=0;i<NumTotalRegs;i++){
+                    j = machine->ReadRegister(i);
+                    //fprintf(stderr, "%d\n", j);
+                    pos = sprintf(buffer, "%d\n", j);
+                      open->Write(buffer,pos);
+                      //fprintf(stderr, "%s\n", buffer);
+                  }
+                    /*end int to string*/
+                
+                numPages = currentThread->space->getNumPages();
+                j = numPages;
+                //fprintf(stderr, "%d\n", j);
+                pos = sprintf(buffer, "%d\n", j);
+                open->Write(buffer,pos);
+                
+                //fprintf(stderr, "%s\n", buffer);
+                
+                for(i=0;i<numPages;i++){/*Should write the contents of all the pages*/
+                  synchDisk->ReadSector(currentThread->space->revPageTable[i].physicalPage, pageBuf);
+                  open->Write(pageBuf, 128);
+                  //fprintf(stderr, "%s", pageBuf);
+                }
+                machine->WriteRegister(2, 0);
+                }
+                break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
                 ASSERT(false);
@@ -960,22 +1157,92 @@ ExceptionHandler(ExceptionType which)
         case ReadOnlyException:     // Write attempted to page marked 
               // "read-only"
         fprintf(stderr, "READ ONLY EXCEPTION\n");
-        outputRamPages();
+        //If it is the root process... HALT
+        if(currentThread->space->pid == 0){interrupt->Halt();}
+        //Otherwise just Exit
+        forking->P();
+        curr = root;
+        DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
+        
+        while(curr->child != currentThread->space->pid && curr->next !=NULL){
+          curr = curr->next;  // Iterate to find the correct semphore to V
+        }
+        if(curr->child != currentThread->space->pid){
+          DEBUG('a', "How the hell do you break an exit?\n");
+          //fprintf(stderr, "How the hell do you break an exit?\n");
+        }
+        else{
+          whence = machine->ReadRegister(4); // whence is the exit value for the thread.
+          curr->exit = whence;
+          forking->V();
+          curr->death->V();
+    //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
+        delete currentThread->space;
+          currentThread->Finish();
+
+          DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
+        }
+
         interrupt->Halt();
         break;
         case BusErrorException:     // Translation resulted in an 
         fprintf(stderr, "BUS ERROR EXCEPTION\n");
-        outputRamPages();
+        //If it is the root process... HALT
+        if(currentThread->space->pid == 0){interrupt->Halt();}
+        //Otherwise just Exit
+        forking->P();
+        curr = root;
+        DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
+        
+        while(curr->child != currentThread->space->pid && curr->next !=NULL){
+          curr = curr->next;  // Iterate to find the correct semphore to V
+        }
+        if(curr->child != currentThread->space->pid){
+          DEBUG('a', "How the hell do you break an exit?\n");
+          //fprintf(stderr, "How the hell do you break an exit?\n");
+        }
+        else{
+          whence = machine->ReadRegister(4); // whence is the exit value for the thread.
+          curr->exit = whence;
+          forking->V();
+          curr->death->V();
+    //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
+        delete currentThread->space;
+          currentThread->Finish();
+
+          DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
+        }
         interrupt->Halt();
         break;
               // invalid physical address
         case AddressErrorException: // Unaligned reference or one that
 
         fprintf(stderr, "ADDRESS ERROR EXCEPTION\n");
-        fprintf(stderr, "ADDR %d %d\n", machine->ReadRegister(4),machine->ReadRegister(5));
-        outputRamPages();
-        currentThread->space->writeBackDirty();
-        currentThread->space->printAllPages();
+        //If it is the root process... HALT
+        if(currentThread->space->pid == 0){interrupt->Halt();}
+        //Otherwise just Exit
+        forking->P();
+        curr = root;
+        DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
+        
+        while(curr->child != currentThread->space->pid && curr->next !=NULL){
+          curr = curr->next;  // Iterate to find the correct semphore to V
+        }
+        if(curr->child != currentThread->space->pid){
+          DEBUG('a', "How the hell do you break an exit?\n");
+          //fprintf(stderr, "How the hell do you break an exit?\n");
+        }
+        else{
+          whence = machine->ReadRegister(4); // whence is the exit value for the thread.
+          curr->exit = whence;
+          forking->V();
+          curr->death->V();
+    //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
+        delete currentThread->space;
+          currentThread->Finish();
+
+          DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
+        }
 
         interrupt->Halt();
         break;
@@ -983,14 +1250,61 @@ ExceptionHandler(ExceptionType which)
               // address space
          case OverflowException:     // Integer overflow in add or sub.
          fprintf(stderr, "OVERFLOW ERROR EXCEPTION\n");
-         outputRamPages();
-         // currentThread->space->writeBackDirty();
-         currentThread->space->printAllPages();
+        //If it is the root process... HALT
+        if(currentThread->space->pid == 0){interrupt->Halt();}
+        //Otherwise just Exit
+        forking->P();
+        curr = root;
+        DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
+        
+        while(curr->child != currentThread->space->pid && curr->next !=NULL){
+          curr = curr->next;  // Iterate to find the correct semphore to V
+        }
+        if(curr->child != currentThread->space->pid){
+          DEBUG('a', "How the hell do you break an exit?\n");
+          //fprintf(stderr, "How the hell do you break an exit?\n");
+        }
+        else{
+          whence = machine->ReadRegister(4); // whence is the exit value for the thread.
+          curr->exit = whence;
+          forking->V();
+          curr->death->V();
+    //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
+        delete currentThread->space;
+          currentThread->Finish();
+
+          DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
+        }
          interrupt->Halt();
          break;
+
          case IllegalInstrException: // Unimplemented or reserved instr.
          fprintf(stderr, "ILLEGAL INSTRUCTION ERROR EXCEPTION\n");
-         outputRamPages();
+         //If it is the root process... HALT
+        if(currentThread->space->pid == 0){interrupt->Halt();}
+        //Otherwise just Exit
+        forking->P();
+        curr = root;
+        DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
+        
+        while(curr->child != currentThread->space->pid && curr->next !=NULL){
+          curr = curr->next;  // Iterate to find the correct semphore to V
+        }
+        if(curr->child != currentThread->space->pid){
+          DEBUG('a', "How the hell do you break an exit?\n");
+          //fprintf(stderr, "How the hell do you break an exit?\n");
+        }
+        else{
+          whence = machine->ReadRegister(4); // whence is the exit value for the thread.
+          curr->exit = whence;
+          forking->V();
+          curr->death->V();
+    //fprintf(stderr,"NUMPAGEFAULTS %d\n", stats->numPageFaults);
+        delete currentThread->space;
+          currentThread->Finish();
+
+          DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
+        }
 
          interrupt->Halt();
          break;

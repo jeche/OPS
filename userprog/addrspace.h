@@ -126,6 +126,7 @@ class AddrSpace {
     AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace); //Only use if you are forking a new 
           //process and you know the pages needed
           //and are going to copy in the physical pages
+    AddrSpace(OpenFile *chkpt, int numpages);
     ~AddrSpace();     // De-allocate an address space
 
     void InitRegisters();   // Initialize user-level CPU registers,

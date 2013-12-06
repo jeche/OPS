@@ -239,6 +239,7 @@ Timer *timer;               // the hardware timer device,
 Timer *timer2;
                     // for invoking context switches
 Semaphore *forking;
+Semaphore *forkexecing;
 Semaphore *chillBrother;
 Semaphore *execing;
 SynchConsole *synchConsole;
@@ -390,8 +391,8 @@ Initialize(int argc, char **argv)
     stats = new(std::nothrow) Statistics();         // collect statistics
     interrupt = new(std::nothrow) Interrupt;            // start up interrupt handling
     scheduler = new(std::nothrow) Scheduler();      // initialize the ready queue
-    if (randomYield)                // start the timer (if needed)
-    timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
+    //if (randomYield)                // start the timer (if needed)
+    //timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
     
     threadToBeDestroyed = NULL;
 
@@ -410,7 +411,8 @@ Initialize(int argc, char **argv)
     synchConsole = new(std::nothrow) SynchConsole("synch console");
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
     forking = new(std::nothrow) Semaphore("forking", 1);
-    // timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
+    RandomInit(100);
+    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
     // bitMap->Print();
 #endif
 
@@ -419,6 +421,8 @@ Initialize(int argc, char **argv)
     ramPages = new(std::nothrow) ramEntry*[NumPhysPages];
     chillBrother = new(std::nothrow) Semaphore("chillBrother", 1);
     execing = new(std::nothrow) Semaphore("execing", 1);
+    forkexecing = new(std::nothrow) Semaphore("forkexecing", 1);
+
     for(int i = 0; i < NumPhysPages; i++){
         ramPages[i] = new(std::nothrow) ramEntry(-1, Free, -1, NULL);
     }
@@ -469,6 +473,7 @@ Cleanup()
     delete synchDisk; 
     delete chillBrother;
     delete execing;
+    delete forkexecing;
 #ifdef FILESYS
    
 #endif

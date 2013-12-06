@@ -346,6 +346,7 @@ extern ramEntry **ramPages;
 extern int commutator;
 extern Semaphore *chillBrother;
 extern Semaphore *execing;
+extern Semaphore *forkexecing;
 #ifdef FILESYS 
 #endif
 

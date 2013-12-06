@@ -1,0 +1,8 @@
+#SCRIPT
+parent_child
+argtest
+matmult
+maxfork
+vmtoobig
+!mtorture
+halt
