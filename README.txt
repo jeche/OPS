@@ -78,7 +78,7 @@ When we get a page fault, we grab the chillBrother semaphore (which is used to r
 
 Now we must read in the new page.  We read the page on disk into a buffer and then write this buffer into main memory.  With this done, we set the appropriate fields in the ramPages entry.  We change the virtual page number to match the virtual page that caused the page fault, we change the pid to match the pid of the process that caused the fault, we change the valid bit in the currentThread's appropriate page table entry to true and we set the physical page of the currentThread's appropriate page table entry to make its new spot in main memory.  Now that we're done changing things in ramPages, we can set the status of the page we were messing with to be "InUse" so that it can be replaced again.  We leave the function and give up the semaphore and continue on our merry way.
 
-The pageFaultHandler in addrSpace is very similar to the one I just described.  However, there are significant differences.  Since this pageFaultHandler will also be dealing with page faults when a process is exceed and is not yet running in its own thread, we must check things like the page table or the pid of the addrSpace calling the pageFaultHandler rather than checking these things in machine or in the current thread.
+The pageFaultHandler in addrSpace is very similar to the one I just described.  However, there are significant differences.  Since this pageFaultHandler will also be dealing with page faults when a process is exec'ed and is not yet running in its own thread, we must check things like the page table or the pid of the addrSpace calling the pageFaultHandler rather than checking these things in machine or in the current thread.
 
 
 Page Replacement Algorithm
