@@ -1,143 +1,37 @@
-README.txt
-Aslyn Blohm, Andrew Jones, Jessica Chen
-
-
-
-system.h
---------
-In system.h changes made included declaring two classes, FamilyNode and SynchConsole, as well as several global variables used later.  The SynchConsole class creates a global console for the system to write to.  It basically serves as a wrapper class for the already defined console.  There is a lock around methods that the kernel class so that no more than one process can access the SynchConsole to read to it or write from it at once.  The FamilyNode class is basically a node class for a linked list that will contain all family relations in the system.  It has two integers, one for the parent pid and one for the child pid.  It also has an integer to store an exit value.  It lastly has a pointer to another FamilyNode which will serve as a link to other nodes that might need to be accessed.  Finally it has a semaphore, death, which is used per relation for children to notify parents that they have exited, and force the parents to wait if the children have not exited.
-
-Other global variables that were declared include a global pid to be bumped as new processes are forked.  Currently if anyone tries to allocate more than INT_MAX processes the system will have undefined behavior (so please do not try to do this).  There is also a bitmap that is declared to keep track of which pages are free, and which are currently allocated to a process.  There is also a global timer(Timer 2) declared which results in random time slicing.  Finally there is a semaphore called forking which is used to ensure singluar access to most of the global objects in the system.
-
-system.cc
----------
-Intializes the pid to 0.  Intializes the forking semaphore for accessing gloabl values in the system with a value of 1.  Initializes the root node for the family tree (which is a global value) with an initial node that has the same parent as it does child.  Initializes the bitmap with the number of pages the system has.
-
-MAJOR DESIGN DECISIONS:  We made the "FamilyNode" essentially a linked list of pids with semaphores stored in each node for parents and children to communicate with each other.  The linked list works because each pid is unique so each node should have a unique relation of parent and child pids.  This way no nodes need ever be deleted for multiprogramming to correctly occur.  Nodes are only ever added to the end.  We do this in here instead of in AddrSpace so that we can delete the AddrSpace of the child as soon as it exits.
-
-The SynchConsole is essentially a wrapper for Console with a lock around the methods of PutChar and GetChar, and a Wait that forces processes to wait until the SynchConsole is not in use.  After a read or write is finished it Broadcasts to a condition to allow waiting processes to continue.  This was done for testing purposes before we added a semaphore to atomize read and write syscalls.  It was never removed due to sheer laziness on the part of Jessica.
-
-
-
-addrspace.h
------------
-In addrspace.h a class for protecting each file in the file descriptor is declared.  The class is referred to as FileShield.  Each FileShield has a reference count, a pointer to a file, and an integer to check if ConsoleInput or ConsoleOutput have been dup-ed into that particular spot.  Each FileShield object has a method CopyFile() which is called everytime a new reference to that file is created (mostly for use in Fork).  Each FileShield also has a CloseFile() which decrements the reference count and returns the new reference count to the caller.  In the AddrSpace declaration 4 new variables related to each space are declared.  An integer to store a pid, a pointer to pointers for FileShields, referred to as fileDescriptors.  There is also an integer, enoughSpace which is used to determine if the AddrSpace has been created correctly.
-
-addrspace.cc
-------------
-In the constructor the changes made include removing all ASSERTs and instead when they fail those sanity checks setting the value of enoughSpace to 0 (It is initially 1 because it assumes that the address space will allocate correctly).  It then interates through in a for loop in an attempt to find pages for the address space.  If it is ever unable to find a page it immediately exits the loop and sets enoughSpace to 0 denoting that the allocation of the address space failed.  For every page found the value for the virtual page is set to the physical page that has been found to be free from the bitMap.  After trying to find all the pages the fileDescriptors array is initialized with a limit of 16 files, including ConsoleInput and ConsoleOutput.  After that assuming all the other steps in the constructor have been successful it writes the code and global information to the executable in a byte by byte fashion using the virtual addresses and translation specific to that address space.  It then also initializes the pid.
-
-The methods from translate.cc were copied for ReadMem(), WriteMem(), and Translate() verbatim into the AddrSpace object to allow for their usage when trying to determine the correct physical page from virtual pages.  This was done out of sheer laziness on the part of Jessica.
-
-Clean():
-An unimportant remnant of days where we did things in an ugly fashion and where everything was stored in the AddrSpace.  This is not used anymore, but has not yet been deleted because we don't want to break something. (Not that it actualy should be capable of doing so, but we seem to be capable of breaking things in strange ways sometimes so we are leaving it alone for now).
-
-newSpace():
-Added within AddrSpace to allow for the forking of children.  Initializes a new AddrSpace with the same values that the AddrSpace that called it holds.  A new page table is allocated, but in the new page table the physical pages that the virtual pages point to are different than the original's.  It then also copies over the FileShield object into a new fileDescriptors array.  As it copies pointers to the actual FileShield objects into the new array it increments each reference count by calling CopyFile().  newSpace then returns a new AddrSpace with the newly initialized values. Design decision:  We created newSpace so that technically every file would only ever have access to its own pageTable.
-
-The deconstructor of AddrSpace was also modified to notify the bitMap to release pages held in the pageTable, delete the fileDescriptors array while closing any files it still has open, and then finally delete the pageTable.
-
-MAJOR DESIGN DECISIONS:  The FileShield object is basically a wrapper class with a reference count.  It ensures the file doesn't get deleted.  In the array we just set the pointer to a specific object to NULL unless if the reference count was decremented to 0, in which case we just delete the file after calling CloseFile in exception.cc.  This was an easy way for us to ensure children recieved their parents files, and we could think of no other way to do this.
-
-
-
-bitmap.h
---------
-Intialized a Semaphore monitor with the value of 1.
-
-bitmap.cc
----------
-All the changes that were made to bitMap.cc were simply to ensure only one process can access it at a time.  Semaphores were placed around all accessors forcing each process attempting to access to P() on monitor and then V() when it exits.
-
-MAJOR DESIGN DECISIONS:  We made bitmap a monitor so we wouldn't have to worry as much about concurrency when allocating an AddrSpace.
-
-
-
-exception.cc
-------------
-For all syscalls that necessitate reading as an argument, we read the string out of the appropriate register and place it in a buffer called stringArg.  The buffer has a size of 128 characters.  We allow the user to input up to 127 characters, the 128th character is always forcibly a null character.  This way if a user gives an input string for an argument that is longer than 127 characters it is simply truncated to 127 characters.
-
-
-SC_Halt
----------------------------
-Calls interrupt->Halt() forcing the machine to stop.
-
-SC_Exit
----------------------------
-The exit syscall begins by iterating through the linked list of all processes/threads that have ever been created and continues until it finds a node where the pid of the child is equal to the current thread's pid.  This should work because each child forked should have a unique node.  Once it finds that it sets the exit value to the value that has been read out of register 4.  It then also does a V() on the semaphore within the node that is specified for the child.  This way if the parent is currently stuck at a P() on the semaphore from the SC_Join, the parent will know that its child has exited.  If the parent has not yet had a chance to join on the child, then if it does later it will be able to proceed past the node's semaphore because the child has already done the V().  The exiting process then deletes its address space and calls a Thread->Finish() to clean itself up.  The node related to the child is never affected.
-
-Design Decisions:  We delete the space in here because for some reason the system never seems to do it itself.
-
-SC_Exec
----------------------------
-In the exec syscall the name is read out of register 4 and a new address space is initialized using the specified file by name.  The syscall then also handles copying out all of the old file descriptors of the previous address into the new address space.  After the new AddrSpace is created, the registers for that space are initialized, and then argument reading begins.  The stack pointer is pushed down by the length of the file name and then that file name is written above the stack pointer in the new AddrSpace and its location is recorded in the initial position of argvAddr.  This process of reading out the argument, decrementing the stack pointer, writing the argument to the stack and recording the location in argvAddr is repeated for all of the arguments.  After that, we move the stack pointer again to make space to write in all the values in argvAddr.  We write all of those values into the new AddrSpace and then remove the old one and replace it with the one we've created.  We restore the state of the AddrSpace and then write the argcount and the location of argvAddr[0] to the correct registers.  We also write the new stack pointer (with a little extra buffer) back to the appropriate register.  With all this complete, we run our thread again.
-
-Design Decisions:  We technically have to have two spaces at once while copying over the data from the original.  This is for convenience over efficiency.
-
-SC_Join
----------------------------
-The join syscall begins by iterating through the linked list of all processes/threads that have ever been created and continues until it finds a node where the pid of the child is equal to the argument passed into register 4 and the parent pid in the node is equal to the current thread's pid.  If a node is never found that matches the description, join exits with a return value of -1.  Otherwise the parent waits for a V() on the semaphore for the found node.  Once it gets past the semaphore it retrieves the exit value from the node and returns it in register 2.
-
-SC_Create
----------------------------
-The create syscall reads a string for the name of the file out of register 4.  It passes that name to the file system and asks the file system to create the file.  If the file is successfully created the system continues on its merry way.  If it is not the system places a -1 in the return register, however since Create does not return anything this is virtually useless, and only there to denote the difference between a successful call and unsuccessful call.  The limit on the file name size is a total of 127 characters, not including the null character at the end of a string.  If the user attmepts to create a file with a name that is longer than 127 characters the system will truncate it to 127 characters with a null character at the end.
-
-SC_Open
----------------------------
-The open syscall reads a string for the name of the file out of register 4.  After reading the string out it does a sanity check to make sure the user entered a string with size greater than 0 for the name.  It then makes a call to the file system to open the file.  If the call was unsuccessful the return value is NULL.  If the returned value is null the kernel cleans up information from the syscall, increments the PCRegs, and returns a -1 in register 2.  If the returned file was valid it iterates through the current thread's file descriptor array.  If it finds an open spot (denoted by a NULL) in the array it creates a new File Shield in that spot and places the open file in that spot.  When it finds a spot the loop then terminates and forces the value of i to 18.  At the end if the value of i was 18 it will return the found descriptor, if no open spot was found it returns a -1.  In the open syscall the user is never allowed to open a file in the spots reserved for ConsoleInput and ConsoleOutput.  If a user intends to place files in those spots in the file descriptor array the Close and Dup syscalls should be used in the appropriate fashion.
-
-SC_Read
----------------------------
-The read syscall starts by grabbing the global semaphore that is used to atomize reads and writes.  It then reads out the size the user wants to read and ensures it is greater than 0.  It then checks where the call wants to read from by getting the descriptor out of register 6.  The validity of the descriptor is checked, as well as if there is currently a file at that descriptor.  Assuming the file descriptor is legitimate, if the process was instrcuted to read from a file it attempts to read that from the file into a buffer called stringArg. (Maximum size of a read is limited by the size of the buffer stringArg which is 128 characters with a forced '\0' at the 128th character).  It then writes the characters stored in stringArg to mainMemory at the specified address that is read out of register 4.  The Read call on the file returns an integer of how many characters were read.  That integer is placed into register 2 on a successful read.  If it is a read from ConsoleInput it instead calls GetChar() on the synchConsole in a for loop that occurs as many times as the size of the read.  As it reads character by character out of the synchConsole it writes each character into memory at the appropriately incremented address retrieved from register 4 and stored in whence.  It then writes the number of times it read from consoleInput to register 2.  At the end it calls a V() on the semaphore used to atmoize the reads and writes and then increments the PC Regs.  If at any point a check was failed or something went wrong a -1 is written to register 2 to show in the return that something went wrong.
-
-SC_Write
----------------------------
-The write syscall starts by grabbing the global semaphore on a P() that is used to atomize reads and writes.  It then checks to make sure the size it writes is greater than 0.  It reads the characters to be written out of memory at the address retrieved from register 4 and into the buffer stringArg.  (Again Write is limited to 128 characters maximum)  After that it checks to make sure the write is being called on a valid filed descriptor that has been read out of register 6.  If it is it calls write on the file and gives it the size to write as well as the buffer stringArg to write from.  If the write is to consoleOutput it calls a putChar() on the synchConsole as it reads characters out of memory in a for loop.  We do not allow anyone to write to consoleInput.  If at anypoint anything goes wrong a -1 is written into register 2 (even though Write technically does not return anything).  Before the write syscall exits it V()s the global semaphore and increments the PC Regs.
-
-SC_Close
----------------------------
-The close syscall starts by reading the file descriptor id to be closed out of register 4.  It then checks to make sure it is within the range of valid files.  If the descriptor is invalid it returns a -1.  If the file descriptor is a valid file descriptor it attempts to CloseFile() on the fileShield in that thread's space's fileDescriptors array.  If the CloseFile() call returns a 0 it deletes the file.  After closing the file, no matter what the return value was of the CloseFile() call it sets that spot in the fileDescriptors array to point at NULL so it is no longer pointing to the fileShield object that was there previously.  If for some reason the CloseFile() returns a nubmer that is less than 0 Close will return a -1.
-
-Design Decisions:  We delete the file in close because that way we know the reference count for the file must be 0 before deleting it.
-
-SC_Fork
----------------------------
-The fork syscall starts by iterating through the familyTree to find the end of it.  It bumps the global pid and then attempts to create a new AddrSpace for the child by copying the parent's using the AddrSpace function newSpace().  After attempting to create the new AddrSpace it checks to see if there was enough space to create the AddrSpace.  If there was not it writes a -1 to register 2 and decrements the global pid.  It also deletes the partially created AddrSpace.  If there was a enough space it creates a new thread, and a new FamilyNode to add to the end of the family linked list.  It gives the new thread the copy AddrSpace that was created.  The new AddrSpace is given the pid so that the thread can identify itself later.  It then calls SaveUserState() on the new thread to write all the current machine registers to the userRegisters for the child.  It then Forks the new process with the function CopyRegs.  CopyRegs restores the child's registers, restores the page table for the child, increments the PC Regs, and finally writes a 0 to register 2 before calling machine->Run() to start the execution of that thread.  The parent continues its execution by writing the bumped pid to register 2 and saving the state just in case we have problems later.  It then increments its PC Regs and resumes execution.
-
-Design Decisions:  We created the space before actually forking the new process so that the parent wouldn't have to wait on a Semaphore for the child.  We used the same Semaphore that we use to ensure atomic Reads and Writes in order to ensure atomic access to the Family Tree so no one can try to add nodes over top of someone else's node at the end of the list.
-
-SC_Dup
----------------------------
-The dup syscall begins by reading out the file to be duped and making sure that it is valid.  Once this is done, we iterate through the file descriptor buffer, looking for the first open spot.  If there is not one, we return a -1.  If there is one, we set the found slot equal to the slot of the file we wish to dup.  We increase the reference count for the file and note that if the slot previously pointed to ConsoleInput or ConsoleOutput, now it points to a file.  After this we return the slot the file was duped into and incease the PC registers appropriately.
-
-
-
-syscall.h
----------
-Added the Dup syscall with a #define value of 10.
-
-test/start.s
-------------
-Added the Dup syscall.
-
-shell.c
--------
-The Shell can be invoked with the following command, < ../userprog/nachos -x shell >. From there you are brought to a prompt where you as the user can invoke nachos userland programs and Scripts. There are 3 utility programs, cat, cp, and echo. "cat" takes in single or multiple filenames as arguments and prints them out. "cp" will take the contents of the first given file and copy them to the second. "echo" takes in a single argument(note arguments are separated as spaces so really just a single word unless you use '-' or '_' for spaces) and prints out the input. This is primarily useful for scripts to see where you are in the execution of a script without having to modify the programs it is calling. Any program can be called with at most 14 arguments, each argument being up to 30 chars in length, scripts can not take any arguments(but any program calls within a script can take 14 arguments). Each line of input prior to the user hitting enter or a '\n' in a script may be at most 120 characters, excluding comments. A script must start with #SCRIPT being in the first line of the file with no spaces, tabs, or newlines before. Comments are defined as any text following a '#' up until a newline, but there must be a space or tab before the '#' if it is in the same line as an invocation of a program or script. The Shell handles irregular tabbing and spacing before a program or script call and between arguments. When a program finishes, the Shell will print out "Process Exited: " with the exit value returned from the program. When a script is invoked, the '--' and "Process Exited: " will not be printed out, once the script has finished the shell will print out "Script Finished" with no exit value and a "--" waiting for user input. The shell also handles for file redirection. To redirect the output of the shell to a file, after the script or program call with arguments has been input into the shell, put a '>' followed by the file you wish to output to. If the file has not been created, the shell will create a new file by the input name, and if it already exists then it will overwrite char by char. Note: if you do redirect to a file that already exists that contains a greater number of characters than you are writing, there will be remnants of the old file after the redirection.
-
-cat.c
----------------------------------------------
-The cat program takes in a list of files as arguments from the shell that exec-ed it.  It iterates through these files and tries to open them.  If open ever returns a -1, cat simply prints a failure message to the console and continues iterating through the files.  Once a file has been opened, cat reads the one character from the file and writes it to ConsoleOutput until Read returns no more characters.  Cat then closes the opened file and moves on to the next one.
-
-cp.c
---------------------------------------
-The cp program takes in two arguments aside from "cp".  One is the file to read from and the other is the file to write to.  If the number of arguments is incorrect or the file to be read from cannot be opened, cp exits with a -1 value.  Otherwise, cp tries to open the file to write to.  If it cannot, it creates the file and then opens it.  Once we have an open file, cp reads a character from the first file and writes it to the second file until the read returns no more characters.  Once cp has finished, it closes both files and exits.  It should be noted that, like shell, if the file to be written into contains more characters than are being written from the first file, then there will be remnants of the old file after the copy has completed.
-
-
 ----------------------------------------------------------------------------- README -- Nachos 3 
 ---------------------------------------------------------Aslyn Blohm, Andrew Jones, Jessica Chen
+Nachos2 Retesting for Partial Credit
+---
+We would like to have the tests that ran bogus1 and bogusscript1 on Nachos2 re-run on our Nachos3 implementation. Both should now act appropriately.
+
+Testing Notes
+---
+	--Please run all tests under stand alone invocation, ../vm/nachos -x <executable>, currently running processes from shell with the time slicing introduced in Nachos2 works most of the time, however occasionally will crash depending on the ordering of execution as well as if it is in a script or not.
+
+	--No Glitter Points for checkpoint, it does not save any openfiles for execution, when a process is re-instantiated from a checkpoint file, all it has is ConsoleInput and ConsoleOutput, it is up to the user to re-open any files used in the program.
+
 
 Virtual Memory Implementation
 ---
+Page Fault Handler 
+------
+When we get a page fault, we grab the chillBrother semaphore (which is used to restrict accesses to the ramPages global data structure) and then enter the function that actually deals with a page fault.  We first check to make sure the machine page table doesn't have the page we're faulting for marked as valid.  If it is marked as valid, then we don't need to do anything and we just exit the function and release the semaphore.  However, if the page is marked as invalid then we call the findReplacement() function which returns an integer of the page in ramPages that we are going to replace.  The algorithm done in findReplacement() is discussed in more detail below.  Once we have a victim, we check to see if the the addrSpace in the ramPages entry for the victim is NULL.  If it is, the page cannot be dirty, so we don't need to deal with writing it back to the disk.  However, if the addrSpace is not NULL, then we must make sure that the page is not dirty.  If it is, we write the page to a buffer and write it back to the disk.
+
+Now we must read in the new page.  We read the page on disk into a buffer and then write this buffer into main memory.  With this done, we set the appropriate fields in the ramPages entry.  We change the virtual page number to match the virtual page that caused the page fault, we change the pid to match the pid of the process that caused the fault, we change the valid bit in the currentThread's appropriate page table entry to true and we set the physical page of the currentThread's appropriate page table entry to make its new spot in main memory.  Now that we're done changing things in ramPages, we can set the status of the page we were messing with to be "InUse" so that it can be replaced again.  We leave the function and give up the semaphore and continue on our merry way.
+
+The pageFaultHandler in addrSpace is very similar to the one I just described.  However, there are significant differences.  Since this pageFaultHandler will also be dealing with page faults when a process is exceed and is not yet running in its own thread, we must check things like the page table or the pid of the addrSpace calling the pageFaultHandler rather than checking these things in machine or in the current thread.
+
+
+Page Replacement Algorithm
+------
+For our replacement algorithm, we implemented a version of fancy clock.  We begin the replacement algorithm by checking to see if any of the pages in main memory are free.  We start at the location of the commutator (a global value that is only incremented in the findReplacement methods) and sweep all the way around If they are, we select that page for replacement and exit out of the function.  If there are no free pages, we begin the clock algorithm.  We start at the commutator and go through all of the pages, checking first that the addrSpace associated with the page is not NULL (this would only occur if some of the ramPages entries were marked as Free during the deletion of an addrSpace).  If the addrSpace isn't NULL, we then check the use bit and the dirty bit of the page in ramPages.  If the page has not been used (which is to say that the use bit is set to true) and the page is not dirty, then we select that page for replacement.  If none of the pages matches that description, we begin the sweep again, this time checking for a page that has not been used but is dirty.  If we find one of those, we return that page as the one to be replaced.  Otherwise, we set the use bit to true (which would say that the page hasn't been used) and start back at the beginning of the clock part of the algorithm.
+
+Once we've selected a page for replacement, we do one of two things depending on if the addrSpace being pointed to in the ramPages entry is NULL or not.  If it is NULL, we just mark the page as being "MarkedForReplacement" (part of an enum that dictates the different statuses a page can have) and return the page to be replaced to the pageFaultHandler.  If the addrSpace is not NULL, then we need to set the valid bit to false, set the physical page in the addrSpace's pageTable to be a -1 (just to thoroughly invalidate it), and set the status as being "MarkedForReplacement".
+
+We also do one other interesting thing with this algorithm.  We ensure that the replacement algorithm cannot choose the page to replace to be the one the commutator started on at the beginning of the algorithm.  Without this, we were having an issue where running vmtorture would eventually get to a point where we were just continuously replacing the same page.  This was happening because on the first scan (where we check that the use bit is true and the dirty bit is false), every page aside from the one that had just been replaced either had their use bit set to false or their dirty bit set to true.  Having one page constantly being replaced was an issue for our system and we solved it by not allowing the commutator to choose the page that had just been replaced.  This forced the commutator to enter the second loop of the algorithm where we check for the use bit being true and the dirty bit being true.  In this loop, there were many pages that fit this description, so the algorithm chose more effectively.
+
+We tested running vmtorture with both a random and the fancy clock algorithm to see the differences in the number of page faults.  The difference between random and the fancy clock is around 10,000 page faults, thus suggesting that the fancy clock algorithm is far more efficient.
+
 
 CheckPoint Implementation
 ---
@@ -147,17 +41,30 @@ Progression when CheckPoint(char *name) is called
 Under the usage pattern below, the progression of a call to CheckPoint is as follows.
 	
 	if (CheckPoint("ckptfile")) {
-	/* stuff to do if being reinstantiated */
+	/* stuff to do if being re-instantiated */
 	. . .
 	} else {
 	/* stuff to do if taking the checkpoint */
 	. . .
 	}
 
-When the call to CheckPoint gets to 
+When the syscall to CheckPoint is called it initially increments the PrevPc, PC, and NextPC registers, reads in string argument for the filename, creates the checkpoint file with the string argment as the name, and opens that file for edits. Assuming the file opens correctly, CheckPoint calls the writeBackDirty method on the currentThreads addrspace. This writes all of the processes dirty pages back to memory as when it copies the processes pages, it does it from disk, and we want the most recent versions of all the pages. From this point on it begins the process of writing the CheckPoint file. First we write a 1 to the syscall return register(register 2), so when the CheckPoint file is re-instantiated, it is as if it just returned from the Checkpoint call with a 1. Before it writes anything to the CheckPoint file it writes #CheckPoint at the top to designate it as a checkpoint file to exec. Next it writes all the registers to the file, followed by the number of pages the process requires, finished with the contents of all the processes pages on Disk. The format of the CheckPoint file is as follows, where anything inside <logicalvalue> denotes what value is written and not the literal string, <logicalvalue>, and [...] denotes skipping repetitive iteration to save space.
 
-Progression when a checkpoint file "ckpt" is exec'd
+#Checkpoint\n
+<Register(0)>\n
+<Register(1)>\n
+[...]
+<Register(NumTotalRegs-1)>\n
+<NumPages>\n
+<Contents of Disk Sector associated with vPage 0><Contents of Disk Sector associated with vPage 1>[...]<Contents of Disk Sector associated vPage NumPages-1>
+
+After it has finished writing to the checkpoint file it then puts a 0 in the syscall return register(2), breaks out of the exception.cc switch statement, and returns to where CheckPoint was called with a return value of 0.
+
+
+Progression when a CheckPoint file "ckpt" is exec'd
 ------
+When an exec with the filename to a CheckPoint file as the argument is called, it follows the same progression to exec as before, however several aspects were changed to handle this case. When it enters into Exec, it does the same initial section of reading in the Exec string argument and opening it. After it does this, it now reads in the first 12 characters and compares what it gets to the string "#Checkpoint\n", if it matches it continues with the new case for exec'ing a checkpoint file, otherwise it reopens the file, which resets the currency indicator(yes there probably is a better way to do this, but it works), and does a 'normal' exec with args. If the first 12 bytes matched "#Checkpoint\n", it then begins reading in the CheckPoint file to begin the re-instantiation. First before anything, it saves the current user state so it can be brought back if something goes wrong, using currentThread->SaveUserState(). It then reads in the register values, going byte by byte, with '\n' as the delimiter between register values, reading into a buffer then calling atoi on that buffer, and then writes the values to the correct register. Since atoi was used, mostly out of laziness and it was used in other portions of nachos, there is the weakness of if non number values are in the buffer, so any changes to the checkpoint file made by the user that introduces any whitespace or other mucking about will cause bad things to happen. It then reads in the numPages value in the same manner, and passes it and the openfile object to the new AddrSpace constructor, AddrSpace(OpenFile *chkpt, int numpages). In this constructor, it functions similarly to the default AddrSpace constructor, except instead of relying on the noff file for the number of pages needed it is supplied that from the incoming arguments, sets up ConsoleInput and ConsoleOutput(No other OpenFiles), and reads in the pages in 128 byte chunks from the checkpoint file and writes them to disk using the revPageTable set up when it grabbed the pages from the diskBitMap. Afterward it returns a new AddrSpace which matches the AddrSpace of the CheckPoint'ed process at the time of the CheckPoint. Returning back to CheckPoint in exception.cc, it checks the enoughSpace flag from the newly constructed AddrSpace, as well as the flag, flag(in the Exec), to see if any errors occurred. If any did, it restores the old user state and wries a -1 to Exec's return. Otherwise, assuming everything happened correctly, it then transferes the pid over, sets the currentThread's addrspace to the new space, calls RestoreState() on the new space to make the machine's pagetable it's own, and finally it calls machine->Run(); 
+
 
 
 Non-Trivial Modifications to Files to Implement
@@ -173,7 +80,17 @@ addrspace.h
 
 addrspace.cc
 ------------
+	- AddrSpace(OpenFile *chkpt, int numpages);
+		New AddrSpace constructor to be used when recreating a process from a CheckPoint file.
+	- void printAllPages();
+		Debug method to print the status of all a processes pages on disk.
+	- bool writeBackDirty();
+		Used to forcibly write all of a processes dirty pages back to disk. Used prior to writing a checkpoint file, as it is written based off of the processes pages on disk.
 
 exception.cc
 ------------
+	-Modifications to Exec Syscall
+		Changed to be able to exec a CheckPoint file
+	-CheckPoint Syscall
+		Creates a CheckPoint file based off of the calling processes current state, sets return value to -1 on error, 0 if you called CheckPoint, 1 if you have been restored from a CheckPoint file.
 
