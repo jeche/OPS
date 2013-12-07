@@ -2,7 +2,7 @@
 ---------------------------------------------------------Aslyn Blohm, Andrew Jones, Jessica Chen
 Nachos2 Retesting for Partial Credit
 ---
-We would like to have the tests that ran bogus1 and bogusscript1 on Nachos2 re-run on our Nachos3 implementation. Both should now act appropriately.
+We would like to have the tests that ran bogus1 and bogusscript1 on Nachos2 re-run on our Nachos3 implementation. Both should now act appropriately.  Also we did not do COW.  As in we made a small attempt to do COW but while it didn't break anything it had no effect on the DISK I/O when we ran it with the tests. (And then we pulled it out just in case the COW broke something else unbeknownst to us).
 
 Testing Notes
 ---
@@ -13,6 +13,65 @@ Testing Notes
 
 Virtual Memory Implementation
 ---
+
+system changes:
+In system.h and system.cc the ramEntry data structure is declared.  Each ramEntry consists of a pid to keep track of the pid of the related process holding that ramEntry.  There is a refcount that is unused and was initialized for the purpose of COW later on.  There is also a pointer to an AddrSpace called head, as well as an integer vPage to denote which virtual page in memory the ramEntry relates to.  Finally there is a status that is defined in an enumeration to be either {MarkedForReplacement, Free, InUse}.
+
+In system.h and system.cc the following global variables are initialized:
+	SynchDisk* synchDisk: synchDisk object is used to read and write to sectors on the disk.
+
+	BitMap* diskBitMap: denotes which sectors on the disk are free.
+
+	int commutator: integer to keep track of who was last replaced
+
+	Semaphore* chillBrother: a semaphore only allowing one process into the pageFaultHandler at a time
+
+	ramEntry** ramPages: information about all the pages currently stored in main physical memory, ramPages is initialized with every page to be free, have an invalid pid, an invalid vPage, and pointing to NULL for the AddrSpace value.
+	
+
+Non-Trivial Modifications to Files to Implement
+---------
+
+addrspace.h 
+------------
+	-Added new Constructor
+		- AddrSpace(OpenFile *chkpt, int numpages);
+	-Added class methods: 
+		- void printAllPages();
+		- bool writeBackDirty();
+
+addrspace.cc
+------------
+	- AddrSpace(OpenFile *chkpt, int numpages);
+		New AddrSpace constructor to be used when recreating a process from a CheckPoint file.
+	- void printAllPages();
+		Debug method to print the status of all a processes pages on disk.
+	- bool writeBackDirty();
+		Used to forcibly write all of a processes dirty pages back to disk. Used prior to writing a checkpoint file, as it is written based off of the processes pages on disk.
+
+Summary of changes to AddrSpace:
+-------------------------------
+
+AddrSpace now has a revPageTable added to it in order to keep track of which sector on disk each virtual page refers to.
+The constructor of AddrSpace is exactly the same as in nachos2 except instead of using the main memory bitMap it uses the diskBitMap to find pages and store them in the revPageTable.  Also when loading the code and init data it is loaded directly onto the disk instead of main memory by loading it in page by page. 
+
+The method newSpace has also been changed to iterate through the old space's pageTable and write any pages that are dirty and/or valid into the newly allocated disk sectors for the new space, and if a page in the old space is not valid then it copies from the correct sector on disk instead for the new space.
+
+The deconstructor of AddrSpace iterates through all of its pages.  If it has any valid pages in mainMemory that are not marked for replacement it sets the status of those pages to free.  At the same time it also clears the bits in diskBitMap denoting that those entries in the disk are free.  It also now deletes revPageTable.
+
+In AddrSpace Translate was modified to do a page fault (without raising an exception) and load the appropriate page in.
+
+
+exception.cc
+------------
+	-Modifications to Exec Syscall
+		Changed to be able to exec a CheckPoint file
+	-CheckPoint Syscall
+		Creates a CheckPoint file based off of the calling processes current state, sets return value to -1 on error, 0 if you called CheckPoint, 1 if you have been restored from a CheckPoint file.
+
+
+	
+
 Page Fault Handler 
 ------
 When we get a page fault, we grab the chillBrother semaphore (which is used to restrict accesses to the ramPages global data structure) and then enter the function that actually deals with a page fault.  We first check to make sure the machine page table doesn't have the page we're faulting for marked as valid.  If it is marked as valid, then we don't need to do anything and we just exit the function and release the semaphore.  However, if the page is marked as invalid then we call the findReplacement() function which returns an integer of the page in ramPages that we are going to replace.  The algorithm done in findReplacement() is discussed in more detail below.  Once we have a victim, we check to see if the the addrSpace in the ramPages entry for the victim is NULL.  If it is, the page cannot be dirty, so we don't need to deal with writing it back to the disk.  However, if the addrSpace is not NULL, then we must make sure that the page is not dirty.  If it is, we write the page to a buffer and write it back to the disk.
@@ -64,33 +123,3 @@ After it has finished writing to the checkpoint file it then puts a 0 in the sys
 Progression when a CheckPoint file "ckpt" is exec'd
 ------
 When an exec with the filename to a CheckPoint file as the argument is called, it follows the same progression to exec as before, however several aspects were changed to handle this case. When it enters into Exec, it does the same initial section of reading in the Exec string argument and opening it. After it does this, it now reads in the first 12 characters and compares what it gets to the string "#Checkpoint\n", if it matches it continues with the new case for exec'ing a checkpoint file, otherwise it reopens the file, which resets the currency indicator(yes there probably is a better way to do this, but it works), and does a 'normal' exec with args. If the first 12 bytes matched "#Checkpoint\n", it then begins reading in the CheckPoint file to begin the re-instantiation. First before anything, it saves the current user state so it can be brought back if something goes wrong, using currentThread->SaveUserState(). It then reads in the register values, going byte by byte, with '\n' as the delimiter between register values, reading into a buffer then calling atoi on that buffer, and then writes the values to the correct register. Since atoi was used, mostly out of laziness and it was used in other portions of nachos, there is the weakness of if non number values are in the buffer, so any changes to the checkpoint file made by the user that introduces any whitespace or other mucking about will cause bad things to happen. It then reads in the numPages value in the same manner, and passes it and the openfile object to the new AddrSpace constructor, AddrSpace(OpenFile *chkpt, int numpages). In this constructor, it functions similarly to the default AddrSpace constructor, except instead of relying on the noff file for the number of pages needed it is supplied that from the incoming arguments, sets up ConsoleInput and ConsoleOutput(No other OpenFiles), and reads in the pages in 128 byte chunks from the checkpoint file and writes them to disk using the revPageTable set up when it grabbed the pages from the diskBitMap. Afterward it returns a new AddrSpace which matches the AddrSpace of the CheckPoint'ed process at the time of the CheckPoint. Returning back to CheckPoint in exception.cc, it checks the enoughSpace flag from the newly constructed AddrSpace, as well as the flag, flag(in the Exec), to see if any errors occurred. If any did, it restores the old user state and wries a -1 to Exec's return. Otherwise, assuming everything happened correctly, it then transferes the pid over, sets the currentThread's addrspace to the new space, calls RestoreState() on the new space to make the machine's pagetable it's own, and finally it calls machine->Run(); 
-
-
-
-Non-Trivial Modifications to Files to Implement
----------
-
-addrspace.h 
-------------
-	-Added new Constructor
-		- AddrSpace(OpenFile *chkpt, int numpages);
-	-Added class methods: 
-		- void printAllPages();
-		- bool writeBackDirty();
-
-addrspace.cc
-------------
-	- AddrSpace(OpenFile *chkpt, int numpages);
-		New AddrSpace constructor to be used when recreating a process from a CheckPoint file.
-	- void printAllPages();
-		Debug method to print the status of all a processes pages on disk.
-	- bool writeBackDirty();
-		Used to forcibly write all of a processes dirty pages back to disk. Used prior to writing a checkpoint file, as it is written based off of the processes pages on disk.
-
-exception.cc
-------------
-	-Modifications to Exec Syscall
-		Changed to be able to exec a CheckPoint file
-	-CheckPoint Syscall
-		Creates a CheckPoint file based off of the calling processes current state, sets return value to -1 on error, 0 if you called CheckPoint, 1 if you have been restored from a CheckPoint file.
-
