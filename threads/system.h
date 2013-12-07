@@ -104,10 +104,7 @@ class SynchConsole {
     Semaphore *readAvail;       // To synchronize requesting thread 
                     // with the interrupt handler
     Semaphore *writeDone;
-    // Semaphore *busy;
     Lock *busy;
-    //Lock *lock;               // Only one read/write request
-                    // can be sent to the disk at a time
 
   public:
     static void ReadAvail(int arg) { 
@@ -120,13 +117,9 @@ class SynchConsole {
     };
 
     SynchConsole(char* name){
-        //readAvail = new(std::nothrow) Semaphore("readAvail", 0);
-        //writeDone
-        //lock = new(std::nothrow) Lock("synch disk lock");
         console = new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, (int) this);
         readAvail = new(std::nothrow) Semaphore("read avail", 0);
         writeDone = new(std::nothrow) Semaphore("write done", 0);
-        // busy = new(std::nothrow) Semaphore("busy", 1);
         busy = new(std::nothrow) Lock("busyLock");
         notBusy = new(std::nothrow) Condition("notBusy");
 
@@ -138,31 +131,23 @@ class SynchConsole {
         delete readAvail;
         delete writeDone;
         delete busy;
-        //delete lock;
-        //delete semaphore;
     };          
     
     void PutChar(char ch){
-        //lock->Acquire();
         busy->Acquire();
         while(used){
             notBusy->Wait(busy);
         }
         used = true;
         console->PutChar(ch);
-        //semaphore->P();           // wait for interrupt
         writeDone->P();
-        // busy->V();
         used = false;
         notBusy->Broadcast(busy);
         
         busy->Release();
-        //lock->Release();
     };
                         //output ch on console; delay if busy
     char GetChar(){
-        //lock->Acquire();          // only one disk I/O at a time
-        // busy->P();
         busy->Acquire();
         while(used){
             notBusy->Wait(busy);
@@ -170,9 +155,6 @@ class SynchConsole {
         used = true;
         readAvail->P();
         char c = console->GetChar();
-        //semaphore->P();           // wait for interrupt
-        //lock->Release();
-        // busy->V();
         used = false;
         notBusy->Broadcast(busy);
         busy->Release();
@@ -196,22 +178,6 @@ enum Status { Free,           // No page here yet!
              MarkedForReplacement    // Found by replacement algorithm to be removed
 };
 
-// class addrSpaceNode{
-// public:
-//     AddrSpace *current;
-//     addrSpaceNode *next;
-
-//     addrSpaceNode(AddrSpace *cur){
-//         current = cur;
-//         next = NULL;
-//     };
-//     ~addrSpaceNode(){
-//         if(next != NULL){
-//             delete next;
-//         }
-//     };
-
-// };
 
 class ramEntry{ 
 private:
@@ -224,63 +190,21 @@ public:
     ramEntry(int PID, Status soso, int VPage, AddrSpace *first){
         pid = PID;
         status = soso;
-        //refcount = 1;
         vPage = VPage;
         head = first;
     };
     ~ramEntry(){
-      //  delete head;
     };
 
     Status getStatus(){
-//        fprintf(stderr, "Get status %d\n", status);
         return status;
     };
 
     void setStatus(Status s){
-  //      fprintf(stderr, "Set status to %d, formerly %d\n", s, status);
         status = s;
-    //    fprintf(stderr, "Success status to %d\n", status);
     }
-    // int removeAddrSpaceNode(AddrSpace *del){
-    //     addrSpaceNode *cur, *prev;
-    //     cur = head;
-    //     while(cur->current != del && cur->next != NULL){
-    //         prev = cur;
-    //         cur = cur->next;
-    //     }
-    //     if(cur->current == del){
-    //         prev->next = cur->next;
-    //         cur->next = NULL;
-    //         delete cur;
-    //         refcount--;
-    //         return refcount;
-    //     }
-    //     else{
-    //         fprintf(stderr, "You Done Goofed Gender Neutral Spawn of Universe\n");
-    //         return -1;
-    //     }
-    // };
-
-    // int addAddrSpaceNode(AddrSpace *addr){
-    //     addrSpaceNode *newHead;
-    //     newHead = new(std::nothrow) addrSpaceNode(addr);
-    //     newHead->next = head; 
-    //     head = newHead;
-    //     refcount++;
-    //     return refcount;
-
-    // };
-
 
 };
-
-// class RAM{
-//     public:
-//         RAM(){
-            
-//         }
-// };
 
 
 // Initialization and cleanup routines

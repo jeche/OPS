@@ -506,6 +506,7 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPag
 AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
+    chillBrother->P();
         
         for(unsigned int i = 0; i < numPages; i++){
             if(pageTable[i].physicalPage >= 0 && pageTable[i].physicalPage < NumPhysPages && ramPages[pageTable[i].physicalPage]->getStatus() != MarkedForReplacement){
@@ -527,6 +528,7 @@ AddrSpace::~AddrSpace()
     delete[] fileDescriptors;
     delete[] pageTable;
     delete[] revPageTable;
+    chillBrother->V();
 
 #endif
 }
@@ -740,6 +742,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     // check for alignment errors
     if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
         fprintf(stderr, "%d\n", pid);
+        interrupt->Halt();
         ASSERT(false);
     DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
     return AddressErrorException;
