@@ -439,6 +439,7 @@ ExceptionHandler(ExceptionType which)
                   curr->exit = whence;
                   forking->V();
                   curr->death->V();
+                  currentThread->space->remDiskPages();
                 delete currentThread->space;
                   currentThread->Finish();
 
@@ -719,14 +720,21 @@ ExceptionHandler(ExceptionType which)
                   curr = curr->next;
 
                 }
-                       
-                newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
+                if(currentThread->space->cow){//if it is a Cow process then do newspace    
+                  DEBUG('j', "Creating a Normal AddrSpace, Parent is a Cow\n");
+                  newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
+                }
+                else{
+                  DEBUG('j', "Creating a CowAddrSpace\n");
+                  newSpacer = currentThread->space->cowSpace();
+                }
                 newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
                   DEBUG('j', "Not enough space to fork child.\n");
                   machine->WriteRegister(2, -1);
                   pid--;
+                  oldSpacer->remDiskPages();
                   delete newSpacer;
                   forking->V();
                 }
@@ -753,6 +761,7 @@ ExceptionHandler(ExceptionType which)
         case SC_Exec:
                 forking->P();
                 DEBUG('j', "Exec\n");
+
                 argcount = 1;
                 stringArg = new(std::nothrow) char[128];
                 whence = machine->ReadRegister(4);
@@ -809,7 +818,7 @@ ExceptionHandler(ExceptionType which)
                       currentThread->space = newSpacer;
                       currentThread->space->RestoreState();
                       delete [] stringArg;
-
+                      oldSpacer->remDiskPages();//Removes the oldspace from diskpages as well as cleans up other COw stuff if necessary
                       delete oldSpacer;
                       
                       currentThread->space = newSpacer;
@@ -830,6 +839,7 @@ ExceptionHandler(ExceptionType which)
                       // There was not enough room, return a -1
                       DEBUG('a', "Not enough room to create new Address Space.\n");
                       machine->WriteRegister(2, -1);
+                      newSpacer->remDiskPages();
                       delete newSpacer;
 
                     }
@@ -888,7 +898,7 @@ ExceptionHandler(ExceptionType which)
                       }
                       
                       delete [] stringArg;
-
+                      oldSpacer->remDiskPages();
                       delete oldSpacer;
                       
                       currentThread->space = newSpacer;
@@ -1000,7 +1010,7 @@ ExceptionHandler(ExceptionType which)
                 printf("Undefined SYSCALL %d\n", type);
                 ASSERT(false);
       }
-
+      break;
         case PageFaultException:
           chillBrother->P();
           pageFaultHandler(machine->ReadRegister(BadVAddrReg));
@@ -1008,32 +1018,44 @@ ExceptionHandler(ExceptionType which)
         break;
         case ReadOnlyException:     // Write attempted to page marked 
               // "read-only"
-        fprintf(stderr, "READ ONLY EXCEPTION\n");
-        //If it is the root process... HALT
-        if(currentThread->space->pid == 0){interrupt->Halt();}
-        //Otherwise just Exit
-        forking->P();
-        curr = root;
-        DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
-        
-        while(curr->child != currentThread->space->pid && curr->next !=NULL){
-          curr = curr->next;  // Iterate to find the correct semphore to V
-        }
-        if(curr->child != currentThread->space->pid){
-          DEBUG('a', "How the hell do you break an exit?\n");
-        }
-        else{
-          whence = machine->ReadRegister(4); // whence is the exit value for the thread.
-          curr->exit = whence;
-          forking->V();
-          curr->death->V();
-          delete currentThread->space;
-          currentThread->Finish();
+            if(currentThread->space->cow){
+              if(!currentThread->space->copyCowPage(machine->ReadRegister(BadVAddrReg))){
+                //Go Cry in a hole
+                fprintf(stderr, "Not enough space to copy a cow page into its own\n");
+                ASSERT(false);
+              }
 
-          DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
-        }
+            }
+            else{
+              fprintf(stderr, "Hey you're not a Cow!\n");
+              DEBUG('a', "Non-Cow got in in ReadOnlyException\n");
+              fprintf(stderr, "READ ONLY EXCEPTION(NOT COW)\n");
+              //If it is the root process... HALT
+              if(currentThread->space->pid == 0){interrupt->Halt();}
+              //Otherwise just Exit
+              forking->P();
+              curr = root;
+              DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
+              
+              while(curr->child != currentThread->space->pid && curr->next !=NULL){
+                curr = curr->next;  // Iterate to find the correct semphore to V
+              }
+              if(curr->child != currentThread->space->pid){
+                DEBUG('a', "How the hell do you break an exit?\n");
+              }
+              else{
+                whence = machine->ReadRegister(4); // whence is the exit value for the thread.
+                curr->exit = whence;
+                forking->V();
+                curr->death->V();
+                currentThread->space->remDiskPages();
+                delete currentThread->space;
+                currentThread->Finish();
 
+                DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
+        }
         interrupt->Halt();
+            }
         break;
         case BusErrorException:     // Translation resulted in an 
         fprintf(stderr, "BUS ERROR EXCEPTION\n");
@@ -1055,6 +1077,7 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          currentThread->space->remDiskPages();
           delete currentThread->space;
           currentThread->Finish();
 
@@ -1084,6 +1107,7 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          currentThread->space->remDiskPages();
           delete currentThread->space;
           currentThread->Finish();
 
@@ -1114,6 +1138,7 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          currentThread->space->remDiskPages();
           delete currentThread->space;
           currentThread->Finish();
 
@@ -1142,6 +1167,7 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          currentThread->space->remDiskPages();
           delete currentThread->space;
           currentThread->Finish();
 

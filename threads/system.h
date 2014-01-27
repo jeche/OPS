@@ -175,8 +175,10 @@ class SynchConsole {
 
 enum Status { Free,           // No page here yet!
              InUse,      // Currently in use but not being replaced
-             MarkedForReplacement    // Found by replacement algorithm to be removed
+             MarkedForReplacement,    // Found by replacement algorithm to be removed
+             CowPage
 };
+
 
 
 class ramEntry{ 
@@ -199,13 +201,112 @@ public:
     Status getStatus(){
         return status;
     };
-
     void setStatus(Status s){
         status = s;
-    }
+    };
 
 };
 
+class diskEntry{
+private:
+    Semaphore *conDiskPage;
+    Status status;
+    int refcount;
+    AddrSpace *addr1;
+    AddrSpace *addr2;
+public:
+    
+    diskEntry(Status s){
+        conDiskPage = new(std::nothrow) Semaphore("conDiskPage", 1);
+        addr1=NULL;
+        addr2=NULL;
+        status=s;
+        refcount=0;
+    };
+    ~diskEntry(){
+        delete conDiskPage;
+    };
+
+    Status getStatus(){
+        return status;
+    };
+    void setStatus(Status s){
+        conDiskPage->P();
+        status=s;
+        conDiskPage->V();
+    };
+    int getRefCount(){
+        return refcount;
+    };
+    AddrSpace* cowSignal(AddrSpace *addr){
+        if(addr == addr1){
+            addr2->cow = false;
+            return addr2;
+        }
+        else if(addr == addr2){
+            addr1->cow = false;
+            return addr1;
+        }
+        else{
+            fprintf(stderr, "CowSignal: AddrSpace given not associated with diskEntry\n");
+            DEBUG('a', "CowSignal: AddrSpace given not associated with diskEntry\n");
+            return NULL;
+        }
+    }
+    void addAddr(AddrSpace *addr){
+        conDiskPage->P();
+        if(addr1==NULL){
+            addr1=addr;
+            refcount++;
+        }
+        else if(addr2==NULL){
+            addr2=addr;
+            refcount++;
+        }
+        else{
+            fprintf(stderr, "AddrSpace already in addr2\n");
+            DEBUG('a', "AddrSpace already in addr2\n");
+        }
+        if(refcount==0){
+            status=Free;
+        }
+        else if(refcount==1){
+            status=InUse;
+        }
+        else{
+            status=CowPage;
+        }
+        conDiskPage->V();
+    };
+    void removeAddr(AddrSpace *addr){
+        conDiskPage->P();
+        if(addr == addr1){
+            addr1=addr2;
+            addr2=NULL;
+            refcount--;
+        }
+        else if(addr == addr2){
+            addr2=NULL;
+            refcount--;
+        }
+        else{
+            fprintf(stderr, "Address not in diskPage entry\n");
+            DEBUG('a', "Address not in diskPage entry\n");
+        }
+        if(refcount==0){
+            status=Free;
+        }
+        else if(refcount==1){
+            status=InUse;
+        }
+        else{
+            status=CowPage;
+        }
+
+        conDiskPage->V();
+    };
+
+};
 
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,
@@ -267,6 +368,7 @@ extern FileSystem  *fileSystem;
 extern SynchDisk   *synchDisk;
 extern BitMap *diskBitMap;
 extern ramEntry **ramPages;
+extern diskEntry **diskPages;
 extern int commutator;
 extern Semaphore *chillBrother;
 extern Semaphore *execing;

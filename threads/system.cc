@@ -254,6 +254,7 @@ FileSystem  *fileSystem;
 SynchDisk   *synchDisk;
 BitMap *diskBitMap;
 ramEntry **ramPages;
+diskEntry **diskPages;
 int commutator;
 
 #ifdef FILESYS
@@ -412,12 +413,13 @@ Initialize(int argc, char **argv)
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
     forking = new(std::nothrow) Semaphore("forking", 1);
     RandomInit(100);
-    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
+    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, true);
     // bitMap->Print();
 #endif
 
     synchDisk = new(std::nothrow) SynchDisk("DISK");
     diskBitMap = new(std::nothrow) BitMap(NumSectors);
+    diskPages = new(std::nothrow) diskEntry*[NumSectors];
     ramPages = new(std::nothrow) ramEntry*[NumPhysPages];
     chillBrother = new(std::nothrow) Semaphore("chillBrother", 1);
     execing = new(std::nothrow) Semaphore("execing", 1);
@@ -425,6 +427,9 @@ Initialize(int argc, char **argv)
 
     for(int i = 0; i < NumPhysPages; i++){
         ramPages[i] = new(std::nothrow) ramEntry(-1, Free, -1, NULL);
+    }
+    for(int i = 0; i < NumSectors; i++){
+        diskPages[i] = new(std::nothrow) diskEntry(Free);
     }
     commutator = 0;
 

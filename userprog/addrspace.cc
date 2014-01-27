@@ -341,6 +341,15 @@ AddrSpace::AddrSpace(OpenFile *executable)
             pageTable[i].dirty = false;
             pageTable[i].readOnly = false; 
 
+            if(diskPages[found]->getStatus() == Free){
+                diskPages[found]->setStatus(InUse);
+                diskPages[found]->addAddr(currentThread->space);
+            }
+            else{
+                fprintf(stderr, "diskPages not correctly set up\n");
+                DEBUG('a', "Tried to use a diskPage already in use\n");
+            }
+
             diskBitMap->Mark(found);
             DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
                                         i*PageSize,i, found*PageSize, found);
@@ -372,6 +381,8 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         int m;
         bool lastToWrite = false;
         IntStatus oldLevel = interrupt->SetLevel(IntOff);
+        DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
+            noffH.code.virtualAddr, noffH.code.size);
             DEBUG('p', "StartOfCodeAndInit");
         for(m = 0; m < noffH.code.size; m++){
             executable->ReadAt(&strbuf[count], sizeof(char), noffH.code.inFileAddr + (m* sizeof(char)));
@@ -389,7 +400,8 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                 memset(strbuf, '\0', sizeof(strbuf));
             }
         }
-
+        DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
+            noffH.initData.virtualAddr, noffH.initData.size);
         int poo;
         poo = count;
         
@@ -458,6 +470,15 @@ AddrSpace::AddrSpace(OpenFile *chkpt, int numpages){
             pageTable[i].use = false;
             pageTable[i].dirty = false;
             pageTable[i].readOnly = false;
+
+            if(diskPages[found]->getStatus() == Free){
+                diskPages[found]->setStatus(InUse);
+                diskPages[found]->addAddr(this);
+            }
+            else{
+                fprintf(stderr, "diskPages not correctly set up\n");
+                DEBUG('a', "Tried to use a diskPage already in use\n");
+            }
         }
     }
     fileDescriptors = new (std::nothrow) FileShield*[16];
@@ -488,7 +509,7 @@ AddrSpace::AddrSpace(OpenFile *chkpt, int numpages){
 //  Used by newSpace to properly initialize a new address space for a 
 //  forked process
 //----------------------------------------------------------------------
-AddrSpace::AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace){
+AddrSpace::AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace, bool isCow){
     numPages = newNumPages;
     revPageTable = newRevPageTable;
     pageTable = newPageTable;
@@ -496,6 +517,7 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPag
     enoughSpace = newEnoughSpace;
     clean = false;
     pid = 0;
+    cow=isCow;
 }
 
 //----------------------------------------------------------------------
@@ -932,12 +954,13 @@ AddrSpace* AddrSpace::newSpace(){
     TranslationEntry *pageTable2 = new(std::nothrow) TranslationEntry[numPages];
     TranslationEntry *revPageTable2 = new(std::nothrow) TranslationEntry[numPages];
     FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
+    AddrSpace* NewSpace;
     int found = 0;
     int i;
     int j;
     if (diskBitMap->NumClear() < numPages) {
         // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
-        return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0);
+        return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0, false);
     }
 
     for (i = 0; i < numPages; i++) {
@@ -957,6 +980,7 @@ AddrSpace* AddrSpace::newSpace(){
             revPageTable2[i].use = false;
             revPageTable2[i].dirty = false;
             revPageTable2[i].readOnly = false;
+
             IntStatus oldLevel;
             oldLevel = interrupt->SetLevel(IntOff); // disable interrupts
             if(pageTable[i].dirty == true && pageTable[i].valid == true){
@@ -996,15 +1020,115 @@ AddrSpace* AddrSpace::newSpace(){
         }
     }
     if(numPages == 23){
-	DEBUG('r', "NumPages is 23 for pid\n");
-}else{
-    DEBUG('r', "NumPages is %d\n", numPages);
+	   DEBUG('r', "NumPages is 23 for pid\n");
+    }else{
+        DEBUG('r', "NumPages is %d\n", numPages);
+    }
+    NewSpace = new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace, false);
+    for(int i = 0; i < numPages; i++){
+        diskPages[revPageTable2[i].physicalPage]->setStatus(InUse);
+        diskPages[revPageTable2[i].physicalPage]->addAddr(NewSpace);
+    }
+
+    return NewSpace;
 }
 
+/*
+CowSpace What it needs to do
+    copy page tables from parent*
+    make parent a cow*
+    add addrspace to the diskpage*
+    increase refcount for all the diskpages*
+    mark pages as read only*
+    change all pages in main mem to cow pages*
+    make status of new addrspace cow*
+    create a new addrspace and return it*
+*/
+AddrSpace* AddrSpace::cowSpace(){
+    TranslationEntry *pageTable2 = new(std::nothrow) TranslationEntry[numPages];
+    TranslationEntry *revPageTable2 = new(std::nothrow) TranslationEntry[numPages];
+    FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
+    AddrSpace* CowAddrSpace;
 
-    return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace);
+
+    // if (diskBitMap->NumClear() < numPages) {
+    //     // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
+    //     return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0, false);
+    // }
+    //Copy the pageTable, revPageTable, and fileDescriptors
+    for(int i = 0; i < numPages; i++){
+        revPageTable2[i].virtualPage = revPageTable[i].virtualPage;        
+        revPageTable2[i].physicalPage = revPageTable[i].physicalPage;
+        revPageTable2[i].valid = revPageTable[i].valid;
+        revPageTable2[i].use = revPageTable[i].use;
+        revPageTable2[i].dirty = revPageTable[i].dirty;
+
+        //Set both revPageTables to ReadOnly
+
+        //revPageTable2[i].readOnly = true;
+        //revPageTable[i].readOnly = true;
+
+        pageTable2[i].virtualPage = pageTable[i].virtualPage;       
+        pageTable2[i].physicalPage = pageTable[i].physicalPage;
+        pageTable2[i].valid = pageTable[i].valid;
+        pageTable2[i].use = pageTable[i].use;
+        pageTable2[i].dirty = pageTable[i].dirty;
+
+        //Set both Pagetables to ReadOnly //???
+        pageTable2[i].readOnly = true;
+        pageTable[i].readOnly = true;
+    }
+
+    // Copies all the open file descriptors from parent to child
+    for(int k = 0; k < 16; k++){
+        if(fileDescriptors[k] != NULL){
+            fileDescriptors[k]->CopyFile(); // Increases the reference count for the file
+            fileDescriptors2[k] = fileDescriptors[k];
+            fileDescriptors2[k]->inOut = fileDescriptors[k]->inOut;
+        }else{
+            fileDescriptors2[k] = NULL;
+        }
+    }
+    //Changing the Status to Cow pages in RamPages
+    for(int i = 0; i<NumPhysPages;i++){
+        if(pageTable[ramPages[i]->vPage].valid == true && ramPages[i]->pid == this->pid){
+            ramPages[i]->setStatus(CowPage);
+        }
+    }
+    enoughSpace=1;
+    //End of cowSpace, setting parent to be a cow and returning the new addrspace with isCow true
+    cow=true;
+    CowAddrSpace = new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace, true);
+    //Adding the CowAddrSpace to the addrs associatied with diskPages
+    for(int i = 0; i < numPages; i++){
+        diskPages[revPageTable[i].physicalPage]->setStatus(CowPage);
+        diskPages[revPageTable[i].physicalPage]->addAddr(CowAddrSpace);
+    }
+    return CowAddrSpace;
+}
+void AddrSpace::remDiskPages(){
+    if(cow){
+        AddrSpace *other = diskPages[revPageTable[0].physicalPage]->cowSignal(this);
+        fprintf(stderr, "HEY THERE IS A ASSERT FALSE BELOW\n");
+        if(other == NULL){
+            fprintf(stderr, "I JUST ASSERTED FALSE\n");
+            ASSERT(false);
+        }
+        else{
+            for(int i = 0; i < numPages; i++){
+                other->pageTable[i].readOnly=false;
+                if(other->pageTable[i].valid){
+                    ramPages[other->pageTable[i].physicalPage]->setStatus(InUse);
+                }
+            }
+        }
+    }
+    for(int i = 0; i < numPages; i++){
+        diskPages[revPageTable[i].physicalPage]->removeAddr(this);
+    }
 
 }
+
 bool AddrSpace::writeBackDirty(){
     int i, j, rc;
     Status pstat;
@@ -1040,6 +1164,46 @@ void AddrSpace::printAllPages(){
         }
     }
 }
+
+int AddrSpace::copyCowPage(int rOPage){
+
+    int vpn = rOPage / PageSize;
+    int found = diskBitMap->Find();
+    char pagebuf[128];
+    if(found == -1){
+        return 0;
+    }
+
+    //Changing in the Other Process
+    AddrSpace *other = diskPages[revPageTable[vpn].physicalPage]->cowSignal(this);
+    other->pageTable[vpn].readOnly = false;
+    other->pageTable[vpn].valid = false;
+
+    diskPages[revPageTable[vpn].physicalPage]->removeAddr(this);
+    //We will fault the page back into memory when it is needed
+    //Copying
+    IntStatus oldLevel;
+    oldLevel = interrupt->SetLevel(IntOff); // disable interrupts
+    
+    synchDisk->ReadSector(revPageTable[vpn].physicalPage, pagebuf); 
+    interrupt->SetLevel(IntOff);
+
+    revPageTable[vpn].physicalPage = found;
+
+    synchDisk->WriteSector(revPageTable[vpn].physicalPage, pagebuf);
+    interrupt->SetLevel(IntOff);
+    (void) interrupt->SetLevel(oldLevel); // re-enable interrupts
+
+    pageTable[vpn].readOnly = false; 
+    diskBitMap->Mark(found);
+    
+    ramPages[pageTable[vpn].physicalPage]->setStatus(InUse);
+    //futzing around with the other processes pagetables wooo
+
+
+}
+
+
 
 
 #endif // CHANGED
