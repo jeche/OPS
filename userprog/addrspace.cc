@@ -340,10 +340,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
             pageTable[i].use = false;
             pageTable[i].dirty = false;
             pageTable[i].readOnly = false; 
-
+            //fprintf(stderr, "DiskPageOrig: %d\n", found);
             if(diskPages[found]->getStatus() == Free){
                 diskPages[found]->setStatus(InUse);
-                diskPages[found]->addAddr(currentThread->space);
+                diskPages[found]->addAddr(this);
             }
             else{
                 fprintf(stderr, "diskPages not correctly set up\n");
@@ -539,7 +539,10 @@ AddrSpace::~AddrSpace()
                 }
             }
             if(revPageTable[i].physicalPage >= 0 && revPageTable[i].physicalPage < NumSectors){
-                diskBitMap->Clear(revPageTable[i].physicalPage);
+                //diskPages[revPageTable[i].physicalPage]->removeAddr(this);
+                if(diskPages[revPageTable[i].physicalPage]->getStatus() == Free){
+                    diskBitMap->Clear(revPageTable[i].physicalPage);
+                }
             }else{
                 fprintf(stderr, "Ran out of Disk space\n");
                 diskBitMap->Print();
@@ -1101,21 +1104,23 @@ AddrSpace* AddrSpace::cowSpace(){
     CowAddrSpace = new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace, true);
     //Adding the CowAddrSpace to the addrs associatied with diskPages
     for(int i = 0; i < numPages; i++){
+        //fprintf(stderr, "DiskPageCow: %d\n", revPageTable[i].physicalPage);
         diskPages[revPageTable[i].physicalPage]->setStatus(CowPage);
         diskPages[revPageTable[i].physicalPage]->addAddr(CowAddrSpace);
     }
     return CowAddrSpace;
 }
 void AddrSpace::remDiskPages(){
-    if(cow){
-        AddrSpace *other = diskPages[revPageTable[0].physicalPage]->cowSignal(this);
-        fprintf(stderr, "HEY THERE IS A ASSERT FALSE BELOW\n");
+    if(cow){//Move entire contents into the line 1123 loop except 1131 loop
+        //fprintf(stderr, "remDiskPages\n");
+        AddrSpace *other = diskPages[revPageTable[0].physicalPage]->cowSignal(this);//Should not be 0, should loop through to find one where the status is CowPage
+        //fprintf(stderr, "HEY THERE IS A ASSERT FALSE BELOW\n");
         if(other == NULL){
             fprintf(stderr, "I JUST ASSERTED FALSE\n");
             ASSERT(false);
         }
         else{
-            for(int i = 0; i < numPages; i++){
+            for(int i = 0; i < numPages; i++){//Make sure RAM pages status is set correctly in the correct locations
                 other->pageTable[i].readOnly=false;
                 if(other->pageTable[i].valid){
                     ramPages[other->pageTable[i].physicalPage]->setStatus(InUse);
@@ -1124,6 +1129,7 @@ void AddrSpace::remDiskPages(){
         }
     }
     for(int i = 0; i < numPages; i++){
+        //fprintf(stderr, "Removing Link from page: %d\n", revPageTable[i].physicalPage);
         diskPages[revPageTable[i].physicalPage]->removeAddr(this);
     }
 
@@ -1164,9 +1170,16 @@ void AddrSpace::printAllPages(){
         }
     }
 }
+void AddrSpace::printAllDiskPages(){
+    for(int i = 0; i < NumPhysPages; i++){
+        fprintf(stdout, "diskPage[%d]\n", i);
+        diskPages[i]->displayPage();
+    }
+
+}
 
 int AddrSpace::copyCowPage(int rOPage){
-
+    //fprintf(stderr, "Am i the only one?\n");
     int vpn = rOPage / PageSize;
     int found = diskBitMap->Find();
     char pagebuf[128];
@@ -1175,31 +1188,33 @@ int AddrSpace::copyCowPage(int rOPage){
     }
 
     //Changing in the Other Process
-    AddrSpace *other = diskPages[revPageTable[vpn].physicalPage]->cowSignal(this);
+    AddrSpace *other = diskPages[revPageTable[vpn].physicalPage]->otherAddr(this);
     other->pageTable[vpn].readOnly = false;
     other->pageTable[vpn].valid = false;
-
+    
     diskPages[revPageTable[vpn].physicalPage]->removeAddr(this);
     //We will fault the page back into memory when it is needed
     //Copying
     IntStatus oldLevel;
     oldLevel = interrupt->SetLevel(IntOff); // disable interrupts
-    
+    //fprintf(stderr, "physicalPage: %d\n", revPageTable[vpn].physicalPage);
     synchDisk->ReadSector(revPageTable[vpn].physicalPage, pagebuf); 
-    interrupt->SetLevel(IntOff);
+    //interrupt->SetLevel(IntOff);
 
     revPageTable[vpn].physicalPage = found;
 
     synchDisk->WriteSector(revPageTable[vpn].physicalPage, pagebuf);
     interrupt->SetLevel(IntOff);
     (void) interrupt->SetLevel(oldLevel); // re-enable interrupts
+    
 
     pageTable[vpn].readOnly = false; 
+    diskPages[found]->setStatus(InUse);
     diskBitMap->Mark(found);
-    
+    diskPages[found]->addAddr(this);
     ramPages[pageTable[vpn].physicalPage]->setStatus(InUse);
     //futzing around with the other processes pagetables wooo
-
+    return 1;
 
 }
 

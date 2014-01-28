@@ -423,6 +423,7 @@ ExceptionHandler(ExceptionType which)
                 interrupt->Halt();
                 break;
         case SC_Exit:
+                //fprintf(stderr, "EXIT\n");
                 DEBUG('j', "Exit\n");
                 forking->P();
                 curr = root;
@@ -439,7 +440,9 @@ ExceptionHandler(ExceptionType which)
                   curr->exit = whence;
                   forking->V();
                   curr->death->V();
+                  chillBrother->P();
                   currentThread->space->remDiskPages();
+                  chillBrother->V();
                 delete currentThread->space;
                   currentThread->Finish();
 
@@ -708,6 +711,7 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);            
                 break;
         case SC_Fork:
+                //fprintf(stderr, "fork\n");
                 DEBUG('j', "Fork\n");
                 if(root==NULL){
                   DEBUG('j', "Root for the family tree is nonexistent.\n");
@@ -734,7 +738,9 @@ ExceptionHandler(ExceptionType which)
                   DEBUG('j', "Not enough space to fork child.\n");
                   machine->WriteRegister(2, -1);
                   pid--;
+                  chillBrother->P();
                   oldSpacer->remDiskPages();
+                  chillBrother->V();
                   delete newSpacer;
                   forking->V();
                 }
@@ -760,6 +766,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exec:
                 forking->P();
+                //fprintf(stderr, "exec\n");
                 DEBUG('j', "Exec\n");
 
                 argcount = 1;
@@ -818,7 +825,9 @@ ExceptionHandler(ExceptionType which)
                       currentThread->space = newSpacer;
                       currentThread->space->RestoreState();
                       delete [] stringArg;
+                      chillBrother->P();
                       oldSpacer->remDiskPages();//Removes the oldspace from diskpages as well as cleans up other COw stuff if necessary
+                      chillBrother->V();
                       delete oldSpacer;
                       
                       currentThread->space = newSpacer;
@@ -839,7 +848,9 @@ ExceptionHandler(ExceptionType which)
                       // There was not enough room, return a -1
                       DEBUG('a', "Not enough room to create new Address Space.\n");
                       machine->WriteRegister(2, -1);
+                      chillBrother->P();
                       newSpacer->remDiskPages();
+                      chillBrother->V();
                       delete newSpacer;
 
                     }
@@ -856,17 +867,16 @@ ExceptionHandler(ExceptionType which)
                       
                       newSpacer->InitRegisters();
                       sp = machine->ReadRegister(StackReg);
-
                       for(i = 0; i < 16; i++){
                         memset(stringArg, 0, sizeof(stringArg));
                         currentThread->space = oldSpacer;
                         currentThread->space->RestoreState();
                         currentThread->space->ReadMem(whence, sizeof(int), &herece);
-                        currentThread->space->ReadMem(whence, sizeof(int), &herece);
+                        //currentThread->space->ReadMem(whence, sizeof(int), &herece);
                         if (herece == 0){
                           break;
                         }
-                        currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
+                        //currentThread->space->ReadMem(herece, sizeof(char), (int *)&stringArg[0]);
                         for(j = 0; j < 127; j++){
                           currentThread->space->ReadMem(herece++, sizeof(char), (int *)&stringArg[j]);
                           if(stringArg[j] == '\0') break;
@@ -879,12 +889,13 @@ ExceptionHandler(ExceptionType which)
                         currentThread->space->RestoreState();
                         for(j = 0; j < len; j++){
                           newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
-                          newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
+                          //newSpacer->WriteMem(sp+j, sizeof(char), stringArg[j]);
                         }
                         argvAddr[i] = sp;
                         whence = whence + sizeof(int);
 
                       }
+                      DEBUG('j', "Finished Normal Exec\n");
                       argcount = i;
                       sp = sp & ~3;
                       DEBUG('a', "argcount %d\n", argcount);
@@ -894,11 +905,14 @@ ExceptionHandler(ExceptionType which)
                       currentThread->space->RestoreState();
                       for(i = 0; i < argcount; i++){
                          newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
-                         newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
+                         //newSpacer->WriteMem(sp + i*4, sizeof(int), argvAddr[i]);
                       }
                       
                       delete [] stringArg;
+                      chillBrother->P();
+                      DEBUG('j', "Finished Normal Exec\n");
                       oldSpacer->remDiskPages();
+                      chillBrother->V();
                       delete oldSpacer;
                       
                       currentThread->space = newSpacer;
@@ -909,7 +923,7 @@ ExceptionHandler(ExceptionType which)
                       machine->WriteRegister(5, sp);
 
                       machine->WriteRegister(StackReg, sp - (8 * 4));
-       
+                      DEBUG('j', "Finished Normal Exec\n");
                       machine->Run();
                     
                     }
@@ -1018,43 +1032,19 @@ ExceptionHandler(ExceptionType which)
         break;
         case ReadOnlyException:     // Write attempted to page marked 
               // "read-only"
-            if(currentThread->space->cow){
+            chillBrother->P();
+            vpn = machine->ReadRegister(BadVAddrReg) / PageSize;
+
+            if(currentThread->space->cow && machine->pageTable[vpn].readOnly == true){
               if(!currentThread->space->copyCowPage(machine->ReadRegister(BadVAddrReg))){
                 //Go Cry in a hole
                 fprintf(stderr, "Not enough space to copy a cow page into its own\n");
                 ASSERT(false);
               }
-
+              chillBrother->V();
             }
             else{
-              fprintf(stderr, "Hey you're not a Cow!\n");
-              DEBUG('a', "Non-Cow got in in ReadOnlyException\n");
-              fprintf(stderr, "READ ONLY EXCEPTION(NOT COW)\n");
-              //If it is the root process... HALT
-              if(currentThread->space->pid == 0){interrupt->Halt();}
-              //Otherwise just Exit
-              forking->P();
-              curr = root;
-              DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
-              
-              while(curr->child != currentThread->space->pid && curr->next !=NULL){
-                curr = curr->next;  // Iterate to find the correct semphore to V
-              }
-              if(curr->child != currentThread->space->pid){
-                DEBUG('a', "How the hell do you break an exit?\n");
-              }
-              else{
-                whence = machine->ReadRegister(4); // whence is the exit value for the thread.
-                curr->exit = whence;
-                forking->V();
-                curr->death->V();
-                currentThread->space->remDiskPages();
-                delete currentThread->space;
-                currentThread->Finish();
-
-                DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
-        }
-        interrupt->Halt();
+              chillBrother->V();
             }
         break;
         case BusErrorException:     // Translation resulted in an 
@@ -1077,7 +1067,9 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          chillBrother->P();
           currentThread->space->remDiskPages();
+          chillBrother->V();
           delete currentThread->space;
           currentThread->Finish();
 
@@ -1107,7 +1099,9 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          chillBrother->P();
           currentThread->space->remDiskPages();
+          chillBrother->V();
           delete currentThread->space;
           currentThread->Finish();
 
@@ -1138,7 +1132,9 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          chillBrother->P();
           currentThread->space->remDiskPages();
+          chillBrother->V();
           delete currentThread->space;
           currentThread->Finish();
 
@@ -1167,7 +1163,9 @@ ExceptionHandler(ExceptionType which)
           curr->exit = whence;
           forking->V();
           curr->death->V();
+          chillBrother->P();
           currentThread->space->remDiskPages();
+          chillBrother->V();
           delete currentThread->space;
           currentThread->Finish();
 

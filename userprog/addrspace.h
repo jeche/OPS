@@ -150,6 +150,7 @@ class AddrSpace {
     void printAllPages();
     void remDiskPages();
     int copyCowPage(int rOPage);
+    void printAllDiskPages();
   private:
 #ifndef USE_TLB
     //TranslationEntry *pageTable;  // Assume linear page table translation

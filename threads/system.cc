@@ -413,7 +413,7 @@ Initialize(int argc, char **argv)
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
     forking = new(std::nothrow) Semaphore("forking", 1);
     RandomInit(100);
-    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, true);
+    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
     // bitMap->Print();
 #endif
 

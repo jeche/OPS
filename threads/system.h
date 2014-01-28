@@ -239,27 +239,52 @@ public:
         return refcount;
     };
     AddrSpace* cowSignal(AddrSpace *addr){
+        conDiskPage->P();
         if(addr == addr1){
             addr2->cow = false;
+            conDiskPage->V();
             return addr2;
         }
         else if(addr == addr2){
             addr1->cow = false;
+            conDiskPage->V();
             return addr1;
         }
         else{
             fprintf(stderr, "CowSignal: AddrSpace given not associated with diskEntry\n");
             DEBUG('a', "CowSignal: AddrSpace given not associated with diskEntry\n");
+            conDiskPage->V();
             return NULL;
         }
+
     }
+    AddrSpace* otherAddr(AddrSpace *addr){
+        conDiskPage->P();
+        if(addr == addr1){
+            conDiskPage->V();
+            return addr2;
+        }
+        else if(addr == addr2){
+            conDiskPage->V();
+            return addr1;
+        }
+        else{
+            fprintf(stderr, "otherAddr: AddrSpace given not associated with diskEntry\n");
+            DEBUG('a', "otherAddr: AddrSpace given not associated with diskEntry\n");
+            conDiskPage->V();
+            return NULL;
+        }
+    };
     void addAddr(AddrSpace *addr){
+        //fprintf(stderr, "Adding an Addr: %x\n", addr);
         conDiskPage->P();
         if(addr1==NULL){
+            //fprintf(stderr, "first time\n");
             addr1=addr;
             refcount++;
         }
         else if(addr2==NULL){
+            //fprintf(stderr, "second time\n");
             addr2=addr;
             refcount++;
         }
@@ -302,8 +327,17 @@ public:
         else{
             status=CowPage;
         }
-
         conDiskPage->V();
+    };
+    void displayPage(){
+        
+        fprintf(stdout, "refcount: %d\n", refcount);
+        fprintf(stdout, "AddrSpace1: %d\n", addr1);
+        fprintf(stdout, "AddrSpace2: %d\n", addr2);
+        
+        fprintf(stdout, "Status: %d\n", status);
+        
+        
     };
 
 };
