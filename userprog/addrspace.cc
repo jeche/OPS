@@ -1065,7 +1065,8 @@ AddrSpace* AddrSpace::cowSpace(){
         revPageTable2[i].valid = revPageTable[i].valid;
         revPageTable2[i].use = revPageTable[i].use;
         revPageTable2[i].dirty = revPageTable[i].dirty;
-
+        revPageTable2[i].readOnly = revPageTable[i].readOnly;
+        if(revPageTable[i].readOnly){fprintf(stderr, "BadThings, Cow aspects in non cow proc\n");}
         //Set both revPageTables to ReadOnly
 
         //revPageTable2[i].readOnly = true;
@@ -1105,14 +1106,15 @@ AddrSpace* AddrSpace::cowSpace(){
     //Adding the CowAddrSpace to the addrs associatied with diskPages
     for(int i = 0; i < numPages; i++){
         //fprintf(stderr, "DiskPageCow: %d\n", revPageTable[i].physicalPage);
-        diskPages[revPageTable[i].physicalPage]->setStatus(CowPage);
+        //diskPages[revPageTable[i].physicalPage]->setStatus(CowPage);
         diskPages[revPageTable[i].physicalPage]->addAddr(CowAddrSpace);
+        if(diskPages[revPageTable[i].physicalPage]->getStatus()!=CowPage){fprintf(stderr, "DiskPages not in sync, Cowspace\n");}
     }
     return CowAddrSpace;
 }
 void AddrSpace::remDiskPages(){
     if(cow){//Move entire contents into the line 1123 loop except 1131 loop
-        //fprintf(stderr, "remDiskPages\n");
+        /*//fprintf(stderr, "remDiskPages\n");
         AddrSpace *other = diskPages[revPageTable[0].physicalPage]->cowSignal(this);//Should not be 0, should loop through to find one where the status is CowPage
         //fprintf(stderr, "HEY THERE IS A ASSERT FALSE BELOW\n");
         if(other == NULL){
@@ -1126,6 +1128,17 @@ void AddrSpace::remDiskPages(){
                     ramPages[other->pageTable[i].physicalPage]->setStatus(InUse);
                 }
             }
+        }
+*/
+        for(int i = 0; i < numPages; i++){
+            AddrSpace *other = diskPages[revPageTable[i].physicalPage]->otherAddr(this);
+            if(other != NULL){
+                other->pageTable[i].readOnly=false;
+                if(other->pageTable[i].valid){
+                    ramPages[other->pageTable[i].physicalPage]->setStatus(InUse);
+                }
+            }
+
         }
     }
     for(int i = 0; i < numPages; i++){
