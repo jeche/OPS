@@ -1204,9 +1204,7 @@ void AddrSpace::printAllDiskPages(){
 }
 
 int AddrSpace::copyCowPage(int rOPage){
-
-//        printAllDiskPages();
-
+       // printAllDiskPages();
     //fprintf(stdout, "Am i the only one? pid: %d\n", this->pid);
     int vpn = rOPage / PageSize;
     int found = diskBitMap->Find();
@@ -1220,33 +1218,21 @@ int AddrSpace::copyCowPage(int rOPage){
     //Changing in the Other Process
     AddrSpace *other = diskPages[revPageTable[vpn].physicalPage]->otherAddr(this);
     if(other->pid==this->pid){fprintf(stderr, "Why are the pids the same, why\n");}
-    
-    
-    
-    //We will fault the page back into memory when it is needed
-    //Copying
-     // disable interrupts
-    //fprintf(stderr, "physicalPage: %d\n", revPageTable[vpn].physicalPage);
+
     synchDisk->ReadSector(revPageTable[vpn].physicalPage, pagebuf); 
-    //interrupt->SetLevel(IntOff);
-    
 
     synchDisk->WriteSector(found, pagebuf);
     diskPages[revPageTable[vpn].physicalPage]->removeAddr(this);
+
     revPageTable[vpn].physicalPage = found;
     other->pageTable[vpn].readOnly = false;
     pageTable[vpn].valid = false;
-    // re-enable interrupts
     
-
     pageTable[vpn].readOnly = false; 
-    //diskPages[found]->setStatus(InUse);
     diskBitMap->Mark(found);
     diskPages[found]->addAddr(this);
     ramPages[pageTable[vpn].physicalPage]->setStatus(InUse);
-    //futzing around with the other processes pagetables wooo
     memset(pagebuf, '\0', sizeof(pagebuf));
-    //fprintf(stdout, "found: %d\n", found);
     //printAllDiskPages();
     return 1;
 

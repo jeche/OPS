@@ -355,6 +355,12 @@ void pageFaultHandler(int badVAddr) {
     ramPages[victim]->vPage = vpn;
     ramPages[victim]->pid = currentThread->space->pid;
     ramPages[victim]->head = currentThread->space;
+    if (diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() == CowPage) {
+        fprintf(stderr, "here!\n");
+        AddrSpace *other = diskPages[currentThread->space->revPageTable[vpn].physicalPage]->otherAddr(currentThread->space);
+        other->pageTable[vpn].valid = true;
+        other->pageTable[vpn].physicalPage = victim;
+    }
     currentThread->space->pageTable[vpn].valid = true;
     currentThread->space->pageTable[vpn].physicalPage = victim;
 
