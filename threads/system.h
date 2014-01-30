@@ -354,12 +354,12 @@ public:
     };
     void displayPage(){
         
-        //fprintf(stdout, "\trefcount: %d\n", refcount);
-        //fprintf(stdout, "\tAddrSpace1: %d\n", addr1);
-        //fprintf(stdout, "\tAddrSpace2: %d\n", addr2);
+        fprintf(stdout, "\trefcount: %d\n", refcount);
+        fprintf(stdout, "\tAddrSpace1: %d\n", addr1);
+        fprintf(stdout, "\tAddrSpace2: %d\n", addr2);
         fprintf(stdout, "\tPid1: %d\n", pid1);
         fprintf(stdout, "\tPid2: %d\n", pid2);
-        //fprintf(stdout, "\tStatus: %d\n", status);
+        fprintf(stdout, "\tStatus: %d\n", status);
         
         
     };

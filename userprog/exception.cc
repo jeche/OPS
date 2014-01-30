@@ -274,8 +274,9 @@ int findReplacement(){
       return found;
     }
   }
-
-  while(1) {
+  fprintf(stderr, "broke everything\n");
+  ASSERT(false);
+  for(int j = 0; j < 2; j++) {
 
      
     // First scan -- Look for use bit true and dirty bit false
@@ -284,7 +285,7 @@ int findReplacement(){
       if (commutator == start) {
         continue;
       }
-      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement) {
+      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement && ramPages[commutator]->getStatus() != CowPage) {
         found = commutator;
         ramPages[found]->setStatus(MarkedForReplacement);
         return found;
@@ -292,7 +293,7 @@ int findReplacement(){
       else {
         pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
 
-        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty) {
+        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
           found = commutator;
           ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
           ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
@@ -308,14 +309,14 @@ int findReplacement(){
       if (commutator == start) {
         continue;
       } 
-      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement) {
+      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement && ramPages[commutator]->getStatus() != CowPage) {
         found = commutator;
         ramPages[found]->setStatus(MarkedForReplacement);
         return found;
       }
       else {
         pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
-        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty) {
+        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
           found = commutator;
           ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
           ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
@@ -327,6 +328,15 @@ int findReplacement(){
       }
     }
   }
+  // All pages are cow pages, so we need to replace one of these
+  found = commutator;
+  ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;
+  ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1; 
+  AddrSpace *other = diskPages[currentThread->space->pageTable[ramPages[found]->vPage].physicalPage]->otherAddr(currentThread->space);
+  other->pageTable[ramPages[found]->vPage].valid = false;
+  other->pageTable[ramPages[found]->vPage].physicalPage = -1;
+  ramPages[found]->setStatus(MarkedForReplacement);
+  return found; 
 }
 
 void pageFaultHandler(int badVAddr) {
@@ -336,13 +346,15 @@ void pageFaultHandler(int badVAddr) {
   stats->numPageFaults++;
   if(!machine->pageTable[vpn].valid){
     int victim = findReplacement();
-    if(ramPages[victim]->head != NULL){  
+    if(ramPages[victim]->head != NULL){
+      if(machine->pageTable[vpn].readOnly)  {
+        ASSERT(false);
+      }
       memset(stringArg, 0, sizeof(stringArg));
       if(ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty){
         ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty = false;
         for(int q = 0; q < PageSize; q++){
            stringArg[q] = machine->mainMemory[victim * PageSize + q];
-
         }
         synchDisk->WriteSector(ramPages[victim]->head->revPageTable[ramPages[victim]->vPage].physicalPage, stringArg);
       }
@@ -355,19 +367,26 @@ void pageFaultHandler(int badVAddr) {
     ramPages[victim]->vPage = vpn;
     ramPages[victim]->pid = currentThread->space->pid;
     ramPages[victim]->head = currentThread->space;
-    if (diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() == CowPage) {
-        fprintf(stderr, "here!\n");
+    
+    if (diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() == CowPage || machine->pageTable[vpn].readOnly) {
+        fprintf(stderr, "here!!!!\n");
         AddrSpace *other = diskPages[currentThread->space->revPageTable[vpn].physicalPage]->otherAddr(currentThread->space);
         other->pageTable[vpn].valid = true;
         other->pageTable[vpn].physicalPage = victim;
     }
     currentThread->space->pageTable[vpn].valid = true;
     currentThread->space->pageTable[vpn].physicalPage = victim;
-
-
-    ramPages[victim]->setStatus(InUse);
+    if (diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() == CowPage) {
+      ramPages[victim]->setStatus(CowPage);
+    }
+    else {
+      ramPages[victim]->setStatus(InUse);
+    }
     DEBUG('j', "PageFaultHandled\n");
+  } else{
+    ASSERT(false);
   }
+  delete stringArg;
 }
 
 //-----------------------------

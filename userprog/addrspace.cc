@@ -518,7 +518,7 @@ AddrSpace::AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPag
     enoughSpace = newEnoughSpace;
     clean = false;
     pid = PID;
-    fprintf(stderr, "numPages: %d\n", numPages);
+    //fprintf(stderr, "numPages: %d\n", numPages);
     //cow=isCow;
 }
 
@@ -844,6 +844,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
 
     if (entry->readOnly && writing) {   // trying to write to a read-only page
+        this->copyCowPage(virtAddr);
         interrupt->Halt();
         return ReadOnlyException;
     }
@@ -893,6 +894,7 @@ int AddrSpace::findReplacement2(){
         return found;
       }
     }
+    ASSERT(false);
   while(1) {
 
     // First scan -- Look for use bit true and dirty bit false
@@ -947,40 +949,53 @@ int AddrSpace::findReplacement2(){
 }
 
 void AddrSpace::pageFaultHandler2(int badVAddr) {
-
   char* stringArg;
   stringArg = new(std::nothrow) char[128];
   int vpn = badVAddr / PageSize;
   stats->numPageFaults++;
-  if(!pageTable[vpn].valid){
+  if(!machine->pageTable[vpn].valid){
     int victim = findReplacement2();
-    if(ramPages[victim]->head != NULL ){ 
+    if(ramPages[victim]->head != NULL){
+      if(machine->pageTable[vpn].readOnly)  {
+        ASSERT(false);
+      }
       memset(stringArg, 0, sizeof(stringArg));
       if(ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty){
         ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty = false;
         for(int q = 0; q < PageSize; q++){
            stringArg[q] = machine->mainMemory[victim * PageSize + q];
-
         }
         synchDisk->WriteSector(ramPages[victim]->head->revPageTable[ramPages[victim]->vPage].physicalPage, stringArg);
       }
     }
     memset(stringArg, 0, sizeof(stringArg));
-    synchDisk->ReadSector(revPageTable[vpn].physicalPage, stringArg);
+    synchDisk->ReadSector(this->revPageTable[vpn].physicalPage, stringArg);
     for(int q = 0; q < PageSize; q++){
       machine->mainMemory[victim * PageSize + q] = stringArg[q];
     }
-
     ramPages[victim]->vPage = vpn;
-    ramPages[victim]->pid = pid;
+    ramPages[victim]->pid = this->pid;
     ramPages[victim]->head = this;
-    pageTable[vpn].valid = true;
-    pageTable[vpn].physicalPage = victim;
-
     
-    ramPages[victim]->setStatus(InUse);
+    if (diskPages[this->revPageTable[vpn].physicalPage]->getStatus() == CowPage || machine->pageTable[vpn].readOnly) {
+        fprintf(stderr, "here!!!!\n");
+        AddrSpace *other = diskPages[this->revPageTable[vpn].physicalPage]->otherAddr(this);
+        other->pageTable[vpn].valid = true;
+        other->pageTable[vpn].physicalPage = victim;
+    }
+    this->pageTable[vpn].valid = true;
+    this->pageTable[vpn].physicalPage = victim;
+    if (diskPages[this->revPageTable[vpn].physicalPage]->getStatus() == CowPage) {
+      ramPages[victim]->setStatus(CowPage);
+    }
+    else {
+      ramPages[victim]->setStatus(InUse);
+    }
+    DEBUG('j', "PageFaultHandled\n");
+  } else{
+    ASSERT(false);
   }
-   delete stringArg;
+  delete stringArg;
 }
 
 //----------------------------------------------------------------------
@@ -1166,7 +1181,7 @@ bool AddrSpace::writeBackDirty(){
     
     for(i=0;i<NumPhysPages;i++){
         if(pageTable[ramPages[i]->vPage].valid == true && pageTable[ramPages[i]->vPage].dirty == true){
-            if(ramPages[i]->pid == currentThread->space->pid ){
+            if(ramPages[i]->pid == this->pid ){
                 ramPages[i]->setStatus(MarkedForReplacement);
                 ramPages[i]->head->pageTable[ramPages[i]->vPage].dirty = false;
                 for(int q = 0; q < PageSize; q++){
@@ -1226,13 +1241,15 @@ int AddrSpace::copyCowPage(int rOPage){
 
     revPageTable[vpn].physicalPage = found;
     other->pageTable[vpn].readOnly = false;
-    pageTable[vpn].valid = false;
+        pageTable[vpn].valid = false;
+       other->pageTable[vpn].valid = false;
     
     pageTable[vpn].readOnly = false; 
     diskBitMap->Mark(found);
     diskPages[found]->addAddr(this);
     ramPages[pageTable[vpn].physicalPage]->setStatus(InUse);
     memset(pagebuf, '\0', sizeof(pagebuf));
+    fprintf(stderr, "Faulted pid newguy %d, still valid %d, vpn: %d\n", pid, other->pid, vpn);
     //printAllDiskPages();
     return 1;
 
