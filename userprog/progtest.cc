@@ -32,7 +32,7 @@ StartProcess(char *filename)
 	printf("Unable to open file %s\n", filename);
 	return;
     }
-    space = new(std::nothrow) AddrSpace(executable);  
+    space = new(std::nothrow) AddrSpace(executable, 0);  
 
     currentThread->space = space;
 

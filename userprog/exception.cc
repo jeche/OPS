@@ -424,7 +424,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exit:
                 //fprintf(stderr, "EXIT\n");
-                DEBUG('j', "Exit\n");
+                DEBUG('j', "Exit addr: %d\n", currentThread->space);
                 forking->P();
                 curr = root;
                 DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
@@ -441,6 +441,7 @@ ExceptionHandler(ExceptionType which)
                   forking->V();
                   curr->death->V();
                   chillBrother->P();
+                  //fprintf(stderr, "heeeeerrrrrreeeee\n" );
                   currentThread->space->remDiskPages();
                   chillBrother->V();
                 delete currentThread->space;
@@ -461,17 +462,18 @@ ExceptionHandler(ExceptionType which)
                 
                 if(curr->parent != currentThread->space->pid && curr->child != whence){
                   forking->V();
-                  DEBUG('a', "Cannot find appropriate thread ID to join on.\n");
+                  DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
                 }
+
                 else{
                   curr->touched = true;
                   forking->V();
-                  DEBUG('a', "Parent %d, joining for %d.\n", curr->parent, curr->child);
+                  DEBUG('j', "Parent %d, joining for %d.\n", currentThread->space->pid, curr->child);
+                  //fprintf(stderr, "addr %d out of join\n", currentThread->space);
                   curr->death->P(); // Wait for child to die.
                   machine->WriteRegister(2, curr->exit); // Return the exit value.
                 }
-
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -724,15 +726,15 @@ ExceptionHandler(ExceptionType which)
                   curr = curr->next;
 
                 }
-                if(currentThread->space->cow){//if it is a Cow process then do newspace    
+                if(currentThread->space->isCowAddr()){//if it is a Cow process then do newspace    
                   DEBUG('j', "Creating a Normal AddrSpace, Parent is a Cow\n");
-                  newSpacer = currentThread->space->newSpace(); // Create an AddrSpace for child
+                  newSpacer = currentThread->space->newSpace(size); // Create an AddrSpace for child
                 }
                 else{
                   DEBUG('j', "Creating a CowAddrSpace\n");
-                  newSpacer = currentThread->space->cowSpace();
+                  newSpacer = currentThread->space->cowSpace(size);
                 }
-                newSpacer->pid = size; // give child's space a pid.
+                //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
                   DEBUG('j', "Not enough space to fork child.\n");
@@ -766,7 +768,6 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exec:
                 forking->P();
-                //fprintf(stderr, "exec\n");
                 DEBUG('j', "Exec\n");
 
                 argcount = 1;
@@ -817,11 +818,11 @@ ExceptionHandler(ExceptionType which)
                     memset(buffer, '\0', sizeof(buffer));
                     if(numPages<=0){currentThread->RestoreUserState(); flag = 1;}
                     oldSpacer = currentThread->space;
-                    newSpacer = new AddrSpace(open, numPages);//AddrSpace Constructer reads in the pages
+                    newSpacer = new AddrSpace(open, numPages, currentThread->space->pid);//AddrSpace Constructer reads in the pages
                     if(!newSpacer->enoughSpace){currentThread->RestoreUserState(); flag = 1;}
                     if(flag){fprintf(stderr, "Exec Error\n");machine->WriteRegister(2, -1);forking->V();}
                     else{
-                      newSpacer->pid = currentThread->space->pid;
+                      //newSpacer->pid = currentThread->space->pid;
                       currentThread->space = newSpacer;
                       currentThread->space->RestoreState();
                       delete [] stringArg;
@@ -840,9 +841,9 @@ ExceptionHandler(ExceptionType which)
                   else{/* Normal Exec *************/
                     open = fileSystem->Open(stringArg);
                     oldSpacer = currentThread->space;
-                    newSpacer = new AddrSpace(open);
+                    newSpacer = new AddrSpace(open, currentThread->space->pid);
                     delete open;
-                    newSpacer->pid = currentThread->space->pid; // Transfer pid
+                    //newSpacer->pid = currentThread->space->pid; // Transfer pid
                     
                     if (newSpacer->enoughSpace == 0) {
                       // There was not enough room, return a -1
@@ -895,7 +896,7 @@ ExceptionHandler(ExceptionType which)
                         whence = whence + sizeof(int);
 
                       }
-                      DEBUG('j', "Finished Normal Exec\n");
+                      //DEBUG('j', "Finished Normal Exec\n");
                       argcount = i;
                       sp = sp & ~3;
                       DEBUG('a', "argcount %d\n", argcount);
@@ -910,7 +911,8 @@ ExceptionHandler(ExceptionType which)
                       
                       delete [] stringArg;
                       chillBrother->P();
-                      DEBUG('j', "Finished Normal Exec\n");
+                      //DEBUG('j', "Finished Normal Exec\n");
+
                       oldSpacer->remDiskPages();
                       chillBrother->V();
                       delete oldSpacer;
@@ -1035,7 +1037,7 @@ ExceptionHandler(ExceptionType which)
             chillBrother->P();
             vpn = machine->ReadRegister(BadVAddrReg) / PageSize;
 
-            if(currentThread->space->cow && machine->pageTable[vpn].readOnly == true){
+            if(currentThread->space->isCowAddr() && machine->pageTable[vpn].readOnly == true){
               if(!currentThread->space->copyCowPage(machine->ReadRegister(BadVAddrReg))){
                 //Go Cry in a hole
                 fprintf(stderr, "Not enough space to copy a cow page into its own\n");

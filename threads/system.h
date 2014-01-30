@@ -214,12 +214,16 @@ private:
     int refcount;
     AddrSpace *addr1;
     AddrSpace *addr2;
+    int pid1;
+    int pid2;
 public:
     
     diskEntry(Status s){
         conDiskPage = new(std::nothrow) Semaphore("conDiskPage", 1);
         addr1=NULL;
         addr2=NULL;
+        pid1=-1;
+        pid2=-1;
         status=s;
         refcount=0;
     };
@@ -228,6 +232,15 @@ public:
     };
 
     Status getStatus(){
+        if(refcount==0){
+            status=Free;
+        }
+        else if(refcount==1){
+            status=InUse;
+        }
+        else{
+            status=CowPage;
+        }
         return status;
     };
     void setStatus(Status s){
@@ -238,7 +251,9 @@ public:
     int getRefCount(){
         return refcount;
     };
+    /*
     AddrSpace* cowSignal(AddrSpace *addr){
+        //Depricated No longer in Use
         conDiskPage->P();
         if(addr == addr1){
             addr2->cow = false;
@@ -257,14 +272,15 @@ public:
             return NULL;
         }
 
-    }
+    }*/
     AddrSpace* otherAddr(AddrSpace *addr){
         conDiskPage->P();
-        if(addr == addr1){
+        int pid = addr->pid;
+        if(pid == pid1){
             conDiskPage->V();
             return addr2;
         }
-        else if(addr == addr2){
+        else if(pid == pid2){
             conDiskPage->V();
             return addr1;
         }
@@ -278,14 +294,17 @@ public:
     void addAddr(AddrSpace *addr){
         //fprintf(stderr, "Adding an Addr: %x\n", addr);
         conDiskPage->P();
+        int pid = addr->pid;
         if(addr1==NULL){
             //fprintf(stderr, "first time\n");
             addr1=addr;
+            pid1 = pid;
             refcount++;
         }
         else if(addr2==NULL){
             //fprintf(stderr, "second time\n");
             addr2=addr;
+            pid2 = pid;
             refcount++;
         }
         else{
@@ -305,17 +324,21 @@ public:
     };
     void removeAddr(AddrSpace *addr){
         conDiskPage->P();
-        if(addr == addr1){
+        int pid = addr->pid;
+        if(pid == pid1){
             addr1=addr2;
             addr2=NULL;
+            pid1 = pid2;
+            pid2 = -1;
             refcount--;
         }
-        else if(addr == addr2){
+        else if(pid == pid2){
             addr2=NULL;
+            pid2 = -1;
             refcount--;
         }
         else{
-            fprintf(stderr, "Address not in diskPage entry\n");
+            fprintf(stderr, "Address not in diskPage entry %d\n", pid);
             DEBUG('a', "Address not in diskPage entry\n");
         }
         if(refcount==0){
@@ -331,11 +354,12 @@ public:
     };
     void displayPage(){
         
-        fprintf(stdout, "refcount: %d\n", refcount);
-        fprintf(stdout, "AddrSpace1: %d\n", addr1);
-        fprintf(stdout, "AddrSpace2: %d\n", addr2);
-        
-        fprintf(stdout, "Status: %d\n", status);
+        fprintf(stdout, "\trefcount: %d\n", refcount);
+        fprintf(stdout, "\tAddrSpace1: %d\n", addr1);
+        fprintf(stdout, "\tAddrSpace2: %d\n", addr2);
+        fprintf(stdout, "\tPid1: %d\n", pid1);
+        fprintf(stdout, "\tPid2: %d\n", pid2);
+        fprintf(stdout, "\tStatus: %d\n", status);
         
         
     };

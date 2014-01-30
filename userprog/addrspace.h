@@ -120,14 +120,14 @@ class AddrSpace {
     int pid;
     int enoughSpace;
     TranslationEntry *pageTable;
-    bool cow;
-    AddrSpace(OpenFile *executable);  // Create an address space,
+    //bool cow;
+    AddrSpace(OpenFile *executable, int PID);  // Create an address space,
           // initializing it with the program
           // stored in the file "executable"
-    AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace, bool isCow); //Only use if you are forking a new 
+    AddrSpace(TranslationEntry *newPageTable, TranslationEntry *newRevPageTable, FileShield** avengers, int newNumPages, int newEnoughSpace, bool isCow, int PID); //Only use if you are forking a new 
           //process and you know the pages needed
           //and are going to copy in the physical pages
-    AddrSpace(OpenFile *chkpt, int numpages);
+    AddrSpace(OpenFile *chkpt, int numpages, int PID);
     ~AddrSpace();     // De-allocate an address space
 
     void InitRegisters();   // Initialize user-level CPU registers,
@@ -139,8 +139,8 @@ class AddrSpace {
     ExceptionType Translate(int virtAddr, int* physAddr, int size, bool writing);
 //DC    ExceptionType TranslateDisk(int virtAddr, int* physAddr, int size, bool writing);
     unsigned int getNumPages();
-    AddrSpace* newSpace();
-    AddrSpace* cowSpace();
+    AddrSpace* newSpace(int PID);
+    AddrSpace* cowSpace(int PID);
     bool ReadMem(int addr, int size, int *value);
     bool WriteMem(int addr, int size, int value);
     TranslationEntry *revPageTable;
@@ -151,7 +151,9 @@ class AddrSpace {
     void remDiskPages();
     int copyCowPage(int rOPage);
     void printAllDiskPages();
+    bool isCowAddr();
   private:
+    
 #ifndef USE_TLB
     //TranslationEntry *pageTable;  // Assume linear page table translation
 #endif          // for now!
