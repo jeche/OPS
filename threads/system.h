@@ -389,13 +389,16 @@ public:
     int exit;
     Semaphore* death;
     FamilyNode* next;
+    AddrSpace *kiddo;
 
-    FamilyNode(int t, int p){
+    FamilyNode(int t, int p, AddrSpace* gogo){
         death = new(std::nothrow) Semaphore("deadKid", 0);
         parent = p;
         child = t;
         touched = false;
         next=NULL;
+        exit = -5;
+        kiddo = gogo;
     };
 
     ~FamilyNode(){

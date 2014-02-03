@@ -406,7 +406,7 @@ Initialize(int argc, char **argv)
     interrupt->Enable();
     CallOnUserAbort(Cleanup);           // if user hits ctl-C
     pid = 0;
-    root = new(std::nothrow) FamilyNode(pid, pid);
+    root = new(std::nothrow) FamilyNode(pid, pid, NULL);
 #ifdef USER_PROGRAM
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");
