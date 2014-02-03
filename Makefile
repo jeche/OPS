@@ -17,6 +17,7 @@ all:
 #	cd network; $(MAKE) nachos 
 	cd bin; make all
 	cd test; make all
+	cd newtests; make all
 
 # don't delete executables in "test" in case there is no cross-compiler
 clean:
