@@ -531,62 +531,31 @@ AddrSpace::~AddrSpace()
 {
 #ifndef USE_TLB
     chillBrother->P();
-        
-        for(unsigned int i = 0; i < numPages; i++){
-            if(pageTable[i].physicalPage >= 0 && pageTable[i].physicalPage < NumPhysPages && ramPages[pageTable[i].physicalPage]->getStatus() != MarkedForReplacement){
-                ramPages[pageTable[i].physicalPage]->setStatus(Free);
-                if(ramPages[pageTable[i].physicalPage]->head != NULL && ramPages[pageTable[i].physicalPage]->head->pid == pid && pageTable[i].valid){
-                    ramPages[pageTable[i].physicalPage]->head = NULL;
-                    ramPages[pageTable[i].physicalPage]->pid = 4500;
-                }
-            }
-            if(revPageTable[i].physicalPage >= 0 && revPageTable[i].physicalPage < NumSectors){
-                //diskPages[revPageTable[i].physicalPage]->removeAddr(this);
-                if(diskPages[revPageTable[i].physicalPage]->getStatus() == Free){
-                    diskBitMap->Clear(revPageTable[i].physicalPage);
-                }
-            }else{
-                fprintf(stderr, "Ran out of Disk space\n");
-                diskBitMap->Print();
-                ASSERT(false);
-            }
-        }
-        if(isCowAddr()){//Move entire contents into the line 1123 loop except 1131 loop
-        /*//fprintf(stderr, "remDiskPages\n");
-        AddrSpace *other = diskPages[revPageTable[0].physicalPage]->cowSignal(this);//Should not be 0, should loop through to find one where the status is CowPage
-        //fprintf(stderr, "HEY THERE IS A ASSERT FALSE BELOW\n");
-        if(other == NULL){
-            fprintf(stderr, "I JUST ASSERTED FALSE\n");
-            ASSERT(false);
-        }
-        else{
-            for(int i = 0; i < numPages; i++){//Make sure RAM pages status is set correctly in the correct locations
-                other->pageTable[i].readOnly=false;
-                if(other->pageTable[i].valid){
-                    ramPages[other->pageTable[i].physicalPage]->setStatus(InUse);
-                }
-            }
-        }
-*/
-        for(int i = 0; i < numPages; i++){
-            AddrSpace *other = diskPages[revPageTable[i].physicalPage]->otherAddr(this);
-            if(other != NULL){
-                other->pageTable[i].readOnly=false;
-                if(other->pageTable[i].valid){
-                    ramPages[other->pageTable[i].physicalPage]->setStatus(InUse);
-                }
-            }
-            else {
-
-            }
-
-        }
-    }
+    AddrSpace *other;
+    fprintf(stderr, "dying, my pid was: %d\n", pid);
+    
     for(int i = 0; i < numPages; i++){
-        //fprintf(stderr, "Removing Link from page: %d\n", revPageTable[i].physicalPage);
+        if(pageTable[i].readOnly){
+            other = diskPages[revPageTable[i].physicalPage]->otherAddr(this);
+            if(other != NULL){
+                other->pageTable[i].readOnly = false;
+                if(other->pageTable[i].valid &&ramPages[other->pageTable[i].physicalPage]->getStatus() == CowPage){
+                    ramPages[other->pageTable[i].physicalPage]->setStatus(InUse);
+                    ramPages[other->pageTable[i].physicalPage]->head = other;
+                    ramPages[other->pageTable[i].physicalPage]->pid = other->pid;
+                }
+            }
+            else{ASSERT(false);}
+        }else{
+            if(pageTable[i].valid){
+                ramPages[pageTable[i].physicalPage]->setStatus(Free);
+                ramPages[pageTable[i].physicalPage]->head = NULL;
+                ramPages[pageTable[i].physicalPage]->pid = -1;
+            }
+            diskBitMap->Clear(revPageTable[i].physicalPage);
+        }
         diskPages[revPageTable[i].physicalPage]->removeAddr(this);
     }
-
     delete[] fileDescriptors;
     delete[] pageTable;
     delete[] revPageTable;
@@ -804,7 +773,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     // check for alignment errors
     if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
         fprintf(stderr, "%d\n", pid);
-        interrupt->Halt();
+        // interrupt->Halt();
         ASSERT(false);
     DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
     return AddressErrorException;
@@ -822,7 +791,8 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
     // => page table => vpn is index into table
     if (vpn >= numPages * PageSize) {
-        interrupt->Halt();
+        ASSERT(false);
+        // interrupt->Halt();
         DEBUG('y', "Machine AddressErrorException");
         DEBUG('a', "virtual page # %d, %d too large for page table size %d!\n", 
             virtAddr, virtAddr, numPages * PageSize);
@@ -838,6 +808,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
     if (entry == NULL) {                // not found
             DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
+            ASSERT(false);
             interrupt->Halt();
             ASSERT(false);
     }
@@ -845,6 +816,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
 
     if (entry->readOnly && writing) {   // trying to write to a read-only page
         this->copyCowPage(virtAddr);
+        ASSERT(false);
         interrupt->Halt();
         return ReadOnlyException;
     }
@@ -855,6 +827,7 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     if (pageFrame >= NumPhysPages) { 
     DEBUG('a', "ADDRSPACE ");
     DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
+    ASSERT(false);
     interrupt->Halt();
     return BusErrorException;
     }
@@ -894,58 +867,72 @@ int AddrSpace::findReplacement2(){
         return found;
       }
     }
-    ASSERT(false);
-  while(1) {
+    while(1){
+        for(int j = 0; j < 2; j++) {
 
-    // First scan -- Look for use bit true and dirty bit false
-    for (i = 0; i <= NumPhysPages; i++) {
-      commutator = (commutator + 1) % NumPhysPages; 
-        if (commutator == start) {
-        continue;
-      }
-      if (ramPages[commutator]->head == NULL) {
-        found = commutator;
-        ramPages[found]->setStatus(MarkedForReplacement);
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
+            // First scan -- Look for use bit true and dirty bit false
+            for (i = 0; i <= NumPhysPages; i++) {
+              commutator = (commutator + 1) % NumPhysPages; 
+                if (commutator == start) {
+                continue;
+              }
+              if (ramPages[commutator]->head == NULL) {
+                found = commutator;
+                ramPages[found]->setStatus(MarkedForReplacement);
+                return found;
+              }
+              else {
+                pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
 
-        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty) {
+                if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
+                  found = commutator;
+                  ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+                  ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+                  ramPages[found]->setStatus(MarkedForReplacement); 
+                  return found;
+                }
+              }
+            }
+
+            // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
+            for (i = 0; i <= NumPhysPages; i++) {
+              commutator = (commutator + 1) % NumPhysPages; 
+                if (commutator == start) {
+                continue;
+              }
+              if (ramPages[commutator]->head == NULL) {
+                found = commutator;
+                ramPages[found]->setStatus(MarkedForReplacement);
+                return found;
+              }
+              else {
+                pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
+                if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
+                  found = commutator;
+                  ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+                  ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+                  ramPages[found]->setStatus(MarkedForReplacement);
+                  return found;
+                }
+                // Set the use bit to true if it is not already
+                pageTableEntry->use = true;
+              }
+            }
+      }
+        if(ramPages[commutator]->getStatus() != MarkedForReplacement){
           found = commutator;
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
-          ramPages[found]->setStatus(MarkedForReplacement); 
-          return found;
-        }
-      }
-    }
-
-    // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
-    for (i = 0; i <= NumPhysPages; i++) {
-      commutator = (commutator + 1) % NumPhysPages; 
-        if (commutator == start) {
-        continue;
-      }
-      if (ramPages[commutator]->head == NULL) {
-        found = commutator;
-        ramPages[found]->setStatus(MarkedForReplacement);
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
-        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty) {
-          found = commutator;
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;
+          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1; 
+          AddrSpace *other = diskPages[ramPages[found]->head->revPageTable[ramPages[found]->vPage].physicalPage]->otherAddr(ramPages[found]->head);
+          if(other!= NULL){
+            other->pageTable[ramPages[found]->vPage].valid = false;
+            other->pageTable[ramPages[found]->vPage].physicalPage = -1;
+          }
+          ASSERT(ramPages[found]->head->isCowAddr());
           ramPages[found]->setStatus(MarkedForReplacement);
-          return found;
+          return found; 
         }
-        // Set the use bit to true if it is not already
-        pageTableEntry->use = true;
-      }
     }
-  }
 }
 
 void AddrSpace::pageFaultHandler2(int badVAddr) {
@@ -955,10 +942,7 @@ void AddrSpace::pageFaultHandler2(int badVAddr) {
   stats->numPageFaults++;
   if(!machine->pageTable[vpn].valid){
     int victim = findReplacement2();
-    if(ramPages[victim]->head != NULL){
-      if(machine->pageTable[vpn].readOnly)  {
-        ASSERT(false);
-      }
+    if(ramPages[victim]->head != NULL && !ramPages[victim]->head->pageTable[ramPages[victim]->vPage].readOnly){
       memset(stringArg, 0, sizeof(stringArg));
       if(ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty){
         ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty = false;
@@ -977,23 +961,23 @@ void AddrSpace::pageFaultHandler2(int badVAddr) {
     ramPages[victim]->pid = this->pid;
     ramPages[victim]->head = this;
     
-    if (diskPages[this->revPageTable[vpn].physicalPage]->getStatus() == CowPage || machine->pageTable[vpn].readOnly) {
-        fprintf(stderr, "here!!!!\n");
+    if (diskPages[this->revPageTable[vpn].physicalPage]->getStatus() == CowPage || pageTable[vpn].readOnly) {
         AddrSpace *other = diskPages[this->revPageTable[vpn].physicalPage]->otherAddr(this);
         other->pageTable[vpn].valid = true;
         other->pageTable[vpn].physicalPage = victim;
+        ramPages[victim]->setStatus(CowPage);
+    }else{
+        ramPages[victim]->setStatus(InUse);
     }
     this->pageTable[vpn].valid = true;
     this->pageTable[vpn].physicalPage = victim;
-    if (diskPages[this->revPageTable[vpn].physicalPage]->getStatus() == CowPage) {
-      ramPages[victim]->setStatus(CowPage);
-    }
-    else {
-      ramPages[victim]->setStatus(InUse);
-    }
+            // fprintf(stderr, "Oh poop\n");
     DEBUG('j', "PageFaultHandled\n");
   } else{
-    ASSERT(false);
+    if(diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() != CowPage){
+      fprintf(stderr, "I'm a goofy goober yeah.  You're a goofy goober yeah.  We're all goofy goober yeah.  Goofy goobers yeah yeah\n");
+      ASSERT(false);  
+    }
   }
   delete stringArg;
 }
@@ -1037,19 +1021,21 @@ AddrSpace* AddrSpace::newSpace(int PID){
             revPageTable2[i].dirty = false;
             revPageTable2[i].readOnly = false;
 
-            IntStatus oldLevel;
-            oldLevel = interrupt->SetLevel(IntOff); // disable interrupts
+            // IntStatus oldLevel;
+            // oldLevel = interrupt->SetLevel(IntOff); // disable interrupts
+            chillBrother->P();
             if(pageTable[i].dirty == true && pageTable[i].valid == true){
                 for(j = 0; j < PageSize; j ++){
                     pagebuf[j] = machine->mainMemory[pageTable[i].physicalPage * PageSize + j];
                 }    
             }else{
                 synchDisk->ReadSector(revPageTable[i].physicalPage, pagebuf); 
-                interrupt->SetLevel(IntOff);   
+                // interrupt->SetLevel(IntOff);   
             }
             synchDisk->WriteSector(revPageTable2[i].physicalPage, pagebuf);
-            interrupt->SetLevel(IntOff);
-            (void) interrupt->SetLevel(oldLevel); // re-enable interrupts
+            chillBrother->V();
+            // interrupt->SetLevel(IntOff);
+            // (void) interrupt->SetLevel(oldLevel); // re-enable interrupts
 
             pageTable2[i].virtualPage = i;       
             pageTable2[i].physicalPage = -1;
@@ -1107,8 +1093,7 @@ AddrSpace* AddrSpace::cowSpace(int PID){
     TranslationEntry *revPageTable2 = new(std::nothrow) TranslationEntry[numPages];
     FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
     AddrSpace* CowAddrSpace = NULL;
-
-
+    
     // if (diskBitMap->NumClear() < numPages) {
     //     // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
     //     return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0, false);
@@ -1136,6 +1121,19 @@ AddrSpace* AddrSpace::cowSpace(int PID){
         //Set both Pagetables to ReadOnly //???
         pageTable2[i].readOnly = true;
         pageTable[i].readOnly = true;
+
+        // if(pageTable[i].dirty && pageTable[i].valid){
+        //     char pageBuf[128];
+        //     for(int q = 0; q < PageSize; q++){
+        //            pageBuf[q] = machine->mainMemory[pageTable[i].physicalPage * PageSize + q];
+        //     }
+        //     synchDisk->WriteSector(revPageTable[i].physicalPage, pageBuf);
+        //     pageTable[i].dirty = false;
+        //     pageTable2[i].dirty = false;
+        // }
+        if(pageTable[i].valid){
+            ramPages[pageTable[i].physicalPage]->setStatus(CowPage);
+        }
     }
 
     // Copies all the open file descriptors from parent to child
@@ -1181,7 +1179,7 @@ bool AddrSpace::writeBackDirty(){
     
     for(i=0;i<NumPhysPages;i++){
         if(pageTable[ramPages[i]->vPage].valid == true && pageTable[ramPages[i]->vPage].dirty == true){
-            if(ramPages[i]->pid == this->pid ){
+            if(ramPages[i]->pid == currentThread->space->pid ){
                 ramPages[i]->setStatus(MarkedForReplacement);
                 ramPages[i]->head->pageTable[ramPages[i]->vPage].dirty = false;
                 for(int q = 0; q < PageSize; q++){
@@ -1194,7 +1192,7 @@ bool AddrSpace::writeBackDirty(){
             }else{fprintf(stderr, "herpaderpaderp\n");}
         }
     }
-     //delete pageBuf;
+    
     return true;
 }
 
@@ -1234,29 +1232,48 @@ int AddrSpace::copyCowPage(int rOPage){
     AddrSpace *other = diskPages[revPageTable[vpn].physicalPage]->otherAddr(this);
     if(other->pid==this->pid){fprintf(stderr, "Why are the pids the same, why\n");}
 
-    synchDisk->ReadSector(revPageTable[vpn].physicalPage, pagebuf); 
-
+    if(pageTable[vpn].dirty && pageTable[vpn].valid){
+            // char pageBuf[128];
+        for(int q = 0; q < PageSize; q++){
+                   pagebuf[q] = machine->mainMemory[ pageTable[vpn].physicalPage * PageSize + q];
+        }
+        // synchDisk->WriteSector(revPageTable[vpn].physicalPage, pagebuf);
+        pageTable[vpn].dirty = false;
+        // ASSERT(false);
+    } else if(pageTable[vpn].valid){
+        for(int q = 0; q < PageSize; q++){
+                   pagebuf[q] = machine->mainMemory[ pageTable[vpn].physicalPage * PageSize + q];
+        }
+    }else{
+        synchDisk->ReadSector(revPageTable[vpn].physicalPage, pagebuf); 
+    }
     synchDisk->WriteSector(found, pagebuf);
     diskPages[revPageTable[vpn].physicalPage]->removeAddr(this);
-
+    ASSERT(pageTable[vpn].valid);
+    ASSERT(other->pageTable[vpn].valid);
+    // ASSERT(!other->pageTable[vpn].dirty);
+    // ASSERT(!pageTable[vpn].dirty);
     revPageTable[vpn].physicalPage = found;
     other->pageTable[vpn].readOnly = false;
-        pageTable[vpn].valid = false;
-       other->pageTable[vpn].valid = false;
+    pageTable[vpn].valid = false;
+    // other->pageTable[vpn].valid = false;
     
     pageTable[vpn].readOnly = false; 
     diskBitMap->Mark(found);
     diskPages[found]->addAddr(this);
+    ramPages[pageTable[vpn].physicalPage]->head = other;
+    ramPages[pageTable[vpn].physicalPage]->pid = other->pid;
     ramPages[pageTable[vpn].physicalPage]->setStatus(InUse);
-    memset(pagebuf, '\0', sizeof(pagebuf));
-    fprintf(stderr, "Faulted pid newguy %d, still valid %d, vpn: %d\n", pid, other->pid, vpn);
+    // memset(pagebuf, '\0', sizeof(pagebuf));
+    ASSERT(revPageTable[vpn].physicalPage != other->revPageTable[vpn].physicalPage);
+    // fprintf(stderr, "Faulted pid newguy %d, still valid %d, vpn: %d\n", pid, other->pid, vpn);
     //printAllDiskPages();
     return 1;
 
 }
 bool AddrSpace::isCowAddr(){
     for(int i = 0; i < numPages; i++){
-        if(diskPages[revPageTable[i].physicalPage]->getStatus() == CowPage){return true;}
+        if(diskPages[revPageTable[i].physicalPage]->getStatus() == CowPage || pageTable[i].readOnly){return true;}
     }
     return false;
 }

@@ -274,69 +274,75 @@ int findReplacement(){
       return found;
     }
   }
-  fprintf(stderr, "broke everything\n");
-  ASSERT(false);
-  for(int j = 0; j < 2; j++) {
+  while(1){
+    for(int j = 0; j < 2; j++) {
 
-     
-    // First scan -- Look for use bit true and dirty bit false
-    for (i = 0; i <= NumPhysPages; i++) {
-      commutator = (commutator + 1) % NumPhysPages; 
-      if (commutator == start) {
-        continue;
-      }
-      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement && ramPages[commutator]->getStatus() != CowPage) {
-        found = commutator;
-        ramPages[found]->setStatus(MarkedForReplacement);
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
-
-        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
-          found = commutator;
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
-          ramPages[found]->setStatus(MarkedForReplacement); 
-          return found;
+       
+      // First scan -- Look for use bit true and dirty bit false
+      for (i = 0; i <= NumPhysPages; i++) {
+        commutator = (commutator + 1) % NumPhysPages; 
+        if (commutator == start) {
+          continue;
         }
-      }
-    }
-
-    // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
-    for (i = 0; i <= NumPhysPages; i++) {
-      commutator = (commutator + 1) % NumPhysPages;
-      if (commutator == start) {
-        continue;
-      } 
-      if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement && ramPages[commutator]->getStatus() != CowPage) {
-        found = commutator;
-        ramPages[found]->setStatus(MarkedForReplacement);
-        return found;
-      }
-      else {
-        pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
-        if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
+        if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement && ramPages[commutator]->getStatus() != CowPage) {
           found = commutator;
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
-          ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
           ramPages[found]->setStatus(MarkedForReplacement);
           return found;
         }
-        // Set the use bit to true if it is not already
-        pageTableEntry->use = true;
+        else {
+          pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
+
+          if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && !pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
+            found = commutator;
+            ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+            ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+            ramPages[found]->setStatus(MarkedForReplacement); 
+            return found;
+          }
+        }
+      }
+
+      // Second scan -- Look for use bit true and dirty bit true -- change use bits as we go
+      for (i = 0; i <= NumPhysPages; i++) {
+        commutator = (commutator + 1) % NumPhysPages;
+        if (commutator == start) {
+          continue;
+        } 
+        if (ramPages[commutator]->head == NULL && ramPages[commutator]->getStatus() != MarkedForReplacement && ramPages[commutator]->getStatus() != CowPage) {
+          found = commutator;
+          ramPages[found]->setStatus(MarkedForReplacement);
+          return found;
+        }
+        else {
+          pageTableEntry = &(ramPages[commutator]->head->pageTable[ramPages[commutator]->vPage]);
+          if (ramPages[commutator]->getStatus() != MarkedForReplacement && pageTableEntry->use && pageTableEntry->dirty && ramPages[commutator]->getStatus() != CowPage) {
+            found = commutator;
+            ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;  
+            ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1;  
+            ramPages[found]->setStatus(MarkedForReplacement);
+            return found;
+          }
+          // Set the use bit to true if it is not already
+          pageTableEntry->use = true;
+        }
       }
     }
+    // All pages are cow pages, so we need to replace one of these
+    // fprintf(stderr, "Oh god why");
+    if(ramPages[commutator]->getStatus() != MarkedForReplacement){
+      found = commutator;
+      ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;
+      ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1; 
+      AddrSpace *other = diskPages[ramPages[found]->head->revPageTable[ramPages[found]->vPage].physicalPage]->otherAddr(ramPages[found]->head);
+      if(other!= NULL){
+        other->pageTable[ramPages[found]->vPage].valid = false;
+        other->pageTable[ramPages[found]->vPage].physicalPage = -1;
+      }
+      ASSERT(ramPages[found]->head->isCowAddr());
+      ramPages[found]->setStatus(MarkedForReplacement);
+      return found; 
+    }
   }
-  // All pages are cow pages, so we need to replace one of these
-  found = commutator;
-  ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;
-  ramPages[found]->head->pageTable[ramPages[found]->vPage].physicalPage = -1; 
-  AddrSpace *other = diskPages[currentThread->space->pageTable[ramPages[found]->vPage].physicalPage]->otherAddr(currentThread->space);
-  other->pageTable[ramPages[found]->vPage].valid = false;
-  other->pageTable[ramPages[found]->vPage].physicalPage = -1;
-  ramPages[found]->setStatus(MarkedForReplacement);
-  return found; 
 }
 
 void pageFaultHandler(int badVAddr) {
@@ -346,10 +352,7 @@ void pageFaultHandler(int badVAddr) {
   stats->numPageFaults++;
   if(!machine->pageTable[vpn].valid){
     int victim = findReplacement();
-    if(ramPages[victim]->head != NULL){
-      if(machine->pageTable[vpn].readOnly)  {
-        ASSERT(false);
-      }
+    if(ramPages[victim]->head != NULL && !ramPages[victim]->head->pageTable[ramPages[victim]->vPage].readOnly){
       memset(stringArg, 0, sizeof(stringArg));
       if(ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty){
         ramPages[victim]->head->pageTable[ramPages[victim]->vPage].dirty = false;
@@ -368,23 +371,24 @@ void pageFaultHandler(int badVAddr) {
     ramPages[victim]->pid = currentThread->space->pid;
     ramPages[victim]->head = currentThread->space;
     
-    if (diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() == CowPage || machine->pageTable[vpn].readOnly) {
-        fprintf(stderr, "here!!!!\n");
+    if (diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() == CowPage || currentThread->space->pageTable[vpn].readOnly) {
         AddrSpace *other = diskPages[currentThread->space->revPageTable[vpn].physicalPage]->otherAddr(currentThread->space);
         other->pageTable[vpn].valid = true;
         other->pageTable[vpn].physicalPage = victim;
+        ramPages[victim]->setStatus(CowPage);
+    }else{
+      ramPages[victim]->setStatus(InUse);
     }
     currentThread->space->pageTable[vpn].valid = true;
     currentThread->space->pageTable[vpn].physicalPage = victim;
-    if (diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() == CowPage) {
-      ramPages[victim]->setStatus(CowPage);
-    }
-    else {
-      ramPages[victim]->setStatus(InUse);
-    }
     DEBUG('j', "PageFaultHandled\n");
   } else{
-    ASSERT(false);
+    // if(diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() != CowPage){
+    //   fprintf(stderr, "I'm a goofy goober yeah.  You're a goofy goober yeah.  We're all goofy goober yeah.  Goofy goobers yeah yeah\n");
+    //   ASSERT(false);  
+    // }
+    
+    // BROKEN BROKEN BROKEN BROKEN BROKEN BROKEN You do you nachos.
   }
   delete stringArg;
 }
@@ -445,6 +449,13 @@ ExceptionHandler(ExceptionType which)
       switch (type) {
         case SC_Halt:
                 DEBUG('a', "Shutdown, initiated by user program.\n");
+                fprintf(stderr, "Normal Halt\n");
+                curr = root;
+                while(curr->next !=NULL){
+                  curr = curr->next;  // Iterate to find the correct semphore to V
+                  fprintf(stderr, "pid parent %d pid child %d\n", curr->parent, curr->child);
+                }
+
                 interrupt->Halt();
                 break;
         case SC_Exit:
@@ -468,8 +479,9 @@ ExceptionHandler(ExceptionType which)
                   chillBrother->P();
                   //fprintf(stderr, "heeeeerrrrrreeeee\n" );
                   currentThread->space->remDiskPages();
-                  chillBrother->V();
+                chillBrother->V();  
                 delete currentThread->space;
+
                   currentThread->Finish();
 
                   DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
@@ -488,6 +500,7 @@ ExceptionHandler(ExceptionType which)
                 if(curr->parent != currentThread->space->pid && curr->child != whence){
                   forking->V();
                   DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
+                  ASSERT(false);
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
                 }
 
@@ -514,12 +527,14 @@ ExceptionHandler(ExceptionType which)
                 }
                 if(i==0){
                   DEBUG('a', "Invalid File Name: Must be longer than 0\n");
+                  ASSERT(false);
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 } // User puts a single \0 for the string name of the file, this should not be allowed
                 stringArg[127]='\0';
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
                 if(!fileSystem->Create(stringArg, 16)){
                   DEBUG('a', "Create Failed\n");
+                  ASSERT(false);
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 }
                 delete [] stringArg;
@@ -757,11 +772,12 @@ ExceptionHandler(ExceptionType which)
                 }
                 else{
                   DEBUG('j', "Creating a CowAddrSpace\n");
-                  newSpacer = currentThread->space->cowSpace(size);
+                  newSpacer = currentThread->space->newSpace(size);
                 }
                 //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
+                  ASSERT(false);
                   DEBUG('j', "Not enough space to fork child.\n");
                   machine->WriteRegister(2, -1);
                   pid--;
@@ -804,6 +820,7 @@ ExceptionHandler(ExceptionType which)
                   if(stringArg[i] == '\0') break;
                 }
                 if(i==0){
+                  ASSERT(false);
                   DEBUG('a', "Invalid File Name: Must be longer than 0\n");
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
@@ -812,6 +829,7 @@ ExceptionHandler(ExceptionType which)
                 open = fileSystem->Open(stringArg);
                 if(open == NULL){
                   DEBUG('a', "Invalid File Name, no such file exists.\n");
+                  ASSERT(false);
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
                 else{
@@ -826,7 +844,7 @@ ExceptionHandler(ExceptionType which)
                         if(c=='\n'){break;}
                         buffer[j]=c;
                         j++;
-                        if(j>19){fprintf(stderr, "Exec Error\n");currentThread->RestoreUserState();flag = 1;break;}
+                        if(j>19){fprintf(stderr, "Exec Error\n");ASSERT(false);currentThread->RestoreUserState();flag = 1;break;}
                       }
                       j = atoi(buffer);
                       memset(buffer, '\0', sizeof(buffer));
@@ -845,7 +863,7 @@ ExceptionHandler(ExceptionType which)
                     oldSpacer = currentThread->space;
                     newSpacer = new AddrSpace(open, numPages, currentThread->space->pid);//AddrSpace Constructer reads in the pages
                     if(!newSpacer->enoughSpace){currentThread->RestoreUserState(); flag = 1;}
-                    if(flag){fprintf(stderr, "Exec Error\n");machine->WriteRegister(2, -1);forking->V();}
+                    if(flag){fprintf(stderr, "Exec Error\n");ASSERT(false);machine->WriteRegister(2, -1);forking->V();}
                     else{
                       //newSpacer->pid = currentThread->space->pid;
                       currentThread->space = newSpacer;
@@ -873,6 +891,7 @@ ExceptionHandler(ExceptionType which)
                     if (newSpacer->enoughSpace == 0) {
                       // There was not enough room, return a -1
                       DEBUG('a', "Not enough room to create new Address Space.\n");
+                      ASSERT(false);
                       machine->WriteRegister(2, -1);
                       chillBrother->P();
                       newSpacer->remDiskPages();
@@ -1134,7 +1153,7 @@ ExceptionHandler(ExceptionType which)
 
           DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
         }
-
+        fprintf(stderr, "BROKE EXIT\n");
         interrupt->Halt();
         break;
               // was beyond the end of the
@@ -1142,7 +1161,8 @@ ExceptionHandler(ExceptionType which)
          case OverflowException:     // Integer overflow in add or sub.
          fprintf(stderr, "OVERFLOW ERROR EXCEPTION\n");
         //If it is the root process... HALT
-        if(currentThread->space->pid == 0){interrupt->Halt();}
+        if(currentThread->space->pid == 0){
+          interrupt->Halt();}
         //Otherwise just Exit
         forking->P();
         curr = root;
