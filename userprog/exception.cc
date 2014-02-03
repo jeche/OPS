@@ -239,6 +239,7 @@ void CopyRegs(int k){
   currentThread->RestoreUserState();
   currentThread->space->RestoreState();
   machine->WriteRegister(2, 0);
+  fprintf(stderr, "forkedPid: %d\n", currentThread->space->pid);
   incrementPC=machine->ReadRegister(NextPCReg)+4;
   machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
   machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -464,6 +465,7 @@ ExceptionHandler(ExceptionType which)
                 //fprintf(stderr, "EXIT\n");
                 DEBUG('j', "Exit addr: %d\n", currentThread->space);
                 forking->P();
+                oldLevel = interrupt->SetLevel(IntOff);
                 curr = root;
                 DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
                 
@@ -483,7 +485,7 @@ ExceptionHandler(ExceptionType which)
                   currentThread->space->remDiskPages();
                 chillBrother->V();  
                 delete currentThread->space;
-
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
                   currentThread->Finish();
 
                   DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
@@ -494,14 +496,22 @@ ExceptionHandler(ExceptionType which)
                 whence = machine->ReadRegister(4);
                 curr = root;
                 forking->P();
+                oldLevel = interrupt->SetLevel(IntOff);
                                 DEBUG('j', "Join\n");
                 while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
                   curr = curr->next;  // Iterate to find the correct semapohre to P on
                 }
                 
+                
                 if(curr->parent != currentThread->space->pid && curr->child != whence){
                   forking->V();
                   DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
+                  curr = root;
+                while(curr->next !=NULL){
+                  curr = curr->next;  // Iterate to find the correct semphore to V
+                  fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                }
+                fprintf(stderr, "whence: %d, pid: %d\n", whence, currentThread->space->pid);
                   ASSERT(false);
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
                 }
@@ -514,6 +524,7 @@ ExceptionHandler(ExceptionType which)
                   curr->death->P(); // Wait for child to die.
                   machine->WriteRegister(2, curr->exit); // Return the exit value.
                 }
+                (void) interrupt->SetLevel(oldLevel);
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -762,6 +773,7 @@ ExceptionHandler(ExceptionType which)
                 }
                 curr = root;
                 forking->P();
+                oldLevel = interrupt->SetLevel(IntOff);
                 pid++; // bump pid before adding kid
                 size = pid;
                 while(curr->next != NULL){
@@ -792,12 +804,16 @@ ExceptionHandler(ExceptionType which)
                 else {
                   t = new(std::nothrow) Thread("clone");
                   curr->next = new(std::nothrow) FamilyNode(newSpacer->pid, currentThread->space->pid, newSpacer);  // Add new parent child relation to family tree.
+                  
                   t->space = newSpacer; // Give child its brand new space.
                   t->SaveUserState(); // Write all current machine registers to userRegisters for child.
                   currentThread->SaveUserState(); // Save just in case the Fork gets weird.
                   machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
+                  fprintf(stderr, "newSpacer->pid: %d\n", newSpacer->pid);
                   t->Fork(CopyRegs, (int)currentThread); // Fork child.
+                  (void) interrupt->SetLevel(oldLevel);
                   forking->V();
+
                   //Move back maybe
                   
                   currentThread->SaveUserState(); // Save again in case of weirdness.
@@ -811,6 +827,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exec:
                 forking->P();
+                oldLevel = interrupt->SetLevel(IntOff);
                 DEBUG('j', "Exec\n");
                 curr = root;
                 DEBUG('j', "Join\n");
@@ -885,6 +902,7 @@ ExceptionHandler(ExceptionType which)
                       
                       newSpacer->RestoreState();
                       forking->V();
+                      (void) interrupt->SetLevel(oldLevel);
                       machine->Run();
                     }
                   }/* Checkpoint End ***************/
@@ -915,6 +933,7 @@ ExceptionHandler(ExceptionType which)
                       chillBrother->P();
                       newSpacer->remDiskPages();
                       chillBrother->V();
+                      (void) interrupt->SetLevel(oldLevel);
                       delete newSpacer;
 
                     }
@@ -984,6 +1003,7 @@ ExceptionHandler(ExceptionType which)
                       curr->kiddo = newSpacer;
                       newSpacer->RestoreState();
                       forking->V();
+                      (void) interrupt->SetLevel(oldLevel);
                       machine->WriteRegister(4, argcount);
                       machine->WriteRegister(5, sp);
 

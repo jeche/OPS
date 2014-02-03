@@ -54,7 +54,7 @@
 
 // Size of the thread's private execution stack.
 // WATCH OUT IF THIS ISN'T BIG ENOUGH!!!!!
-#define StackSize	( 1024)	// in words
+#define StackSize	( 1024*64)	// in words
 
 
 // Thread state
@@ -218,7 +218,7 @@ void SWITCH(Thread *oldThread, Thread *newThread);
 
 // Size of the thread's private execution stack.
 // WATCH OUT IF THIS ISN'T BIG ENOUGH!!!!!
-#define StackSize   (4 * 1024)  // in words
+#define StackSize   (64 * 1024)  // in words
 
 
 // Thread state
