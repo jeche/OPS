@@ -1,0 +1,41 @@
+Cow implementation
+
+Since we spent a lot of time trying to track down bugs from last semester and discovering that we couldn't fix them, we decided to go with the simpler version of cow that we discussed during office hours.  The main idea is that if a process has forked off a child and the two are still sharing pages, then if either of them forks off another child, that child automatically makes copies of all of the pages of the parent instead of sharing.  We figure that this case is not likely to ever happen since most processes that have been forked tend to exec immediately and thus would not be sharing pages with their parent any longer.  To do this, we made the changes described below.
+
+system.h
+We created a new structure called diskPages to keep track of information about each of the disk pages.  For each page on the disk (a diskEntry), we have a semaphore, a status (used to determine whether that page is part of a cow set up), a refcount (also used to check the cow set up), two addrspaces (since we only ever have two processes that can share pages, we decided not to use any kind of linked list), and two pids (we've found that the numbers for addrspaces are not necessarily unique, so we use the pid as a way to figure out which addrspace we need to be looking at).  We wrote methods to add an addrspace to a diskEntry and to remove one (and to cry if the addrspace is already there for adding or if the addrspace isn't there when we're trying to remove it).  Each of these updates the pids of the diskEntry as well and changes the refcount and status as appropriate.  We also wrote a method to get the other addrspace from the addrspace we were currently looking at.  We used this to change the other addrspace's page table when either a particular page or the entire addrspace became non-cow.   
+
+addrspace.cc
+We added several new functions to addrspace.cc to deal with cow and we made a few changes to the existing code to deal with the new diskPages object.
+	AddrSpace(OpenFile *executable, int PID) and newSpace(int PID)
+		We added the pid as an argument to all of the addrspace constructors in order to update the pid within diskPages.  We call addAddr from this constructor for each of the pages of the new addrspace we create.
+
+	~AddrSpace()
+		In the delete method, we first check to see if each of the pages of the addrspace we're deleting is readonly.  If it is, we find the other addrspace that is sharing a page and change its pagetable (we change readonly to false).  If the page is currently valid, we change it from being a CowPage in ramPages (the pages in memory) to being marked as InUse.  We also update the addrspace being pointed to as well as the pid.  If the page is not readonly, that means it is not part of a cow set up and so if it's valid, we mark the page in ramPages as Free and update the head and pid.  We also clear the diskBitMap for that page.  For each of the pages we are deleting, we do a removeAddr() on their diskPages entry and then we delete the other structures we use in the addrspace.
+
+	findReplacement2()
+		We changed this method to try to avoid replacing cow pages if at all possible.  We use our original replacement algorithm but skip over pages that are marked as cow.  If we've completed the algorithm (gone through all of the pages twice, flipping the use bit on the second time through) and have not found a replacement, then we pick the current page (as long as it's not MarkedForReplacement) as our page to replace.  We determine if it's a cow page by doing otherAddr() on its diskPages entry.  If it is, we make sure to invalidate the page in both addrspaces and change the physical page to -1.  We return this page after marking it as MarkedForReplacement.
+
+	pageFaultHandler2(int badVAddr)
+		We also check and change a few things in our pagefault handler.  If the page we are replacing is marked as readonly, then we don't need to write anything back to the disk, so we avoid doing that.  Also, if the page we are pulling into ram is marked as a CowPage in diskPages, then we mark the page as valid and change the physicalPage in the addrspace it is sharing the page with.  We also mark its ramEntry as a CowPage.
+
+	cowSpace(int PID)
+		This is one of the new functions we wrote.  This is called from within fork to create an addrspace that shares pages with its parent.  We go through the parent's revPageTable and their pageTable and copy over all of the data to the child.  We mark all of the pages in both the parent and the child as readonly and set the status of any valid pages in ram to CowPage.  We then copy over the file descriptors as normal.  After we actually create the new addrspace, we go through all of the diskPages entries for the parent process and add the child's addrspace to these entries.  Finally we return the new addrspace.
+
+	copyCowPage(int rOPage)
+		This method is used when one of the parent or child tries to write to a page that is marked as readonly.  We first try to find a new page.  If we can't, we return 0.  Otherwise, we find the other addrspace associated with this page.  If the page in memory is dirty (and valid), we write that page to the new page we found and mark it as clean in the process trying to write.  If the page is valid, we write the page in memory to the new page.  This reduces the number of disk i/o's we do.  Finally, if the page is not valid (for some unknown reason) we read the page off of the disk and then write it to the new page.  We remove the addrspace from the diskPages entry for the old page.  We then change the current process' revPageTable to point to the new spot on disk for the page.  We mark the old page in the other process as no longer readonly and we do the same for the new page.  We also mark the new page as being invalid.  We decided to just let the current process fault the new page into main memory to avoid any complications that might come from the other process' page being invalidated instead.  We mark the diskBitMap and make sure ramPages is updated with the addrspace and pid of the other process as well as a status change to InUse instead of CowPage.  We return 1 to mark a successful completion of handling copying a page to a new page.
+
+	isCowAddr()
+		Used to check if an addrspace is still sharing any of its pages with another addrspace.  To do this, we check each of the pages associated with the current addrspace and see if they are marked as readonly in the pageTable or if they are marked as a CowPage in diskPages.
+
+exception.cc
+	We made many small changes here to deal with cow issues.
+
+	findReplacement() and pageFaultHandler(int badVAddr)
+		Identical changes made as those in findReplacement2() and pageFaultHandler2(int badVAddr).  See above for a description of those changes.
+
+	case SC_Fork
+		In fork, we now check to see if the current process is a cow process by using isCowAddr() before creating a new addrspace.  If the check returns true, we know that the current process is already sharing pages with another process and the process being created is going to get copies of all of the pages.  So we use the newSpace method to create the new addrspace.  If the current process is not a cow process, then it's going to become one, and we use the cowSpace method to create the new addrspace that shares pages with its parent.  The rest of fork remains the same.
+
+	case ReadOnlyException
+		We begin by grabbing the semaphore chillBrother which we use when messing with things in addrspaces.  We first check to make sure that the page that has the readonly exception is part of a cow addrspace and that the page is still marked as readonly (in case a prior handling of a readonly exception had created a new page for that process and marked the page that had gotten into the readonly exception as no longer readonly).    If these things are both true, then we send the badVAddr to copyCowPage() which deals with creating a new page for the process and changing all the appropriate page tables and other data structures.  If the copy was successful, we release the semaphore and continue.  If the page was no longer marked as readonly or no longer part of a cow addrspace, we just release the semaphore and continue.
