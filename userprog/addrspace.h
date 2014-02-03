@@ -116,6 +116,7 @@ class FileShield {
 
 class AddrSpace {
   public:
+    unsigned int numPages;
     FileShield** fileDescriptors;
     int pid;
     int enoughSpace;
@@ -161,7 +162,7 @@ class AddrSpace {
     
 
 
-    unsigned int numPages;    // Number of pages in the virtual 
+        // Number of pages in the virtual 
           // address space
 };
 

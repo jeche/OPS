@@ -351,7 +351,7 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
                 DEBUG('a', "Tried to use a diskPage already in use\n");
             }
 
-            diskBitMap->Mark(found);
+            // diskBitMap->Mark(found);
             DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
                                         i*PageSize,i, found*PageSize, found);
         }
@@ -553,6 +553,7 @@ AddrSpace::~AddrSpace()
                 ramPages[pageTable[i].physicalPage]->pid = -1;
             }
             diskBitMap->Clear(revPageTable[i].physicalPage);
+            // fprintf(stderr, "FREEE AT LASTTTT");
         }
         diskPages[revPageTable[i].physicalPage]->removeAddr(this);
     }
@@ -815,7 +816,9 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
 
     if (entry->readOnly && writing) {   // trying to write to a read-only page
+        chillBrother->P();
         this->copyCowPage(virtAddr);
+        chillBrother->V();
         ASSERT(false);
         interrupt->Halt();
         return ReadOnlyException;
@@ -1043,7 +1046,7 @@ AddrSpace* AddrSpace::newSpace(int PID){
             pageTable2[i].use = false;
             pageTable2[i].dirty = false;
             pageTable2[i].readOnly = false; 
-            diskBitMap->Mark(found);
+            // diskBitMap->Mark(found);
             DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
                                         i*PageSize,i, found*PageSize, found);
              //delete pagebuf;
@@ -1249,8 +1252,8 @@ int AddrSpace::copyCowPage(int rOPage){
     }
     synchDisk->WriteSector(found, pagebuf);
     diskPages[revPageTable[vpn].physicalPage]->removeAddr(this);
-    ASSERT(pageTable[vpn].valid);
-    ASSERT(other->pageTable[vpn].valid);
+    // ASSERT(pageTable[vpn].valid);
+    // ASSERT(other->pageTable[vpn].valid);
     // ASSERT(!other->pageTable[vpn].dirty);
     // ASSERT(!pageTable[vpn].dirty);
     revPageTable[vpn].physicalPage = found;
@@ -1259,11 +1262,13 @@ int AddrSpace::copyCowPage(int rOPage){
     // other->pageTable[vpn].valid = false;
     
     pageTable[vpn].readOnly = false; 
-    diskBitMap->Mark(found);
+    // diskBitMap->Mark(found);
     diskPages[found]->addAddr(this);
-    ramPages[pageTable[vpn].physicalPage]->head = other;
-    ramPages[pageTable[vpn].physicalPage]->pid = other->pid;
-    ramPages[pageTable[vpn].physicalPage]->setStatus(InUse);
+    if(other->pageTable[vpn].valid){
+        ramPages[pageTable[vpn].physicalPage]->head = other;
+        ramPages[pageTable[vpn].physicalPage]->pid = other->pid;
+        ramPages[pageTable[vpn].physicalPage]->setStatus(InUse);
+    }
     // memset(pagebuf, '\0', sizeof(pagebuf));
     ASSERT(revPageTable[vpn].physicalPage != other->revPageTable[vpn].physicalPage);
     // fprintf(stderr, "Faulted pid newguy %d, still valid %d, vpn: %d\n", pid, other->pid, vpn);

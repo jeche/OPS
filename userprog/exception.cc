@@ -342,6 +342,8 @@ int findReplacement(){
       ramPages[found]->setStatus(MarkedForReplacement);
       return found; 
     }
+    // chillBrother->V();
+    // chillBrother->P();
   }
 }
 
@@ -453,7 +455,7 @@ ExceptionHandler(ExceptionType which)
                 curr = root;
                 while(curr->next !=NULL){
                   curr = curr->next;  // Iterate to find the correct semphore to V
-                  fprintf(stderr, "pid parent %d pid child %d\n", curr->parent, curr->child);
+                  fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
                 }
 
                 interrupt->Halt();
@@ -772,7 +774,7 @@ ExceptionHandler(ExceptionType which)
                 }
                 else{
                   DEBUG('j', "Creating a CowAddrSpace\n");
-                  newSpacer = currentThread->space->newSpace(size);
+                  newSpacer = currentThread->space->cowSpace(size);
                 }
                 //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
@@ -789,15 +791,15 @@ ExceptionHandler(ExceptionType which)
                 }
                 else {
                   t = new(std::nothrow) Thread("clone");
-                  curr->next = new(std::nothrow) FamilyNode(newSpacer->pid, currentThread->space->pid);  // Add new parent child relation to family tree.
+                  curr->next = new(std::nothrow) FamilyNode(newSpacer->pid, currentThread->space->pid, newSpacer);  // Add new parent child relation to family tree.
                   t->space = newSpacer; // Give child its brand new space.
                   t->SaveUserState(); // Write all current machine registers to userRegisters for child.
                   currentThread->SaveUserState(); // Save just in case the Fork gets weird.
-  
+                  machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
                   t->Fork(CopyRegs, (int)currentThread); // Fork child.
                   forking->V();
                   //Move back maybe
-                  machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
+                  
                   currentThread->SaveUserState(); // Save again in case of weirdness.
                   DEBUG('j', "ForkEnd\n");
                   
@@ -810,7 +812,12 @@ ExceptionHandler(ExceptionType which)
         case SC_Exec:
                 forking->P();
                 DEBUG('j', "Exec\n");
-
+                curr = root;
+                DEBUG('j', "Join\n");
+                while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
+                  curr = curr->next;  // Iterate to find the correct semapohre to P on
+                }
+                
                 argcount = 1;
                 stringArg = new(std::nothrow) char[128];
                 whence = machine->ReadRegister(4);
@@ -891,6 +898,18 @@ ExceptionHandler(ExceptionType which)
                     if (newSpacer->enoughSpace == 0) {
                       // There was not enough room, return a -1
                       DEBUG('a', "Not enough room to create new Address Space.\n");
+                      diskBitMap->Print();
+                      fprintf(stderr, "Thingies %d\n", newSpacer->numPages);
+                      curr = root;
+                      while(curr->next !=NULL){
+                  curr = curr->next;  // Iterate to find the correct semphore to V
+                  if(curr->kiddo != NULL){
+                    fprintf(stderr, "numPages: %d", curr->kiddo->numPages);
+                  }
+                  fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+
+                }
+                fprintf(stderr, "%d", diskBitMap->NumClear());
                       ASSERT(false);
                       machine->WriteRegister(2, -1);
                       chillBrother->P();
@@ -962,7 +981,7 @@ ExceptionHandler(ExceptionType which)
                       delete oldSpacer;
                       
                       currentThread->space = newSpacer;
-                      
+                      curr->kiddo = newSpacer;
                       newSpacer->RestoreState();
                       forking->V();
                       machine->WriteRegister(4, argcount);
