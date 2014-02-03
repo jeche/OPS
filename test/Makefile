@@ -34,7 +34,7 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork ckmatmult rematmult vmtoobig huge qmatmult qsort Xkid vmtorture bogus1 atomicfile atomicfile2
+all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork ckmatmult rematmult vmtoobig huge qmatmult qsort Xkid vmtorture bogus1 atomicfile atomicfile2 test1 test2 test3 addproc cowhammer
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -268,3 +268,33 @@ atomicfile2.o: atomicfile2.c
 atomicfile2: atomicfile2.o start.o
 	$(LD) $(LDFLAGS) start.o atomicfile2.o -o atomicfile2.coff
 	../bin/coff2noff atomicfile2.coff atomicfile2
+
+test1.o: test1.c
+	$(CC) $(CFLAGS) -c test1.c
+test1: test1.o start.o
+	$(LD) $(LDFLAGS) start.o test1.o -o test1.coff
+	../bin/coff2noff test1.coff test1
+
+test2.o: test2.c
+	$(CC) $(CFLAGS) -c test2.c
+test2: test2.o start.o
+	$(LD) $(LDFLAGS) start.o test2.o -o test2.coff
+	../bin/coff2noff test2.coff test2
+
+test3.o: test3.c
+	$(CC) $(CFLAGS) -c test3.c
+test3: test3.o start.o
+	$(LD) $(LDFLAGS) start.o test3.o -o test3.coff
+	../bin/coff2noff test3.coff test3
+
+addproc.o: addproc.c
+	$(CC) $(CFLAGS) -c addproc.c
+addproc: addproc.o start.o
+	$(LD) $(LDFLAGS) start.o addproc.o -o addproc.coff
+	../bin/coff2noff addproc.coff addproc
+
+cowhammer.o: cowhammer.c
+	$(CC) $(CFLAGS) -c cowhammer.c
+cowhammer: cowhammer.o start.o
+	$(LD) $(LDFLAGS) start.o cowhammer.o -o cowhammer.coff
+	../bin/coff2noff cowhammer.coff cowhammer
