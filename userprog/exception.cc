@@ -239,7 +239,7 @@ void CopyRegs(int k){
   currentThread->RestoreUserState();
   currentThread->space->RestoreState();
   machine->WriteRegister(2, 0);
-  fprintf(stderr, "forkedPid: %d\n", currentThread->space->pid);
+  //fprintf(stderr, "forkedPid: %d\n", currentThread->space->pid);
   incrementPC=machine->ReadRegister(NextPCReg)+4;
   machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
   machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -329,7 +329,6 @@ int findReplacement(){
       }
     }
     // All pages are cow pages, so we need to replace one of these
-    // fprintf(stderr, "Oh god why");
     if(ramPages[commutator]->getStatus() != MarkedForReplacement){
       found = commutator;
       ramPages[found]->head->pageTable[ramPages[found]->vPage].valid = false;
@@ -339,7 +338,7 @@ int findReplacement(){
         other->pageTable[ramPages[found]->vPage].valid = false;
         other->pageTable[ramPages[found]->vPage].physicalPage = -1;
       }
-      ASSERT(ramPages[found]->head->isCowAddr());
+      ASSERT(ramPages[found]->head->isCowAddr()); //********************************************
       ramPages[found]->setStatus(MarkedForReplacement);
       return found; 
     }
@@ -385,14 +384,7 @@ void pageFaultHandler(int badVAddr) {
     currentThread->space->pageTable[vpn].valid = true;
     currentThread->space->pageTable[vpn].physicalPage = victim;
     DEBUG('j', "PageFaultHandled\n");
-  } else{
-    // if(diskPages[currentThread->space->revPageTable[vpn].physicalPage]->getStatus() != CowPage){
-    //   fprintf(stderr, "I'm a goofy goober yeah.  You're a goofy goober yeah.  We're all goofy goober yeah.  Goofy goobers yeah yeah\n");
-    //   ASSERT(false);  
-    // }
-    
-    // BROKEN BROKEN BROKEN BROKEN BROKEN BROKEN You do you nachos.
-  }
+  } 
   delete stringArg;
 }
 
@@ -452,12 +444,12 @@ ExceptionHandler(ExceptionType which)
       switch (type) {
         case SC_Halt:
                 DEBUG('a', "Shutdown, initiated by user program.\n");
-                fprintf(stderr, "Normal Halt\n");
+                //fprintf(stderr, "Normal Halt\n");
                 curr = root;
-                while(curr->next !=NULL){
-                  curr = curr->next;  // Iterate to find the correct semphore to V
-                  fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
-                }
+                // while(curr->next !=NULL){
+                //   curr = curr->next;  // Iterate to find the correct semphore to V
+                //   //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                // }
 
                 interrupt->Halt();
                 break;
@@ -507,12 +499,11 @@ ExceptionHandler(ExceptionType which)
                   forking->V();
                   DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
                   curr = root;
-                while(curr->next !=NULL){
-                  curr = curr->next;  // Iterate to find the correct semphore to V
-                  fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
-                }
-                fprintf(stderr, "whence: %d, pid: %d\n", whence, currentThread->space->pid);
-                  ASSERT(false);
+                // while(curr->next !=NULL){
+                //   curr = curr->next;  // Iterate to find the correct semphore to V
+                //   fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                // }
+                //fprintf(stderr, "whence: %d, pid: %d\n", whence, currentThread->space->pid);
                   machine->WriteRegister(2, -1);  // If you cannot find the child return false.
                 }
 
@@ -540,14 +531,12 @@ ExceptionHandler(ExceptionType which)
                 }
                 if(i==0){
                   DEBUG('a', "Invalid File Name: Must be longer than 0\n");
-                  ASSERT(false);
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 } // User puts a single \0 for the string name of the file, this should not be allowed
                 stringArg[127]='\0';
                 DEBUG('a', "Argument string is <%s>\n",stringArg);
                 if(!fileSystem->Create(stringArg, 16)){
                   DEBUG('a', "Create Failed\n");
-                  ASSERT(false);
                   machine->WriteRegister(2, -1);  // If file name is invalid return -1.
                 }
                 delete [] stringArg;
@@ -791,7 +780,6 @@ ExceptionHandler(ExceptionType which)
                 //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
                   // There was not enough space to create the child.  Return a -1 and delete the created addrspace
-                  ASSERT(false);
                   DEBUG('j', "Not enough space to fork child.\n");
                   machine->WriteRegister(2, -1);
                   pid--;
@@ -809,7 +797,7 @@ ExceptionHandler(ExceptionType which)
                   t->SaveUserState(); // Write all current machine registers to userRegisters for child.
                   currentThread->SaveUserState(); // Save just in case the Fork gets weird.
                   machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
-                  fprintf(stderr, "newSpacer->pid: %d\n", newSpacer->pid);
+                  // fprintf(stderr, "newSpacer->pid: %d\n", newSpacer->pid);
                   t->Fork(CopyRegs, (int)currentThread); // Fork child.
                   (void) interrupt->SetLevel(oldLevel);
                   forking->V();
@@ -844,7 +832,6 @@ ExceptionHandler(ExceptionType which)
                   if(stringArg[i] == '\0') break;
                 }
                 if(i==0){
-                  ASSERT(false);
                   DEBUG('a', "Invalid File Name: Must be longer than 0\n");
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
@@ -853,7 +840,6 @@ ExceptionHandler(ExceptionType which)
                 open = fileSystem->Open(stringArg);
                 if(open == NULL){
                   DEBUG('a', "Invalid File Name, no such file exists.\n");
-                  ASSERT(false);
                   machine->WriteRegister(2, -1);  // Should exec really return or what.....? *****
                 }// Cannot have a file with 'no name'
                 else{
@@ -869,7 +855,7 @@ ExceptionHandler(ExceptionType which)
                         buffer[j]=c;
                         j++;
                         if(j>19){fprintf(stderr, "Exec Error\n");ASSERT(false);currentThread->RestoreUserState();flag = 1;break;}
-                      }
+                      } //***********************************************************************************************************
                       j = atoi(buffer);
                       memset(buffer, '\0', sizeof(buffer));
                       machine->WriteRegister(i, j);
@@ -888,6 +874,7 @@ ExceptionHandler(ExceptionType which)
                     newSpacer = new AddrSpace(open, numPages, currentThread->space->pid);//AddrSpace Constructer reads in the pages
                     if(!newSpacer->enoughSpace){currentThread->RestoreUserState(); flag = 1;}
                     if(flag){fprintf(stderr, "Exec Error\n");ASSERT(false);machine->WriteRegister(2, -1);forking->V();}
+                    //************************************************************************************************************
                     else{
                       //newSpacer->pid = currentThread->space->pid;
                       currentThread->space = newSpacer;
@@ -917,18 +904,17 @@ ExceptionHandler(ExceptionType which)
                       // There was not enough room, return a -1
                       DEBUG('a', "Not enough room to create new Address Space.\n");
                       diskBitMap->Print();
-                      fprintf(stderr, "Thingies %d\n", newSpacer->numPages);
+                      // fprintf(stderr, "Thingies %d\n", newSpacer->numPages);
                       curr = root;
                       while(curr->next !=NULL){
                   curr = curr->next;  // Iterate to find the correct semphore to V
                   if(curr->kiddo != NULL){
                     fprintf(stderr, "numPages: %d", curr->kiddo->numPages);
                   }
-                  fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                  //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
 
                 }
-                fprintf(stderr, "%d", diskBitMap->NumClear());
-                      ASSERT(false);
+                //fprintf(stderr, "%d", diskBitMap->NumClear());
                       machine->WriteRegister(2, -1);
                       chillBrother->P();
                       newSpacer->remDiskPages();
@@ -1107,7 +1093,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
-                ASSERT(false);
+                ASSERT(false); //****************************************************
       }
       break;
         case PageFaultException:
@@ -1124,7 +1110,7 @@ ExceptionHandler(ExceptionType which)
               if(!currentThread->space->copyCowPage(machine->ReadRegister(BadVAddrReg))){
                 //Go Cry in a hole
                 fprintf(stderr, "Not enough space to copy a cow page into its own\n");
-                ASSERT(false);
+                ASSERT(false); //************************************************************************
               }
               chillBrother->V();
             }

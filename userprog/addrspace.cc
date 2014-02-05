@@ -532,7 +532,7 @@ AddrSpace::~AddrSpace()
 #ifndef USE_TLB
     chillBrother->P();
     AddrSpace *other;
-    fprintf(stderr, "dying, my pid was: %d\n", pid);
+    //fprintf(stderr, "dying, my pid was: %d\n", pid);
     
     for(int i = 0; i < numPages; i++){
         if(pageTable[i].readOnly){
@@ -545,7 +545,7 @@ AddrSpace::~AddrSpace()
                     ramPages[other->pageTable[i].physicalPage]->pid = other->pid;
                 }
             }
-            else{ASSERT(false);}
+            else{ASSERT(false);} //********************************************
         }else{
             if(pageTable[i].valid){
                 ramPages[pageTable[i].physicalPage]->setStatus(Free);
@@ -553,7 +553,6 @@ AddrSpace::~AddrSpace()
                 ramPages[pageTable[i].physicalPage]->pid = -1;
             }
             diskBitMap->Clear(revPageTable[i].physicalPage);
-            // fprintf(stderr, "FREEE AT LASTTTT");
         }
         diskPages[revPageTable[i].physicalPage]->removeAddr(this);
     }
@@ -773,11 +772,8 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
 
     // check for alignment errors
     if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
-        fprintf(stderr, "%d\n", pid);
-        // interrupt->Halt();
-        ASSERT(false);
-    DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
-    return AddressErrorException;
+        DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
+        return AddressErrorException;
     }
      
     ASSERT(pageTable != NULL);   
@@ -787,13 +783,11 @@ AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing)
     vpn = (unsigned) virtAddr / PageSize;
     offset = (unsigned) virtAddr % PageSize;
     if(offset + size == 128){
-        //ASSERT(false);
+        //************************************************************** What should be done here?
     }
     
     // => page table => vpn is index into table
     if (vpn >= numPages * PageSize) {
-        ASSERT(false);
-        // interrupt->Halt();
         DEBUG('y', "Machine AddressErrorException");
         DEBUG('a', "virtual page # %d, %d too large for page table size %d!\n", 
             virtAddr, virtAddr, numPages * PageSize);
@@ -1192,7 +1186,7 @@ bool AddrSpace::writeBackDirty(){
                 synchDisk->WriteSector(ramPages[i]->head->revPageTable[ramPages[i]->vPage].physicalPage, pageBuf);
                 ramPages[i]->setStatus(InUse);
 
-            }else{fprintf(stderr, "herpaderpaderp\n");}
+            }
         }
     }
     
@@ -1233,7 +1227,7 @@ int AddrSpace::copyCowPage(int rOPage){
 
     //Changing in the Other Process
     AddrSpace *other = diskPages[revPageTable[vpn].physicalPage]->otherAddr(this);
-    if(other->pid==this->pid){fprintf(stderr, "Why are the pids the same, why\n");}
+    if(other->pid==this->pid){return 0;} //********************************************************************
 
     if(pageTable[vpn].dirty && pageTable[vpn].valid){
             // char pageBuf[128];
