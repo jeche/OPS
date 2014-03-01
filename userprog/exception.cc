@@ -439,6 +439,12 @@ ExceptionHandler(ExceptionType which)
     char c;
     char buffer[20];
 
+    PacketHeader outPktHdr, inPktHdr;
+    MailHeader outMailHdr, inMailHdr;
+    char* mailBuffer;
+    int machineNum, location, remain;
+    char* bufferList;
+
   switch (which) {
       case SyscallException:
       switch (type) {
@@ -1091,6 +1097,78 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(2, 0);
                 }
                 break;
+        case SC_Send:
+                mailBuffer = new (std::nothrow) char[MaxMailSize];
+                size = machine->ReadRegister(5);  // length
+                whence = machine->ReadRegister(4); // message
+                machineNum = machine->ReadRegister(6); // machine
+                location = machine->ReadRegister(7); // location
+                remain = size % MaxMailSize;
+                for(i = 0; i < size/MaxMailSize; i++){
+                  for (j = 0; j < MaxMailSize; j++) {
+                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[j]);
+                  }
+                  outPktHdr.to = machineNum;   
+                  outMailHdr.to = location;
+                  outMailHdr.from = 1; 
+                  fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                  outMailHdr.length = MaxMailSize; // had a plus 1 here before?????????
+                  outMailHdr.totalSize = size; 
+                  outMailHdr.curPack = i;
+                  postOffice->Send(outPktHdr, outMailHdr, mailBuffer);
+                }
+
+                if (remain > 0) {
+                  memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
+                  for (j = 0; j < remain; j++) {
+                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[j]);
+                  }
+                  outPktHdr.to = machineNum;   
+                  outMailHdr.to = location;
+                  outMailHdr.from = 1; 
+                  fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                  outMailHdr.length = remain; // had a plus 1 here before?????????
+                  outMailHdr.totalSize = size;
+                  outMailHdr.curPack = i;
+                  postOffice->Send(outPktHdr, outMailHdr, mailBuffer);
+                }
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);    
+                break;
+        case SC_Recv:
+                mailBuffer = new (std::nothrow) char[MaxMailSize];
+                size = machine->ReadRegister(5);  // length
+                whence = machine->ReadRegister(4); // message
+                location = machine->ReadRegister(6); // location
+                postOffice->Receive(location, &inPktHdr, &inMailHdr, mailBuffer);
+                bufferList = new (std::nothrow) char[inMailHdr.totalSize];
+                for (i = 0; i < inMailHdr.length; i++) {
+                  bufferList[i + (inMailHdr.curPack * MaxMailSize)] = mailBuffer[i];
+                }
+                remain = inMailHdr.totalSize % MaxMailSize;
+                if (remain == 0) {
+                  remain = -1;
+                }
+                else {
+                  remain = 0;
+                }
+                for (j = 0; j < (inMailHdr.totalSize / MaxMailSize) + remain; j++) {
+                  memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
+                  postOffice->Receive(location, &inPktHdr, &inMailHdr, mailBuffer);
+                  for (i = 0; i < inMailHdr.length; i++) {
+                    bufferList[i + (inMailHdr.curPack * MaxMailSize)] = mailBuffer[i];
+                  }
+                }
+                for (j = 0; j < size; j++) {
+                  currentThread->space->WriteMem(whence++, sizeof(char), bufferList[j]);
+                }
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);    
+                break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
                 ASSERT(false); //****************************************************
@@ -1252,6 +1330,8 @@ ExceptionHandler(ExceptionType which)
 
 #define SC_Dup    10
 #define SC_CheckPoint 11
+#define SC_Send 12
+#define SC_Recv 13
 #endif
 
 #define SC_Exit   1
@@ -1263,3 +1343,4 @@ ExceptionHandler(ExceptionType which)
 #define SC_Write  7
 #define SC_Close  8
 #define SC_Fork   9
+

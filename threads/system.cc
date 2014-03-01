@@ -444,6 +444,15 @@ Initialize(int argc, char **argv)
 #ifdef NETWORK
     postOffice = new(std::nothrow) PostOffice(netname, rely, 10);
 #endif
+
+#ifndef NETWORK
+    synchDisk = new SynchDisk("DISK");
+#else
+    sprintf(diskname,"DISK_%d",netname);
+    synchDisk = new SynchDisk(diskname);
+#endif
+
+
 }
 
 //----------------------------------------------------------------------

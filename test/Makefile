@@ -34,7 +34,7 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork ckmatmult rematmult vmtoobig huge qmatmult qsort Xkid vmtorture bogus1 atomicfile atomicfile2 test1 test2 test3 addproc cowhammer
+all: halt shell matmult sort fileio hellofile fromcons hellocons newfork argkid arg_seq_child bogus argtest deepfork deepkid1 deepkid2 kid maxfork parent_child seq_child share sharekid fork cat cp echo widefork ckmatmult rematmult vmtoobig huge qmatmult qsort Xkid vmtorture bogus1 atomicfile atomicfile2 test1 test2 test3 addproc cowhammer send networkTest
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -298,3 +298,15 @@ cowhammer.o: cowhammer.c
 cowhammer: cowhammer.o start.o
 	$(LD) $(LDFLAGS) start.o cowhammer.o -o cowhammer.coff
 	../bin/coff2noff cowhammer.coff cowhammer
+
+send.o: send.c
+	$(CC) $(CFLAGS) -c send.c
+send: send.o start.o
+	$(LD) $(LDFLAGS) start.o send.o -o send.coff
+	../bin/coff2noff send.coff send
+
+networkTest.o: networkTest.c
+	$(CC) $(CFLAGS) -c networkTest.c
+networkTest: networkTest.o start.o
+	$(LD) $(LDFLAGS) start.o networkTest.o -o networkTest.coff
+	../bin/coff2noff networkTest.coff networkTest
