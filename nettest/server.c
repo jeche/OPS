@@ -19,16 +19,19 @@ main()
   Create("serve");
   fId = Open("serve");
   /* Open a specific mailbox here */
-  printd(fId, fId);
+  mMbox = GetMailbox();
+  printd(mMbox, fId);
+  Recv(&recvInfo, 2, mMbox);
   Close(fId);
-  while(1){
+  /*while(1){
     /* Receive connections of machine id and mailbox number*/
     /* Mark a machine as waiting, if one is not waiting, if not waiting send back machine to connect to with mailbox
     char *args;*/
     /* Send back another machine who wants to play 
   Send(args, 6, 1, 1);
   Recv(args, 6, 1);*/
-  }
+  /*}
+  */
 }
 
 /* Print a null-terminated string "s" on open file descriptor "file". */

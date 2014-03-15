@@ -11,13 +11,18 @@ main(int argc, char **argv)
   int i;
   int mPid;
   char c;
-  
+  char recvInfo[128];
   i = 0;
   /* send machine ID to known server (0) */
   /* Receive. If ID received is a w then receive until ID and mailbox comes in */
   mPid = Open("serve");
   Read(&recvInfo, 1, mPid);
+  i = atoi(recvInfo);
+  Send("hi", 2, 0, i);
+  /*Read(&recvInfo, 1, mPid);
   printd(atoi(recvInfo), ConsoleOutput);
+  /*Send(args, 6, 1, 1);
+  
   while(c != '\n'){
 
   	i = i * 10;
