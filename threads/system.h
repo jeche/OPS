@@ -440,6 +440,7 @@ extern Semaphore *forkexecing;
 #ifdef NETWORK
 #include "post.h"
 extern PostOffice* postOffice;
+extern BitMap *mailboxes;
 #endif
 
 #endif // SYSTEM_H

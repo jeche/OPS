@@ -35,6 +35,7 @@ Machine *machine;	// user program memory and registers
 
 #ifdef NETWORK
 char diskname[50];
+
 PostOffice *postOffice;
 #endif
 
@@ -268,6 +269,7 @@ Machine *machine;   // user program memory and registers
 #ifdef NETWORK
 char diskname[50];
 PostOffice *postOffice;
+BitMap *mailboxes;
 #endif
 
 
@@ -443,6 +445,7 @@ Initialize(int argc, char **argv)
 
 #ifdef NETWORK
     postOffice = new(std::nothrow) PostOffice(netname, rely, 10);
+    mailboxes = new(std::nothrow) BitMap(10);
 #endif
 
 #ifndef NETWORK
@@ -472,6 +475,7 @@ Cleanup()
 //  }
 #ifdef NETWORK
     delete postOffice;
+    delete mailboxes;
 #endif
     
 #ifdef USER_PROGRAM

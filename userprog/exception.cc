@@ -1332,6 +1332,7 @@ ExceptionHandler(ExceptionType which)
 #define SC_CheckPoint 11
 #define SC_Send 12
 #define SC_Recv 13
+#define SC_GetMailbox 14
 #endif
 
 #define SC_Exit   1

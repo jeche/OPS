@@ -174,6 +174,7 @@ void Close(OpenFileId id);
 #define SC_CheckPoint 11
 #define SC_Send 12
 #define SC_Recv 13
+#define SC_GetMailbox 14
 
 #ifndef IN_ASM
 
@@ -265,6 +266,7 @@ OpenFileId Dup(OpenFileId id);
 
 int Send(char *msg, int length, int machine, int location);
 int Recv(char *msg, int length, int location);
+int GetMailbox();
 
 #endif /* IN_ASM */
 
