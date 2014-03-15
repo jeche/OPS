@@ -1169,6 +1169,14 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);    
                 break;
+        case SC_GetMailbox:
+                whence = mailboxes->Find();
+                machine->WriteRegister(2, whence);
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);    
+                break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
                 ASSERT(false); //****************************************************
