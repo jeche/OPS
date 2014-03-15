@@ -154,6 +154,14 @@ Recv:
 	j $31
 	.end Recv
 
+	.globl GetMailbox
+	.ent 	GetMailbox
+GetMailbox:
+	addiu $2,$0,SC_GetMailbox
+	syscall
+	j $31
+	.end GetMailbox
+
 /* dummy function to keep gcc happy */
         .globl  __main
         .ent    __main
