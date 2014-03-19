@@ -419,6 +419,7 @@ extern Semaphore *forking;
 extern BitMap *bitMap;
 extern FamilyNode* root;
 extern unsigned int pid;
+
 #endif
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
 #include "filesys.h"
@@ -441,6 +442,11 @@ extern Semaphore *forkexecing;
 #include "post.h"
 extern PostOffice* postOffice;
 extern BitMap *mailboxes;
+extern Semaphore *msgCTR;
+extern unsigned int msgctr;
+extern unsigned int timeoutctr;
+extern Timer *timeoutTimer;    
+
 #endif
 
 #endif // SYSTEM_H

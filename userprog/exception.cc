@@ -402,6 +402,37 @@ void outputRamPages(){
     fprintf(stderr, "\n");
   }
 }
+//------------------------------
+// sendPacket
+//    Handles the sending and waiting for an 'ack'. Should 
+//    be used as the method for a forked off thread so as to 
+//    not hang the system
+//------------------------------
+void sendPacket(PacketHeader pktHdr, MailHeader mailHdr, char *data){
+    int msgID = mailHdr.messageID;
+    int fromBox = mailHdr.from;
+    int toBox = mailHdr.to;
+    int fromMach = pktHdr.from;
+    int toMach = pktHdr.to;
+    int cPack = mailHdr.curPack;
+    int timeout = timeoutctr;/*Need to handle timeout grab the global thingy woo wow so concurrent many thread amaze*/
+    
+    postOffice->Send(pktHdr, mailHdr, data);
+    /*Grab the Lock*/
+    postOffice->ackLockAcquire(fromBox);
+    while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
+      /*Timeout situation goes here, not below hasAckWait*/
+      if(timeout+100 <= timeoutctr){//This will need to be modified to account for how often the timeoutctr is incremented
+        postOffice->Send(pktHdr, mailHdr, data);
+      }
+      postOffice->hasAckWait(fromBox);
+      
+    }
+    postOffice->ackLockRelease(fromBox);
+    /*Release the Lock*/
+}
+
+
 
 
 void
@@ -442,7 +473,7 @@ ExceptionHandler(ExceptionType which)
     PacketHeader outPktHdr, inPktHdr;
     MailHeader outMailHdr, inMailHdr;
     char* mailBuffer;
-    int machineNum, location, remain;
+    int machineNum, location, remain, msgID, bitTemp, myMB;
     char* bufferList;
 
   switch (which) {
@@ -1101,9 +1132,15 @@ ExceptionHandler(ExceptionType which)
                 mailBuffer = new (std::nothrow) char[MaxMailSize];
                 size = machine->ReadRegister(5);  // length
                 whence = machine->ReadRegister(4); // message
-                machineNum = machine->ReadRegister(6); // machine
-                location = machine->ReadRegister(7); // location
+                myMB = machine->ReadRegister(6);
+                machineNum = machine->ReadRegister(7); // machine
+                location = machine->ReadRegister(8); // location
                 remain = size % MaxMailSize;
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V();
+                
                 for(i = 0; i < size/MaxMailSize; i++){
                   for (j = 0; j < MaxMailSize; j++) {
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[j]);
@@ -1115,7 +1152,8 @@ ExceptionHandler(ExceptionType which)
                   outMailHdr.length = MaxMailSize; // had a plus 1 here before?????????
                   outMailHdr.totalSize = size; 
                   outMailHdr.curPack = i;
-                  postOffice->Send(outPktHdr, outMailHdr, mailBuffer);
+                  outMailHdr.messageID = msgID;
+                  sendPacket(outPktHdr, outMailHdr, mailBuffer);
                 }
 
                 if (remain > 0) {
@@ -1130,7 +1168,7 @@ ExceptionHandler(ExceptionType which)
                   outMailHdr.length = remain; // had a plus 1 here before?????????
                   outMailHdr.totalSize = size;
                   outMailHdr.curPack = i;
-                  postOffice->Send(outPktHdr, outMailHdr, mailBuffer);
+                  sendPacket(outPktHdr, outMailHdr, mailBuffer);
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));

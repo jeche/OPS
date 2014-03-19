@@ -243,10 +243,13 @@ Semaphore *forking;
 Semaphore *forkexecing;
 Semaphore *chillBrother;
 Semaphore *execing;
+
 SynchConsole *synchConsole;
 BitMap *bitMap;
 FamilyNode* root;
 unsigned int pid;
+unsigned int msgctr;
+unsigned int timeoutctr;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -270,6 +273,8 @@ Machine *machine;   // user program memory and registers
 char diskname[50];
 PostOffice *postOffice;
 BitMap *mailboxes;
+Semaphore *msgCTR;
+Timer *timeoutTimer;
 #endif
 
 
@@ -324,6 +329,22 @@ TimerInterruptHandler2(int )
     // currentThread->Yield();
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
+}
+
+static void
+TimerInterruptHandler3(int )
+{
+    timeoutctr++;
+    //This should be done in a separate thread....
+    if(timeoutctr==100){
+        timeoutctr=0;
+        for(int i = 0; i < 10; i++){//If errors it could be becasue postOffice is not yet created
+            postOffice->hasAckSignal(i);
+        }
+    }
+    //Account for Overflow!!!!
+    //Perhaps some kind of circular modulus based on the range of values of an int...
+    //Also handle for the case of after so many timeouts we need to signal those that are waiting
 }
 
 //----------------------------------------------------------------------
@@ -408,6 +429,8 @@ Initialize(int argc, char **argv)
     interrupt->Enable();
     CallOnUserAbort(Cleanup);           // if user hits ctl-C
     pid = 0;
+    msgctr = 0;
+    timeoutctr = 0;
     root = new(std::nothrow) FamilyNode(pid, pid, NULL);
 #ifdef USER_PROGRAM
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
@@ -426,6 +449,7 @@ Initialize(int argc, char **argv)
     chillBrother = new(std::nothrow) Semaphore("chillBrother", 1);
     execing = new(std::nothrow) Semaphore("execing", 1);
     forkexecing = new(std::nothrow) Semaphore("forkexecing", 1);
+    
 
     for(int i = 0; i < NumPhysPages; i++){
         ramPages[i] = new(std::nothrow) ramEntry(-1, Free, -1, NULL);
@@ -446,6 +470,7 @@ Initialize(int argc, char **argv)
 #ifdef NETWORK
     postOffice = new(std::nothrow) PostOffice(netname, rely, 10);
     mailboxes = new(std::nothrow) BitMap(10);
+    msgCTR = new(std::nothrow) Semaphore("msgCTR", 1);
 #endif
 
 #ifndef NETWORK
@@ -453,6 +478,8 @@ Initialize(int argc, char **argv)
 #else
     sprintf(diskname,"DISK_%d",netname);
     synchDisk = new SynchDisk(diskname);
+    timeoutTimer = new Timer(TimerInterruptHandler3, 0, false);
+
 #endif
 
 
@@ -476,6 +503,8 @@ Cleanup()
 #ifdef NETWORK
     delete postOffice;
     delete mailboxes;
+    delete msgCTR;
+    delete timeoutTimer;
 #endif
     
 #ifdef USER_PROGRAM

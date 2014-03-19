@@ -264,7 +264,7 @@ void Close(OpenFileId id);
 /* Returns a new OpenFileId referring to the same file as denoted by the argument */
 OpenFileId Dup(OpenFileId id);
 
-int Send(char *msg, int length, int machine, int location);
+int Send(char *msg, int length, int frmMailBox, int machine, int location);
 int Recv(char *msg, int length, int location);
 int GetMailbox();
 
