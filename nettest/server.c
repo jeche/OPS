@@ -109,9 +109,9 @@ main()
   turnM = p1;
   turnB = mp1;
   board[0] = '1';
-  Send(board, 61, p1, mp1);
+  Send(board, 61, l, p1, mp1);
   board[0] = '2';
-  Send(board, 61, p2, mp2);
+  Send(board, 61, l, p2, mp2);
   board[0] = 's';
   while(board[0] != 'o'){
     /* Receive move from tictactoe process */
@@ -214,11 +214,11 @@ main()
         turnM = p2;
         turnB = mp2;
         turnC = turnC + 1;
-        Send(board, 61, p1, mp1);
+        Send(board, 61, l, p1, mp1);
         if(board[0] != 'o'){
           board[0] = 'u';
         }
-        Send(board, 61, p2, mp2);
+        Send(board, 61, l, p2, mp2);
         if(board[0] != 'o'){
           board[0] = 's';
         }
@@ -240,7 +240,7 @@ main()
         prints(board, ConsoleOutput);
 
         board[0] = 'e';
-        Send(board, 61, p1, mp1);
+        Send(board, 61, l, p1, mp1);
       }  
     }
     else if (turnM == p2 && recvInfo[0] == '2'){
@@ -342,11 +342,11 @@ main()
         turnM = p1;
         turnB = mp1;
         turnC = turnC + 1;
-        Send(board, 61, p2, mp2);
+        Send(board, 61, l, p2, mp2);
         if(board[0] != 'o'){
           board[0] = 'u';
         }
-        Send(board, 61, p1, mp1);
+        Send(board, 61, l, p1, mp1);
         if(board[0] != 'o'){
           board[0] = 's';
         }
@@ -358,7 +358,7 @@ main()
         prints("RECVINFO:  ", ConsoleOutput);
         prints(recvInfo, ConsoleOutput);
         board[0] = 'e';
-        Send(board, 61, p2, mp2);
+        Send(board, 61, l, p2, mp2);
       }      
     }
   }

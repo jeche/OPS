@@ -40,7 +40,7 @@ main(int argc, char **argv)
   recvInfo[3] = ans[0];
   recvInfo[4] = '\0';
   prints(recvInfo, ConsoleOutput);
-  Send(recvInfo, 5, 0, i);
+  Send(recvInfo, 5, l, 0, i);
   Recv(board, 61, l);
   m = board[0];
   if(board[0] != 'o'){
@@ -61,7 +61,7 @@ main(int argc, char **argv)
       Read(&t, 1, ConsoleInput);
       sends[2] = c;
       prints("\n", ConsoleOutput);
-      Send(sends, 4, 0, i);
+      Send(sends, 4, l, 0, i);
       Recv(board, 61, l);
       if(board[0] == 'e'){
         prints("Retry, invalid move\n", ConsoleOutput);
@@ -91,7 +91,7 @@ main(int argc, char **argv)
       Read(&t, 1, ConsoleInput);
       sends[2] = c;    
       prints("\n", ConsoleOutput);
-      Send(sends, 4, 0, i);
+      Send(sends, 4, l, 0, i);
       Recv(board, 61, l);
       if(board[0] == 'e'){
         prints("Retry, invalid move\n", ConsoleOutput);
