@@ -94,7 +94,7 @@ extern PostOffice* postOffice;
 #include "bitmap.h"
 //#include "disk.h"
 #include <new>
-
+#define TIMEOUT 1000
 class SynchConsole {
     private:
     Console *console;   
@@ -178,7 +178,6 @@ enum Status { Free,           // No page here yet!
              MarkedForReplacement,    // Found by replacement algorithm to be removed
              CowPage
 };
-
 
 
 class ramEntry{ 
@@ -410,6 +409,7 @@ public:
 };
 
 
+
 #ifdef USER_PROGRAM
 #include "machine.h"
 extern Machine* machine;	// user program memory and registers
@@ -446,7 +446,22 @@ extern Semaphore *msgCTR;
 extern unsigned int msgctr;
 extern unsigned int timeoutctr;
 extern Timer *timeoutTimer;    
+extern Thread *timeout;
+class MailMessage {
+public:
+    PacketHeader pktHdr;
+    MailHeader mailHdr;
+    char *mailBuffer;
+    MailMessage(PacketHeader pktHeader, MailHeader mailHeader, char *buffer) {
+        pktHdr = pktHeader;
+        mailHdr = mailHeader;
+        mailBuffer = buffer;
+    };
 
+    ~MailMessage(){
+
+    };
+};
 #endif
 
 #endif // SYSTEM_H

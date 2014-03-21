@@ -248,8 +248,8 @@ SynchConsole *synchConsole;
 BitMap *bitMap;
 FamilyNode* root;
 unsigned int pid;
-unsigned int msgctr;
 unsigned int timeoutctr;
+unsigned int msgctr;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -275,6 +275,7 @@ PostOffice *postOffice;
 BitMap *mailboxes;
 Semaphore *msgCTR;
 Timer *timeoutTimer;
+Thread *timeout;
 #endif
 
 
@@ -302,6 +303,12 @@ extern void Cleanup();
 static void
 TimerInterruptHandler(int )
 {
+    fprintf(stderr, "Interrupt\n");
+    if ( stats->totalTicks > timeoutctr + TIMEOUT){
+        timeoutctr = stats->totalTicks;
+        fprintf(stderr, "Setting Ready to Run\n");
+        scheduler->ReadyToRun(timeout);
+    }
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
 }
@@ -326,26 +333,31 @@ TimerInterruptHandler(int )
 static void
 TimerInterruptHandler2(int )
 {
-    // currentThread->Yield();
+    // fprintf(stderr, "Interrupt\n");
+    if ( stats->totalTicks > timeoutctr + TIMEOUT){
+        timeoutctr = stats->totalTicks;
+        // fprintf(stderr, "Setting Ready to Run\n");
+        scheduler->ReadyToRun(timeout);
+    }
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
 }
 
-static void
-TimerInterruptHandler3(int )
-{
-    timeoutctr++;
-    //This should be done in a separate thread....
-    if(timeoutctr==100){
-        timeoutctr=0;
-        for(int i = 0; i < 10; i++){//If errors it could be becasue postOffice is not yet created
+
+void
+TimeoutHandler() {
+    for(;;) {
+        IntStatus oldLevel = interrupt->SetLevel(IntOff);
+        timeout->Sleep();
+        (void) interrupt->SetLevel(oldLevel);
+        for (int i = 0; i < 10; i++) {
             postOffice->hasAckSignal(i);
         }
     }
-    //Account for Overflow!!!!
-    //Perhaps some kind of circular modulus based on the range of values of an int...
-    //Also handle for the case of after so many timeouts we need to signal those that are waiting
 }
+
+static void TimeoutHandlerHelper(int arg)
+{ TimeoutHandler(); }
 
 //----------------------------------------------------------------------
 // Initialize
@@ -438,7 +450,7 @@ Initialize(int argc, char **argv)
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
     forking = new(std::nothrow) Semaphore("forking", 1);
     RandomInit(100);
-    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
+    
     // bitMap->Print();
 #endif
 
@@ -471,6 +483,11 @@ Initialize(int argc, char **argv)
     postOffice = new(std::nothrow) PostOffice(netname, rely, 10);
     mailboxes = new(std::nothrow) BitMap(10);
     msgCTR = new(std::nothrow) Semaphore("msgCTR", 1);
+    msgctr = 0;
+    timeoutctr = 0;
+    timeout = new Thread("timeout");
+    timeout->Fork(TimeoutHandlerHelper, 0);
+    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
 #endif
 
 #ifndef NETWORK
@@ -478,7 +495,6 @@ Initialize(int argc, char **argv)
 #else
     sprintf(diskname,"DISK_%d",netname);
     synchDisk = new SynchDisk(diskname);
-    timeoutTimer = new Timer(TimerInterruptHandler3, 0, false);
 
 #endif
 

@@ -170,6 +170,8 @@ ExceptionHandler(ExceptionType which)
 #include <stdlib.h>
 #ifdef USE_TLB
 
+
+
 //----------------------------------------------------------------------
 // HandleTLBFault
 //      Called on TLB fault. Note that this is not necessarily a page
@@ -408,7 +410,12 @@ void outputRamPages(){
 //    be used as the method for a forked off thread so as to 
 //    not hang the system
 //------------------------------
-void sendPacket(PacketHeader pktHdr, MailHeader mailHdr, char *data){
+void sendPacket(int mailMessage){
+    MailMessage* mail = (MailMessage *) mailMessage;
+    MailHeader mailHdr = mail->mailHdr;
+    PacketHeader pktHdr = mail->pktHdr;
+    char *data = mail->mailBuffer;
+
     int msgID = mailHdr.messageID;
     int fromBox = mailHdr.from;
     int toBox = mailHdr.to;
@@ -416,20 +423,24 @@ void sendPacket(PacketHeader pktHdr, MailHeader mailHdr, char *data){
     int toMach = pktHdr.to;
     int cPack = mailHdr.curPack;
     int timeout = timeoutctr;/*Need to handle timeout grab the global thingy woo wow so concurrent many thread amaze*/
-    
+    int systime = stats->totalTicks;
+
     postOffice->Send(pktHdr, mailHdr, data);
     /*Grab the Lock*/
     postOffice->ackLockAcquire(fromBox);
+
     while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
       /*Timeout situation goes here, not below hasAckWait*/
-      if(timeout+100 <= timeoutctr){//This will need to be modified to account for how often the timeoutctr is incremented
+      if(stats->totalTicks > systime + TIMEOUT){//This will need to be modified to account for how often the timeoutctr is incremented
+        fprintf(stderr, "WE DID IT\n");
         postOffice->Send(pktHdr, mailHdr, data);
+        systime = stats->totalTicks;
       }
       postOffice->hasAckWait(fromBox);
-      
     }
     postOffice->ackLockRelease(fromBox);
     /*Release the Lock*/
+    fprintf(stderr, "out of SendPacket\n");
 }
 
 
@@ -475,6 +486,7 @@ ExceptionHandler(ExceptionType which)
     char* mailBuffer;
     int machineNum, location, remain, msgID, bitTemp, myMB;
     char* bufferList;
+    MailMessage *mail;
 
   switch (which) {
       case SyscallException:
@@ -1153,7 +1165,10 @@ ExceptionHandler(ExceptionType which)
                   outMailHdr.totalSize = size; 
                   outMailHdr.curPack = i;
                   outMailHdr.messageID = msgID;
-                  sendPacket(outPktHdr, outMailHdr, mailBuffer);
+                  mail = new (std::nothrow) MailMessage(outPktHdr, outMailHdr, mailBuffer);
+                  t = new(std::nothrow) Thread("messageSender");
+                  t->Fork(sendPacket, (int) mail);
+                  //sendPacket(outPktHdr, outMailHdr, mailBuffer);
                 }
 
                 if (remain > 0) {
@@ -1168,7 +1183,10 @@ ExceptionHandler(ExceptionType which)
                   outMailHdr.length = remain; // had a plus 1 here before?????????
                   outMailHdr.totalSize = size;
                   outMailHdr.curPack = i;
-                  sendPacket(outPktHdr, outMailHdr, mailBuffer);
+                  mail = new (std::nothrow) MailMessage(outPktHdr, outMailHdr, mailBuffer);
+                  t = new(std::nothrow) Thread("messageSender");
+                  t->Fork(sendPacket, (int) mail);
+                  //sendPacket(outPktHdr, outMailHdr, mailBuffer);
                 }
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
