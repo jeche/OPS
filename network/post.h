@@ -31,6 +31,8 @@
 #include "network.h"
 #include "synchlist.h"
 
+
+
 // Mailbox address -- uniquely identifies a mailbox on a given machine.
 // A mailbox is just a place for temporary storage for messages.
 typedef int MailBoxAddress;
@@ -45,8 +47,9 @@ class MailHeader {
     MailBoxAddress from;	// Mail box to reply to
     unsigned length;		// Bytes of message data (excluding the 
 				// mail header)
-    int totalSize;
-    int curPack;
+    int totalSize; //if -1 then it is an Ack
+    int curPack; 
+    int messageID;
 };
 
 // Maximum "payload" -- real data -- that can included in a single message
@@ -72,6 +75,15 @@ class Mail {
      char data[MaxMailSize];	// Payload -- message data
 };
 
+class MailNode{
+  public:
+    MailNode(Mail *mail);
+    ~MailNode();
+    void Append(MailNode *mn);
+    Mail *cur;
+    MailNode *next;
+};
+
 // The following class defines a single mailbox, or temporary storage
 // for messages.   Incoming messages are put by the PostOffice into the 
 // appropriate mailbox, and these messages can then be retrieved by
@@ -79,6 +91,7 @@ class Mail {
 
 class MailBox {
   public: 
+
     MailBox();			// Allocate and initialize mail box
     ~MailBox();			// De-allocate mail box
 
@@ -88,8 +101,17 @@ class MailBox {
    				// Atomically get a message out of the 
 				// mailbox (and wait if there is no message 
 				// to get!)
+    void PutAck(PacketHeader pktHdr, MailHeader mailHdr, char *data);
+    int CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
+
+
+
+    Lock *ackLock, *ackProcLock;
+    Condition *hasAck, *ackResolved; 
   private:
     SynchList *messages;	// A mailbox is just a list of arrived messages
+    MailNode *acks;
+
 };
 
 // The following class defines a "Post Office", or a collection of 
@@ -129,6 +151,21 @@ class PostOffice {
    				// packet has arrived and can be pulled
 				// off of network (i.e., time to call 
 				// PostalDelivery)
+    int CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
+
+
+    void hasAckWait(int box);
+    void hasAckSignal(int box);
+
+    void ackResolvedWait(int box);
+
+    void ackResolvedSignal(int box);
+
+    void ackLockAcquire(int box);
+    void ackLockRelease(int box);
+    void ackProcLockAcquire(int box);
+    void ackProcLockRelease(int box);
+
 
   private:
     Network *network;		// Physical network connection
@@ -139,5 +176,7 @@ class PostOffice {
     Semaphore *messageSent;	// V'ed when next message can be sent to network
     Lock *sendLock;		// Only one outgoing message at a time
 };
+
+
 
 #endif

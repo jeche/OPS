@@ -38,6 +38,29 @@ Mail::Mail(PacketHeader pktH, MailHeader mailH, char *msgData)
     bcopy(msgData, data, mailHdr.length);
 }
 
+
+MailNode::MailNode(Mail *mail){
+    cur = mail;
+    next = NULL;
+}
+
+MailNode::~MailNode(){
+    delete cur;
+    delete next;
+}
+void
+MailNode::Append(MailNode *mn){
+    if(cur == NULL){
+        cur = mn->cur;
+    }
+    else{
+        if(next!=NULL){next->Append(mn);}
+        else{
+            next = mn;
+        }
+    }
+}
+
 //----------------------------------------------------------------------
 // MailBox::MailBox
 //      Initialize a single mail box within the post office, so that it
@@ -50,6 +73,11 @@ Mail::Mail(PacketHeader pktH, MailHeader mailH, char *msgData)
 MailBox::MailBox()
 { 
     messages = new SynchList(); 
+    acks = new(std::nothrow) MailNode(NULL);
+    ackLock = new(std::nothrow) Lock("ackLock");
+    ackProcLock = new(std::nothrow) Lock("ackProcLock");
+    hasAck = new(std::nothrow) Condition("hasAck");
+    ackResolved = new(std::nothrow) Condition("ackResolved");
 }
 
 //----------------------------------------------------------------------
@@ -63,6 +91,11 @@ MailBox::MailBox()
 MailBox::~MailBox()
 { 
     delete messages; 
+    delete acks;
+    delete ackLock;
+    delete ackProcLock;
+    delete hasAck;
+    delete ackResolved;
 }
 
 //----------------------------------------------------------------------
@@ -120,6 +153,7 @@ void
 MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, char *data) 
 { 
     DEBUG('n', "Waiting for mail in mailbox\n");
+
     Mail *mail = (Mail *) messages->Remove();	// remove message from list;
 						// will wait if list is empty
 
@@ -135,6 +169,46 @@ MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, char *data)
     delete mail;			// we've copied out the stuff we
 					// need, we can now discard the message
 }
+
+
+void
+MailBox::PutAck(PacketHeader pktHdr, MailHeader mailHdr, char *data){
+    Mail *mail = new Mail(pktHdr, mailHdr, data); 
+    MailNode *mn = new MailNode(mail);
+    acks->Append(mn);
+    ackLock->Acquire();
+    hasAck->Signal(ackLock);
+    ackLock->Release();
+}
+
+int
+
+MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
+    Mail *temp;
+    MailNode *curMN;
+    curMN  = acks;
+
+    ASSERT(ackLock->isHeldByCurrentThread());
+
+    if(curMN->cur == NULL){
+        curMN = NULL;
+    }
+
+    while(curMN != NULL){//This could be an issue if the size of acks changes duing th eiteratio thorugh, it shouldn't though
+        temp = curMN->cur;
+        if((temp->mailHdr.messageID == msgID) && (temp->mailHdr.from == toBox) &&
+            (temp->mailHdr.to == fromBox) && 
+            (temp->pktHdr.from == toMach) && (temp->mailHdr.curPack == cPack)){ // Removed this (temp->pktHdr.to == fromMach) &&
+            return 1;
+        }
+        curMN = curMN->next;
+    }
+    hasAck->Signal(ackLock);
+    return 0;
+
+}
+
+
 
 //----------------------------------------------------------------------
 // PostalHelper, ReadAvail, WriteDone
@@ -230,16 +304,45 @@ PostOffice::PostalDelivery()
 
         mailHdr = *(MailHeader *)buffer;
         if (DebugIsEnabled('n')) {
-	    printf("Putting mail into mailbox: ");
-	    PrintHeader(pktHdr, mailHdr);
+    	    printf("Putting mail into mailbox: ");
+    	    PrintHeader(pktHdr, mailHdr);
         }
 
 	// check that arriving message is legal!
-	ASSERT(0 <= mailHdr.to && mailHdr.to < numBoxes);
-	ASSERT(mailHdr.length <= MaxMailSize);
+    	ASSERT(0 <= mailHdr.to && mailHdr.to < numBoxes);
+    	ASSERT(mailHdr.length <= MaxMailSize);
 
-	// put into mailbox
-        boxes[mailHdr.to].Put(pktHdr, mailHdr, buffer + sizeof(MailHeader));
+    	// put into mailbox
+        if(mailHdr.totalSize!=-1){
+            /*Need to Ack-Back*/
+            int pktTemp = pktHdr.to;
+            pktHdr.to = pktHdr.from;
+            pktHdr.from = NULL;
+
+            int tempSize = mailHdr.totalSize; // Need to save this variable in order pull it into a buffer of the right size on the recieve
+            mailHdr.totalSize = -1;
+            int mailTemp = mailHdr.to;
+            mailHdr.to = mailHdr.from;
+            mailHdr.from = mailTemp;
+            this->Send(pktHdr, mailHdr, buffer + sizeof(MailHeader));
+            // Reset the variables for to put in the mailbox
+            mailHdr.totalSize = tempSize; 
+            mailHdr.from = mailHdr.to;
+            mailHdr.to = mailTemp;
+            pktHdr.from = pktHdr.to;
+            pktHdr.to = pktTemp;
+            boxes[mailTemp].Put(pktHdr, mailHdr, buffer + sizeof(MailHeader));
+            //This should be done in a separate thread....
+
+            /*Signal the appropriate condition variable
+                **REMEMBER YOU HAVE TO GRAB THE APPROPRIATE LOCK THEN YOU CAN USE THE COND VAR
+            */
+            //boxes[box].hasAck->Signal(boxes[box].ackLock);
+        }
+        else{
+            boxes[mailHdr.to].PutAck(pktHdr, mailHdr, buffer + sizeof(MailHeader));
+
+        }
     }
 }
 
@@ -276,9 +379,8 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
     bcopy((char *) &mailHdr, buffer, sizeof(MailHeader));
     //fprintf(stderr, "%s\n", data);
     bcopy(data, buffer + sizeof(MailHeader), mailHdr.length);
-
     sendLock->Acquire();   		// only one message can be sent
-					// to the network at any one time
+			// to the network at any one time
     network->Send(pktHdr, buffer);
     messageSent->P();			// wait for interrupt to tell us
 					// ok to send the next message
@@ -310,6 +412,7 @@ PostOffice::Receive(int box, PacketHeader *pktHdr,
     ASSERT((box >= 0) && (box < numBoxes));
 
     boxes[box].Get(pktHdr, mailHdr, data);
+
     ASSERT(mailHdr->length <= MaxMailSize);
 }
 
@@ -342,3 +445,47 @@ PostOffice::PacketSent()
     messageSent->V();
 }
 
+int
+PostOffice::CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
+    return boxes[box].CheckAckMB(msgID, fromMach, toMach, fromBox, toBox, cPack);
+}
+
+void
+PostOffice::hasAckWait(int box){
+    boxes[box].hasAck->Wait(boxes[box].ackLock);
+}
+
+void 
+PostOffice::hasAckSignal(int box){
+    boxes[box].ackLock->Acquire();
+    boxes[box].hasAck->Signal(boxes[box].ackLock);
+    boxes[box].ackLock->Release();
+}
+
+void 
+PostOffice::ackResolvedWait(int box){
+    boxes[box].ackResolved->Wait(boxes[box].ackProcLock);
+}
+
+void 
+PostOffice::ackResolvedSignal(int box){
+    boxes[box].ackResolved->Signal(boxes[box].ackProcLock);
+
+}
+
+void
+PostOffice::ackLockAcquire(int box){
+    boxes[box].ackLock->Acquire();
+}
+void
+PostOffice::ackLockRelease(int box){
+    boxes[box].ackLock->Release();
+}
+void
+PostOffice::ackProcLockAcquire(int box){
+    boxes[box].ackProcLock->Acquire();
+}
+void
+PostOffice::ackProcLockRelease(int box){
+    boxes[box].ackProcLock->Release();
+}
