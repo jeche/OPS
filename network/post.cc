@@ -131,6 +131,7 @@ void
 MailBox::Put(PacketHeader pktHdr, MailHeader mailHdr, char *data)
 { 
     Mail *mail = new Mail(pktHdr, mailHdr, data); 
+    // TODO ******
 
     messages->Append((void *)mail);	// put on the end of the list of 
 					// arrived messages, and wake up 
@@ -414,6 +415,10 @@ PostOffice::Receive(int box, PacketHeader *pktHdr,
     boxes[box].Get(pktHdr, mailHdr, data);
 
     ASSERT(mailHdr->length <= MaxMailSize);
+}
+
+void PostOffice::GrabMessage(int bufLoc, int size, int mailBox){
+    boxes[box].GetMessage()// ****** fix this
 }
 
 //----------------------------------------------------------------------

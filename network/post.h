@@ -138,6 +138,7 @@ class PostOffice {
     
     void Receive(int box, PacketHeader *pktHdr, 
 		MailHeader *mailHdr, char *data);
+    void GrabMessage(int bufLoc, int size, int mailBox);
     				// Retrieve a message from "box".  Wait if
 				// there is no message in the box.
 

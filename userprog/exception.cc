@@ -432,7 +432,6 @@ void sendPacket(int mailMessage){
     while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
       /*Timeout situation goes here, not below hasAckWait*/
       if(stats->totalTicks > systime + TIMEOUT){//This will need to be modified to account for how often the timeoutctr is incremented
-        fprintf(stderr, "WE DID IT\n");
         postOffice->Send(pktHdr, mailHdr, data);
         systime = stats->totalTicks;
       }
@@ -440,7 +439,6 @@ void sendPacket(int mailMessage){
     }
     postOffice->ackLockRelease(fromBox);
     /*Release the Lock*/
-    fprintf(stderr, "out of SendPacket\n");
 }
 
 
@@ -1160,7 +1158,7 @@ ExceptionHandler(ExceptionType which)
                   outPktHdr.to = machineNum;   
                   outMailHdr.to = location;
                   outMailHdr.from = 1; 
-                  fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                  // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = MaxMailSize; // had a plus 1 here before?????????
                   outMailHdr.totalSize = size; 
                   outMailHdr.curPack = i;
@@ -1179,7 +1177,7 @@ ExceptionHandler(ExceptionType which)
                   outPktHdr.to = machineNum;   
                   outMailHdr.to = location;
                   outMailHdr.from = 1; 
-                  fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                  // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = remain; // had a plus 1 here before?????????
                   outMailHdr.totalSize = size;
                   outMailHdr.curPack = i;
@@ -1198,6 +1196,8 @@ ExceptionHandler(ExceptionType which)
                 size = machine->ReadRegister(5);  // length
                 whence = machine->ReadRegister(4); // message
                 location = machine->ReadRegister(6); // location
+
+                postOffice->GrabMessage(whence, size, location);
                 postOffice->Receive(location, &inPktHdr, &inMailHdr, mailBuffer);
                 bufferList = new (std::nothrow) char[inMailHdr.totalSize];
                 for (i = 0; i < inMailHdr.length; i++) {
