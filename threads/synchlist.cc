@@ -81,6 +81,19 @@ SynchList::Remove()
     return item;
 }
 
+int
+SynchList::Peek()
+{
+    lock->Acquire();
+    if (list->IsEmpty()) {
+        lock->Release();
+        return 0;
+    }
+    else {
+        lock->Release();
+        return 1;
+    }
+}
 //----------------------------------------------------------------------
 // SynchList::Mapcar
 //      Apply function to every item on the list.  Obey mutual exclusion

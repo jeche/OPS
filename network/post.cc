@@ -31,35 +31,37 @@
 
 Mail::Mail(PacketHeader pktH, MailHeader mailH, char *msgData)
 {
+    fprintf(stderr, "whwhwhwhw");
     ASSERT(mailH.length <= MaxMailSize);
-
+fprintf(stderr, "whwhwhwhw");
     pktHdr = pktH;
     mailHdr = mailH;
+    fprintf(stderr, "whwhwhwhw");
     bcopy(msgData, data, mailHdr.length);
 }
 
 
-MailNode::MailNode(Mail *mail){
-    cur = mail;
-    next = NULL;
-}
+// MailNode::MailNode(Mail *mail){
+//     cur = mail;
+//     next = NULL;
+// }
 
-MailNode::~MailNode(){
-    delete cur;
-    delete next;
-}
-void
-MailNode::Append(MailNode *mn){
-    if(cur == NULL){
-        cur = mn->cur;
-    }
-    else{
-        if(next!=NULL){next->Append(mn);}
-        else{
-            next = mn;
-        }
-    }
-}
+// MailNode::~MailNode(){
+//     delete cur;
+//     delete next;
+// }
+// void
+// MailNode::Append(MailNode *mn){
+//     if(cur == NULL){
+//         cur = mn->cur;
+//     }
+//     else{
+//         if(next!=NULL){next->Append(mn);}
+//         else{
+//             next = mn;
+//         }
+//     }
+// }
 
 //----------------------------------------------------------------------
 // MailBox::MailBox
@@ -72,12 +74,13 @@ MailNode::Append(MailNode *mn){
 
 MailBox::MailBox()
 { 
-    messages = new SynchList(); 
-    acks = new(std::nothrow) MailNode(NULL);
-    ackLock = new(std::nothrow) Lock("ackLock");
-    ackProcLock = new(std::nothrow) Lock("ackProcLock");
-    hasAck = new(std::nothrow) Condition("hasAck");
-    ackResolved = new(std::nothrow) Condition("ackResolved");
+    messages = new(std::nothrow) SynchList();
+    //unwantedMessages = new(std::nothrow) SynchList(); 
+    //acks = new(std::nothrow) MailNode(NULL);
+    //ackLock = new(std::nothrow) Lock("ackLock");
+    //ackProcLock = new(std::nothrow) Lock("ackProcLock");
+    //hasAck = new(std::nothrow) Condition("hasAck");
+    //ackResolved = new(std::nothrow) Condition("ackResolved");
 }
 
 //----------------------------------------------------------------------
@@ -91,11 +94,12 @@ MailBox::MailBox()
 MailBox::~MailBox()
 { 
     delete messages; 
-    delete acks;
-    delete ackLock;
-    delete ackProcLock;
-    delete hasAck;
-    delete ackResolved;
+    //delete unwantedMessages;
+    //delete acks;
+    // delete ackLock;
+    // delete ackProcLock;
+    // delete hasAck;
+    // delete ackResolved;
 }
 
 //----------------------------------------------------------------------
@@ -130,7 +134,7 @@ PrintHeader(PacketHeader pktHdr, MailHeader mailHdr)
 void 
 MailBox::Put(PacketHeader pktHdr, MailHeader mailHdr, char *data)
 { 
-    Mail *mail = new Mail(pktHdr, mailHdr, data); 
+    Mail *mail = new(std::nothrow) Mail(pktHdr, mailHdr, data); 
     // TODO ******
 
     messages->Append((void *)mail);	// put on the end of the list of 
@@ -172,42 +176,42 @@ MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, char *data)
 }
 
 
-void
-MailBox::PutAck(PacketHeader pktHdr, MailHeader mailHdr, char *data){
-    Mail *mail = new Mail(pktHdr, mailHdr, data); 
-    MailNode *mn = new MailNode(mail);
-    acks->Append(mn);
-    ackLock->Acquire();
-    hasAck->Signal(ackLock);
-    ackLock->Release();
-}
+// void
+// MailBox::PutAck(PacketHeader pktHdr, MailHeader mailHdr, char *data){
+//     Mail *mail = new(std::nothrow) Mail(pktHdr, mailHdr, data); 
+//     MailNode *mn = new(std::nothrow) MailNode(mail);
+//     acks->Append(mn);
+//     ackLock->Acquire();
+//     hasAck->Signal(ackLock);
+//     ackLock->Release();
+// }
 
-int
+// int
 
-MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
-    Mail *temp;
-    MailNode *curMN;
-    curMN  = acks;
+// MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
+//     Mail *temp;
+//     MailNode *curMN;
+//     curMN  = acks;
 
-    ASSERT(ackLock->isHeldByCurrentThread());
+//     ASSERT(ackLock->isHeldByCurrentThread());
 
-    if(curMN->cur == NULL){
-        curMN = NULL;
-    }
+//     if(curMN->cur == NULL){
+//         curMN = NULL;
+//     }
 
-    while(curMN != NULL){//This could be an issue if the size of acks changes duing th eiteratio thorugh, it shouldn't though
-        temp = curMN->cur;
-        if((temp->mailHdr.messageID == msgID) && (temp->mailHdr.from == toBox) &&
-            (temp->mailHdr.to == fromBox) && 
-            (temp->pktHdr.from == toMach) && (temp->mailHdr.curPack == cPack)){ // Removed this (temp->pktHdr.to == fromMach) &&
-            return 1;
-        }
-        curMN = curMN->next;
-    }
-    hasAck->Signal(ackLock);
-    return 0;
+//     while(curMN != NULL){//This could be an issue if the size of acks changes duing th eiteratio thorugh, it shouldn't though
+//         temp = curMN->cur;
+//         if((temp->mailHdr.messageID == msgID) && (temp->mailHdr.from == toBox) &&
+//             (temp->mailHdr.to == fromBox) && 
+//             (temp->pktHdr.from == toMach) && (temp->mailHdr.curPack == cPack)){ // Removed this (temp->pktHdr.to == fromMach) &&
+//             return 1;
+//         }
+//         curMN = curMN->next;
+//     }
+//     hasAck->Signal(ackLock);
+//     return 0;
 
-}
+// }
 
 
 
@@ -249,22 +253,22 @@ static void WriteDone(int arg)
 PostOffice::PostOffice(NetworkAddress addr, double reliability, int nBoxes)
 {
 // First, initialize the synchronization with the interrupt handlers
-    messageAvailable = new Semaphore("message available", 0);
-    messageSent = new Semaphore("message sent", 0);
-    sendLock = new Lock("message send lock");
+    messageAvailable = new(std::nothrow) Semaphore("message available", 0);
+    messageSent = new(std::nothrow) Semaphore("message sent", 0);
+    sendLock = new(std::nothrow) Lock("message send lock");
 
 // Second, initialize the mailboxes
     netAddr = addr; 
     numBoxes = nBoxes;
-    boxes = new MailBox[nBoxes];
+    boxes = new(std::nothrow) MailBox[nBoxes];
 
 // Third, initialize the network; tell it which interrupt handlers to call
-    network = new Network(addr, reliability, ReadAvail, WriteDone, (int) this);
+    network = new(std::nothrow) Network(addr, reliability, ReadAvail, WriteDone, (int) this);
 
 
 // Finally, create a thread whose sole job is to wait for incoming messages,
 //   and put them in the right mailbox. 
-    Thread *t = new Thread("postal worker");
+    Thread *t = new(std::nothrow) Thread("postal worker");
 
     t->Fork(PostalHelper, (int) this);
 }
@@ -296,7 +300,7 @@ PostOffice::PostalDelivery()
 {
     PacketHeader pktHdr;
     MailHeader mailHdr;
-    char *buffer = new char[MaxPacketSize];
+    char *buffer = new(std::nothrow) char[MaxPacketSize];
 
     for (;;) {
         // first, wait for a message
@@ -318,14 +322,14 @@ PostOffice::PostalDelivery()
             /*Need to Ack-Back*/
             int pktTemp = pktHdr.to;
             pktHdr.to = pktHdr.from;
-            pktHdr.from = NULL;
+            //pktHdr.from = NULL;
 
             int tempSize = mailHdr.totalSize; // Need to save this variable in order pull it into a buffer of the right size on the recieve
             mailHdr.totalSize = -1;
             int mailTemp = mailHdr.to;
             mailHdr.to = mailHdr.from;
             mailHdr.from = mailTemp;
-            this->Send(pktHdr, mailHdr, buffer + sizeof(MailHeader));
+            //this->Send(pktHdr, mailHdr, buffer + sizeof(MailHeader));
             // Reset the variables for to put in the mailbox
             mailHdr.totalSize = tempSize; 
             mailHdr.from = mailHdr.to;
@@ -341,7 +345,7 @@ PostOffice::PostalDelivery()
             //boxes[box].hasAck->Signal(boxes[box].ackLock);
         }
         else{
-            boxes[mailHdr.to].PutAck(pktHdr, mailHdr, buffer + sizeof(MailHeader));
+            //boxes[mailHdr.to].PutAck(pktHdr, mailHdr, buffer + sizeof(MailHeader));
 
         }
     }
@@ -363,7 +367,7 @@ PostOffice::PostalDelivery()
 void
 PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
 {
-    char* buffer = new char[MaxPacketSize];	// space to hold concatenated
+    char *buffer = new(std::nothrow) char[MaxPacketSize];	// space to hold concatenated
 						// mailHdr + data
     if (DebugIsEnabled('n')) {
 	printf("Post send: ");
@@ -382,6 +386,7 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
     bcopy(data, buffer + sizeof(MailHeader), mailHdr.length);
     sendLock->Acquire();   		// only one message can be sent
 			// to the network at any one time
+    //fprintf(stderr, "here %s\n", data);
     network->Send(pktHdr, buffer);
     messageSent->P();			// wait for interrupt to tell us
 					// ok to send the next message
@@ -417,10 +422,6 @@ PostOffice::Receive(int box, PacketHeader *pktHdr,
     ASSERT(mailHdr->length <= MaxMailSize);
 }
 
-void PostOffice::GrabMessage(int bufLoc, int size, int mailBox){
-    boxes[box].GetMessage()// ****** fix this
-}
-
 //----------------------------------------------------------------------
 // PostOffice::IncomingPacket
 // 	Interrupt handler, called when a packet arrives from the network.
@@ -450,47 +451,65 @@ PostOffice::PacketSent()
     messageSent->V();
 }
 
-int
-PostOffice::CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
-    return boxes[box].CheckAckMB(msgID, fromMach, toMach, fromBox, toBox, cPack);
-}
+// void
+// PostOffice::PutUnwanted(int box, PacketHeader pktHdr, MailHeader mailHdr, char *data)
+// { 
+//     Mail *mail = new(std::nothrow) Mail(pktHdr, mailHdr, data); 
+//     // TODO ******
 
-void
-PostOffice::hasAckWait(int box){
-    boxes[box].hasAck->Wait(boxes[box].ackLock);
-}
+//     boxes[box].unwantedMessages->Append((void *)mail); // put on the end of the list of 
+//                     // arrived messages, and wake up 
+//                     // any waiters
+// }
 
-void 
-PostOffice::hasAckSignal(int box){
-    boxes[box].ackLock->Acquire();
-    boxes[box].hasAck->Signal(boxes[box].ackLock);
-    boxes[box].ackLock->Release();
-}
+// void
+// PostOffice::RestoreUnwanted(int box)
+// {
+//     while (boxes[box].unwantedMessages->Peek() != 0) {
+//         Mail *mail = (Mail *) boxes[box].unwantedMessages->Remove();
+//         boxes[box].Put(mail->pktHdr, mail->mailHdr, mail->data);
+//     }
+// }
 
-void 
-PostOffice::ackResolvedWait(int box){
-    boxes[box].ackResolved->Wait(boxes[box].ackProcLock);
-}
+// int
+// PostOffice::CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
+//     return boxes[box].CheckAckMB(msgID, fromMach, toMach, fromBox, toBox, cPack);
+// }
 
-void 
-PostOffice::ackResolvedSignal(int box){
-    boxes[box].ackResolved->Signal(boxes[box].ackProcLock);
+// void
+// PostOffice::hasAckWait(int box){
+//     boxes[box].hasAck->Wait(boxes[box].ackLock);
+// }
 
-}
+// void 
+// PostOffice::hasAckSignal(int box){
+//     boxes[box].hasAck->Signal(boxes[box].ackLock);
+// }
 
-void
-PostOffice::ackLockAcquire(int box){
-    boxes[box].ackLock->Acquire();
-}
-void
-PostOffice::ackLockRelease(int box){
-    boxes[box].ackLock->Release();
-}
-void
-PostOffice::ackProcLockAcquire(int box){
-    boxes[box].ackProcLock->Acquire();
-}
-void
-PostOffice::ackProcLockRelease(int box){
-    boxes[box].ackProcLock->Release();
-}
+// void 
+// PostOffice::ackResolvedWait(int box){
+//     boxes[box].ackResolved->Wait(boxes[box].ackProcLock);
+// }
+
+// void 
+// PostOffice::ackResolvedSignal(int box){
+//     boxes[box].ackResolved->Signal(boxes[box].ackProcLock);
+
+// }
+
+// void
+// PostOffice::ackLockAcquire(int box){
+//     boxes[box].ackLock->Acquire();
+// }
+// void
+// PostOffice::ackLockRelease(int box){
+//     boxes[box].ackLock->Release();
+// }
+// void
+// PostOffice::ackProcLockAcquire(int box){
+//     boxes[box].ackProcLock->Acquire();
+// }
+// void
+// PostOffice::ackProcLockRelease(int box){
+//     boxes[box].ackProcLock->Release();
+// }

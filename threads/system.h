@@ -447,21 +447,7 @@ extern unsigned int msgctr;
 extern unsigned int timeoutctr;
 extern Timer *timeoutTimer;    
 extern Thread *timeout;
-class MailMessage {
-public:
-    PacketHeader pktHdr;
-    MailHeader mailHdr;
-    char *mailBuffer;
-    MailMessage(PacketHeader pktHeader, MailHeader mailHeader, char *buffer) {
-        pktHdr = pktHeader;
-        mailHdr = mailHeader;
-        mailBuffer = buffer;
-    };
 
-    ~MailMessage(){
-
-    };
-};
 #endif
 
 #endif // SYSTEM_H

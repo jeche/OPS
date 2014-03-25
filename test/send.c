@@ -11,8 +11,9 @@ main(int argc, char **argv)
 {
   char *args;
   int mailbox = GetMailbox();
-  Recv(args, 6, mailbox);
-  Write(args, 6, ConsoleOutput);
+  printd(mailbox, ConsoleOutput);
+  Recv(args, 88, mailbox);
+  Write(args, 88, ConsoleOutput);
   Halt();
   /* not reached */
 }

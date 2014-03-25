@@ -9,9 +9,9 @@
 int
 main(int argc, char **argv)
 {
-  char* args = "Hello\n";
+  char* args = "Hello world. I would like to make magic things happen because that would be really nice\0";
   int mailbox = GetMailbox();
-  Send(args, 6, mailbox, 0, 0);
+  Send(args, 88, mailbox, 0, 0);
   Exit(0);
   /* not reached */
 }
