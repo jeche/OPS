@@ -35,6 +35,7 @@ MailTest(int farAddr)
 {
     PacketHeader outPktHdr, inPktHdr;
     MailHeader outMailHdr, inMailHdr;
+    AckHeader outAckHdr, inAckHdr;
     char data[20], ack[20];
     char buffer[MaxMailSize];
 
@@ -51,10 +52,10 @@ Delay(10);
     outMailHdr.length = strlen(data) + 1;
 
     // Send the first message
-    postOffice->Send(outPktHdr, outMailHdr, data); 
+    postOffice->Send(outPktHdr, outMailHdr, outAckHdr, data); 
 
     // Wait for the first message from the other machine
-    postOffice->Receive(0, &inPktHdr, &inMailHdr, buffer);
+    postOffice->Receive(0, &inPktHdr, &inMailHdr, &inAckHdr, buffer);
     printf("Got \"%s\" from %d, box %d\n",buffer,inPktHdr.from,inMailHdr.from);
     fflush(stdout);
 
@@ -63,10 +64,10 @@ Delay(10);
     outPktHdr.to = inPktHdr.from;
     outMailHdr.to = inMailHdr.from;
     outMailHdr.length = strlen(ack) + 1;
-    postOffice->Send(outPktHdr, outMailHdr, ack); 
+    postOffice->Send(outPktHdr, outMailHdr, outAckHdr, ack); 
 
     // Wait for the ack from the other machine to the first message we sent.
-    postOffice->Receive(1, &inPktHdr, &inMailHdr, buffer);
+    postOffice->Receive(1, &inPktHdr, &inMailHdr, &inAckHdr, buffer);
     printf("Got \"%s\" from %d, box %d\n",buffer,inPktHdr.from,inMailHdr.from);
     fflush(stdout);
 

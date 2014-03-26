@@ -47,15 +47,19 @@ class MailHeader {
     MailBoxAddress from;	// Mail box to reply to
     unsigned length;		// Bytes of message data (excluding the 
 				// mail header)
+};
+
+class AckHeader {
+  public:
     int totalSize; //if -1 then it is an Ack
     int curPack; 
-    //int messageID;
+    int messageID;
 };
 
 // Maximum "payload" -- real data -- that can included in a single message
 // Excluding the MailHeader and the PacketHeader
 
-#define MaxMailSize 	(MaxPacketSize - sizeof(MailHeader))
+#define MaxMailSize 	(MaxPacketSize - sizeof(MailHeader) - sizeof(AckHeader) - 12)
 
 
 // The following class defines the format of an incoming/outgoing 
@@ -66,12 +70,13 @@ class MailHeader {
 
 class Mail {
   public:
-     Mail(PacketHeader pktH, MailHeader mailH, char *msgData);
+     Mail(PacketHeader pktH, MailHeader mailH, AckHeader ackH, char *msgData);
 				// Initialize a mail message by
 				// concatenating the headers to the data
 
      PacketHeader pktHdr;	// Header appended by Network
      MailHeader mailHdr;	// Header appended by PostOffice
+     AckHeader ackHdr;
      char data[MaxMailSize];	// Payload -- message data
 };
 
@@ -95,9 +100,9 @@ class MailBox {
     MailBox();			// Allocate and initialize mail box
     ~MailBox();			// De-allocate mail box
 
-    void Put(PacketHeader pktHdr, MailHeader mailHdr, char *data);
+    void Put(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data);
    				// Atomically put a message into the mailbox
-    void Get(PacketHeader *pktHdr, MailHeader *mailHdr, char *data); 
+    void Get(PacketHeader *pktHdr, MailHeader *mailHdr, AckHeader *ackHdr, char *data); 
    				// Atomically get a message out of the 
 				// mailbox (and wait if there is no message 
 				// to get!)
@@ -132,13 +137,13 @@ class PostOffice {
 				//   get dropped by the underlying network
     ~PostOffice();		// De-allocate Post Office data
     
-    void Send(PacketHeader pktHdr, MailHeader mailHdr, char *data);
+    void Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data);
     				// Send a message to a mailbox on a remote 
 				// machine.  The fromBox in the MailHeader is 
 				// the return box for ack's.
     
     void Receive(int box, PacketHeader *pktHdr, 
-		MailHeader *mailHdr, char *data);
+		MailHeader *mailHdr, AckHeader *ackHdr, char *data);
 
     void PostalDelivery();	// Wait for incoming messages, 
 				// and then put them in the correct mailbox

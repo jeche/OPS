@@ -29,14 +29,12 @@
 //	"data" -- payload data
 //----------------------------------------------------------------------
 
-Mail::Mail(PacketHeader pktH, MailHeader mailH, char *msgData)
+Mail::Mail(PacketHeader pktH, MailHeader mailH, AckHeader ackH, char *msgData)
 {
-    fprintf(stderr, "whwhwhwhw");
     ASSERT(mailH.length <= MaxMailSize);
-fprintf(stderr, "whwhwhwhw");
     pktHdr = pktH;
     mailHdr = mailH;
-    fprintf(stderr, "whwhwhwhw");
+    ackHdr = ackH;
     bcopy(msgData, data, mailHdr.length);
 }
 
@@ -132,9 +130,9 @@ PrintHeader(PacketHeader pktHdr, MailHeader mailHdr)
 //----------------------------------------------------------------------
 
 void 
-MailBox::Put(PacketHeader pktHdr, MailHeader mailHdr, char *data)
+MailBox::Put(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data)
 { 
-    Mail *mail = new(std::nothrow) Mail(pktHdr, mailHdr, data); 
+    Mail *mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, data); 
     // TODO ******
 
     messages->Append((void *)mail);	// put on the end of the list of 
@@ -155,7 +153,7 @@ MailBox::Put(PacketHeader pktHdr, MailHeader mailHdr, char *data)
 //----------------------------------------------------------------------
 
 void 
-MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, char *data) 
+MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, AckHeader *ackHdr, char *data) 
 { 
     DEBUG('n', "Waiting for mail in mailbox\n");
 
@@ -164,6 +162,7 @@ MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, char *data)
 
     *pktHdr = mail->pktHdr;
     *mailHdr = mail->mailHdr;
+    *ackHdr = mail->ackHdr;
     if (DebugIsEnabled('n')) {
 	printf("Got mail from mailbox: ");
 	PrintHeader(*pktHdr, *mailHdr);
@@ -300,6 +299,7 @@ PostOffice::PostalDelivery()
 {
     PacketHeader pktHdr;
     MailHeader mailHdr;
+    AckHeader ackHdr;
     char *buffer = new(std::nothrow) char[MaxPacketSize];
 
     for (;;) {
@@ -308,6 +308,7 @@ PostOffice::PostalDelivery()
         pktHdr = network->Receive(buffer);
 
         mailHdr = *(MailHeader *)buffer;
+        ackHdr = *(AckHeader *)(buffer + sizeof(MailHeader));  // not sure if this is how you would do this...
         if (DebugIsEnabled('n')) {
     	    printf("Putting mail into mailbox: ");
     	    PrintHeader(pktHdr, mailHdr);
@@ -318,25 +319,25 @@ PostOffice::PostalDelivery()
     	ASSERT(mailHdr.length <= MaxMailSize);
 
     	// put into mailbox
-        if(mailHdr.totalSize!=-1){
+        if(ackHdr.totalSize!=-1){
             /*Need to Ack-Back*/
             int pktTemp = pktHdr.to;
             pktHdr.to = pktHdr.from;
             //pktHdr.from = NULL;
 
-            int tempSize = mailHdr.totalSize; // Need to save this variable in order pull it into a buffer of the right size on the recieve
-            mailHdr.totalSize = -1;
+            int tempSize = ackHdr.totalSize; // Need to save this variable in order pull it into a buffer of the right size on the recieve
+            ackHdr.totalSize = -1;
             int mailTemp = mailHdr.to;
             mailHdr.to = mailHdr.from;
             mailHdr.from = mailTemp;
             //this->Send(pktHdr, mailHdr, buffer + sizeof(MailHeader));
             // Reset the variables for to put in the mailbox
-            mailHdr.totalSize = tempSize; 
+            ackHdr.totalSize = tempSize; 
             mailHdr.from = mailHdr.to;
             mailHdr.to = mailTemp;
             pktHdr.from = pktHdr.to;
             pktHdr.to = pktTemp;
-            boxes[mailTemp].Put(pktHdr, mailHdr, buffer + sizeof(MailHeader));
+            boxes[mailTemp].Put(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
             //This should be done in a separate thread....
 
             /*Signal the appropriate condition variable
@@ -365,7 +366,7 @@ PostOffice::PostalDelivery()
 //----------------------------------------------------------------------
 
 void
-PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
+PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char* data)
 {
     char *buffer = new(std::nothrow) char[MaxPacketSize];	// space to hold concatenated
 						// mailHdr + data
@@ -378,12 +379,12 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
     
     // fill in pktHdr, for the Network layer
     pktHdr.from = netAddr;
-    pktHdr.length = mailHdr.length + sizeof(MailHeader);
+    pktHdr.length = mailHdr.length + sizeof(MailHeader) + sizeof(AckHeader);
 
     // concatenate MailHeader and data
     bcopy((char *) &mailHdr, buffer, sizeof(MailHeader));
-    //fprintf(stderr, "%s\n", data);
-    bcopy(data, buffer + sizeof(MailHeader), mailHdr.length);
+    bcopy((char *) &ackHdr, buffer + sizeof(MailHeader), sizeof(AckHeader));
+    bcopy(data, buffer + sizeof(MailHeader) + sizeof(AckHeader), mailHdr.length);
     sendLock->Acquire();   		// only one message can be sent
 			// to the network at any one time
     //fprintf(stderr, "here %s\n", data);
@@ -413,11 +414,11 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
 
 void
 PostOffice::Receive(int box, PacketHeader *pktHdr, 
-				MailHeader *mailHdr, char* data)
+				MailHeader *mailHdr, AckHeader *ackHdr, char* data)
 {
     ASSERT((box >= 0) && (box < numBoxes));
 
-    boxes[box].Get(pktHdr, mailHdr, data);
+    boxes[box].Get(pktHdr, mailHdr, ackHdr, data);
 
     ASSERT(mailHdr->length <= MaxMailSize);
 }
