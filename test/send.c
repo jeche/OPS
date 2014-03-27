@@ -9,11 +9,13 @@
 int
 main(int argc, char **argv)
 {
+  int i;
   char args[321];
   int mailbox = GetMailbox();
   printd(mailbox, ConsoleOutput);
-  Recv(args, 321, mailbox);
-  Write(args, 321, ConsoleOutput);
+  
+    Recv(args, 321, mailbox);
+    Write(args, 321, ConsoleOutput);
   Halt();
   /* not reached */
 }

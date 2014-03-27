@@ -59,7 +59,7 @@ class AckHeader {
 // Maximum "payload" -- real data -- that can included in a single message
 // Excluding the MailHeader and the PacketHeader
 
-#define MaxMailSize 	(MaxPacketSize - sizeof(MailHeader) - sizeof(AckHeader) - 12)
+#define MaxMailSize 	(MaxPacketSize - sizeof(MailHeader) - sizeof(AckHeader) - 3) // Random three here because it works...
 
 
 // The following class defines the format of an incoming/outgoing 
@@ -80,14 +80,14 @@ class Mail {
      char data[MaxMailSize];	// Payload -- message data
 };
 
-// class MailNode{
-//   public:
-//     MailNode(Mail *mail);
-//     ~MailNode();
-//     void Append(MailNode *mn);
-//     Mail *cur;
-//     MailNode *next;
-// };
+class MailNode{
+  public:
+    MailNode(Mail *mail);
+    ~MailNode();
+    void Append(MailNode *mn);
+    Mail *cur;
+    MailNode *next;
+};
 
 // The following class defines a single mailbox, or temporary storage
 // for messages.   Incoming messages are put by the PostOffice into the 
@@ -106,17 +106,17 @@ class MailBox {
    				// Atomically get a message out of the 
 				// mailbox (and wait if there is no message 
 				// to get!)
-    //void PutAck(PacketHeader pktHdr, MailHeader mailHdr, char *data);
-    //int CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
+    void PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHeader, char *data);
+    int CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
 
 
 
-    //Lock *ackLock, *ackProcLock;
-    //Condition *hasAck, *ackResolved;
+    Lock *ackLock, *ackProcLock;
+    Condition *hasAck, *ackResolved;
     SynchList *unwantedMessages;
   private:
     SynchList *messages;	// A mailbox is just a list of arrived messages
-    //MailNode *acks;
+    MailNode *acks;
 
 };
 
@@ -155,7 +155,7 @@ class PostOffice {
    				// packet has arrived and can be pulled
 				// off of network (i.e., time to call 
 				// PostalDelivery)
-    void PutUnwanted(int box, PacketHeader pktHdr, MailHeader mailHdr, char *data);
+    void PutUnwanted(int box, PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data);
     void RestoreUnwanted(int box);
     int CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
 

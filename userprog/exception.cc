@@ -410,36 +410,38 @@ void outputRamPages(){
 //    be used as the method for a forked off thread so as to 
 //    not hang the system
 //------------------------------
-void sendPacket(PacketHeader pktHeader, MailHeader mailHeader, AckHeader ackHeader, char * message){
+void sendPacket(int mailMessage){
     //fprintf(stderr, "in send packet!!!\n");
-    //Mail* mail = (Mail *) mailMessage;
-    MailHeader mailHdr = mailHeader;//mail->mailHdr;
-    PacketHeader pktHdr = pktHeader;//mail->pktHdr;
-    AckHeader ackHdr = ackHeader;
-    char *data = message;//mail->data;
-    //fprintf(stderr, "%s\n", data);
-    //int msgID = mailHdr.messageID;
+    Mail* mail = (Mail *) mailMessage;
+    MailHeader mailHdr = mail->mailHdr;
+    PacketHeader pktHdr = mail->pktHdr;
+    AckHeader ackHdr = mail->ackHdr;
+    char *data = mail->data;
+    int msgID = ackHdr.messageID;
     int fromBox = mailHdr.from;
     int toBox = mailHdr.to;
     int fromMach = pktHdr.from;
     int toMach = pktHdr.to;
-    int cPack = ackHeader.curPack;
+    int cPack = ackHdr.curPack;
     int systime = stats->totalTicks;
-
-    postOffice->Send(pktHdr, mailHdr, ackHeader, data);
+    fprintf(stderr, "sent pack %d\n", cPack);
+    postOffice->Send(pktHdr, mailHdr, ackHdr, data);
     /*Grab the Lock*/
-    //postOffice->ackLockAcquire(fromBox);
+    postOffice->ackLockAcquire(fromBox);
 
-    //while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
+    while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
       /*Timeout situation goes here, not below hasAckWait*/
-      //if(stats->totalTicks > systime + TIMEOUT){//This will need to be modified to account for how often the timeoutctr is incremented
-       // postOffice->Send(pktHdr, mailHdr, data);
-        //systime = stats->totalTicks;
-      //}
-      //postOffice->hasAckWait(fromBox);
-    //}
-    //postOffice->ackLockRelease(fromBox);
+      if(stats->totalTicks > systime + TIMEOUT){//This will need to be modified to account for how often the timeoutctr is incremented
+        fprintf(stderr, "resend %d\n", cPack);
+        postOffice->Send(pktHdr, mailHdr, ackHdr, data);
+        systime = stats->totalTicks;
+      }
+      postOffice->hasAckWait(fromBox);
+    }
+    postOffice->hasAckSignal(fromBox);
+    postOffice->ackLockRelease(fromBox);
     /*Release the Lock*/
+    fprintf(stderr, "end of function %d\n", ackHdr.curPack);
 }
 
 
@@ -718,7 +720,7 @@ ExceptionHandler(ExceptionType which)
                 forking->P();
                 size = machine->ReadRegister(5);
                 if (size > 0){
-                  stringArg = new(std::nothrow) char[128];
+                  stringArg = new(std::nothrow) char[321];
                   whence = machine->ReadRegister(4);
                   descriptor = machine->ReadRegister(6);
                   DEBUG('a',"String starts at address %d in user VAS\n", whence);
@@ -1173,12 +1175,11 @@ ExceptionHandler(ExceptionType which)
 
                   //fprintf(stderr, "sending!\n");
                   //fprintf(stderr, "%s\n", mailBuffer);
-                  //mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, mailBuffer);
+                  mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
                   //perror("WHY WHY WHY");
-                  //t = new(std::nothrow) Thread("messageSender");
-                  sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
-                  //t->Fork(sendPacket, (int) mail);
-                  //sendPacket(outPktHdr, outMailHdr, mailBuffer);
+                  t = new(std::nothrow) Thread("messageSender");
+                  //sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
+                  t->Fork(sendPacket, (int) mail);
                 }
 
                 if (remain > 0) {
@@ -1194,11 +1195,11 @@ ExceptionHandler(ExceptionType which)
                   outAckHdr.totalSize = size;
                   outAckHdr.curPack = i;
                   outAckHdr.messageID = msgID;
-                  //mail = new (std::nothrow) Mail(outPktHdr, outMailHdr, mailBuffer);
-                  //t = new(std::nothrow) Thread("messageSender");
+                  mail = new (std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
+                  t = new(std::nothrow) Thread("messageSender");
                   //sendPacket((int) mail);
-                  sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
-                  //t->Fork(sendPacket, (int) mail);
+                  //sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
+                  t->Fork(sendPacket, (int) mail);
                   //sendPacket(outPktHdr, outMailHdr, mailBuffer);
                 }
                 if (remain > 0) {
@@ -1227,7 +1228,7 @@ ExceptionHandler(ExceptionType which)
                 }
                 remain = inAckHdr.totalSize % MaxMailSize;
                 if (remain == 0) {
-                  remain = -1; // just changed these from -1 and 0, maybe change back???
+                  remain = -1; 
                 }
                 else {
                   remain = 0;
@@ -1237,7 +1238,7 @@ ExceptionHandler(ExceptionType which)
                   memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
                   
                   postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
-                  while (inPktHdr.from != origMachine ) { //&& inMailHdr.messageID != origID
+                  while (inPktHdr.from != origMachine && inAckHdr.messageID != origID) { 
                     //fprintf(stderr, "multiple messages!!!!\n");
                     //fprintf(stderr, "%d %d %d %d\n", inPktHdr.from, origMachine, inMailHdr.messageID, origID);
                     //postOffice->PutUnwanted(location, inPktHdr, inMailHdr, mailBuffer);

@@ -9,9 +9,11 @@
 int
 main(int argc, char **argv)
 {
-  char* args = "Hello world. I would like to make magic things happen because that would be really nice.  Maybe this actually works, but that would potentially be really weird and I'm not sure how I feel about that.  Because subtracting numbers from things should not fix segmentation faults and I don't really know why that would work.\n";
-  int mailbox = GetMailbox();
-  Send(args, 321, mailbox, 0, 0);
+  int i, mailbox;
+  char* args;
+  args = "Hello world. I would like to make magic things happen because that would be really nice.  Maybe this actually works, but that would potentially be really weird and I'm not sure how I feel about that.  Because subtracting numbers from things should not fix segmentation faults and I don't really know why that would work.\n";
+  mailbox = GetMailbox();
+    Send(args, 321, mailbox, 0, 0);
   Exit(0);
   /* not reached */
 }
