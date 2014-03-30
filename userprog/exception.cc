@@ -424,7 +424,7 @@ void sendPacket(int mailMessage){
     int toMach = pktHdr.to;
     int cPack = ackHdr.curPack;
     int systime = stats->totalTicks;
-    fprintf(stderr, "sent pack %d\n", cPack);
+    fprintf(stderr, "sent pack %d %d\n", msgID, cPack);
     postOffice->Send(pktHdr, mailHdr, ackHdr, data);
     /*Grab the Lock*/
     postOffice->ackLockAcquire(fromBox);
@@ -432,7 +432,7 @@ void sendPacket(int mailMessage){
     while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
       /*Timeout situation goes here, not below hasAckWait*/
       if(stats->totalTicks > systime + TIMEOUT){//This will need to be modified to account for how often the timeoutctr is incremented
-        fprintf(stderr, "resend %d\n", cPack);
+        //fprintf(stderr, "resend %d %d\n", msgID,cPack);
         postOffice->Send(pktHdr, mailHdr, ackHdr, data);
         systime = stats->totalTicks;
       }
@@ -441,7 +441,7 @@ void sendPacket(int mailMessage){
     postOffice->hasAckSignal(fromBox);
     postOffice->ackLockRelease(fromBox);
     /*Release the Lock*/
-    fprintf(stderr, "end of function %d\n", ackHdr.curPack);
+    //fprintf(stderr, "end of function %d %d\n", msgID,cPack);
 }
 
 
@@ -719,8 +719,9 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('j', "Write\n");
                 forking->P();
                 size = machine->ReadRegister(5);
+                fprintf(stderr, "size: %d\n", size);
                 if (size > 0){
-                  stringArg = new(std::nothrow) char[321];
+                  stringArg = new(std::nothrow) char[128];
                   whence = machine->ReadRegister(4);
                   descriptor = machine->ReadRegister(6);
                   DEBUG('a',"String starts at address %d in user VAS\n", whence);

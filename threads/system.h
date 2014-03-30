@@ -94,7 +94,7 @@ extern PostOffice* postOffice;
 #include "bitmap.h"
 //#include "disk.h"
 #include <new>
-#define TIMEOUT 10000
+#define TIMEOUT 100000
 class SynchConsole {
     private:
     Console *console;   

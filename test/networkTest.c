@@ -11,9 +11,11 @@ main(int argc, char **argv)
 {
   int i, mailbox;
   char* args;
-  args = "Hello world. I would like to make magic things happen because that would be really nice.  Maybe this actually works, but that would potentially be really weird and I'm not sure how I feel about that.  Because subtracting numbers from things should not fix segmentation faults and I don't really know why that would work.\n";
+  args = "Hello world. I would like to make magic things happen because that would be really nice.  Maybe this actually works, but that\n";
   mailbox = GetMailbox();
-    Send(args, 321, mailbox, 0, 0);
+  for (i = 0; i < 101; i++) {
+    Send(args, i + 25, mailbox, 0, 0);
+  }
   Exit(0);
   /* not reached */
 }

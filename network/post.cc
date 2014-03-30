@@ -309,6 +309,7 @@ PostOffice::PostalDelivery()
 
         mailHdr = *(MailHeader *)buffer;
         ackHdr = *(AckHeader *)(buffer + sizeof(MailHeader));  // not sure if this is how you would do this...
+        fprintf(stderr, "curpack %d\n", ackHdr.curPack);
         if (DebugIsEnabled('n')) {
     	    printf("Putting mail into mailbox: ");
     	    PrintHeader(pktHdr, mailHdr);
@@ -330,7 +331,7 @@ PostOffice::PostalDelivery()
             int mailTemp = mailHdr.to;
             mailHdr.to = mailHdr.from;
             mailHdr.from = mailTemp;
-            fprintf(stderr, "sent magic message %d\n", ackHdr.curPack);
+            fprintf(stderr, "sent magic message %d %d\n", ackHdr.messageID, ackHdr.curPack);
             this->Send(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(ackHdr));
             // Reset the variables for to put in the mailbox
             ackHdr.totalSize = tempSize; 

@@ -10,12 +10,12 @@ int
 main(int argc, char **argv)
 {
   int i;
-  char args[321];
+  char args[126];
   int mailbox = GetMailbox();
-  printd(mailbox, ConsoleOutput);
-  
-    Recv(args, 321, mailbox);
-    Write(args, 321, ConsoleOutput);
+  for (i = 0; i < 101; i++) {
+    Recv(args, i + 25, mailbox);
+    Write(args, i + 25, ConsoleOutput);
+  }
   Halt();
   /* not reached */
 }

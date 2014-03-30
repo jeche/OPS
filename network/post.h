@@ -59,7 +59,7 @@ class AckHeader {
 // Maximum "payload" -- real data -- that can included in a single message
 // Excluding the MailHeader and the PacketHeader
 
-#define MaxMailSize 	(MaxPacketSize - sizeof(MailHeader) - sizeof(AckHeader) - 3) // Random three here because it works...
+#define MaxMailSize 	(MaxPacketSize - sizeof(struct MailHeader) - sizeof(struct AckHeader) - 3) // Random three here because it works...
 
 
 // The following class defines the format of an incoming/outgoing 
