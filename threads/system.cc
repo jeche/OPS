@@ -35,6 +35,7 @@ Machine *machine;	// user program memory and registers
 
 #ifdef NETWORK
 char diskname[50];
+
 PostOffice *postOffice;
 #endif
 
@@ -242,10 +243,13 @@ Semaphore *forking;
 Semaphore *forkexecing;
 Semaphore *chillBrother;
 Semaphore *execing;
+
 SynchConsole *synchConsole;
 BitMap *bitMap;
 FamilyNode* root;
 unsigned int pid;
+unsigned int timeoutctr;
+unsigned int msgctr;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -268,6 +272,10 @@ Machine *machine;   // user program memory and registers
 #ifdef NETWORK
 char diskname[50];
 PostOffice *postOffice;
+BitMap *mailboxes;
+Semaphore *msgCTR;
+Timer *timeoutTimer;
+Thread *timeout;
 #endif
 
 
@@ -295,6 +303,12 @@ extern void Cleanup();
 static void
 TimerInterruptHandler(int )
 {
+    fprintf(stderr, "Interrupt\n");
+    // if ( stats->totalTicks > timeoutctr + TIMEOUT){
+    //     timeoutctr = stats->totalTicks;
+    //     fprintf(stderr, "Setting Ready to Run\n");
+    //     scheduler->ReadyToRun(timeout);
+    // }
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
 }
@@ -319,10 +333,33 @@ TimerInterruptHandler(int )
 static void
 TimerInterruptHandler2(int )
 {
-    // currentThread->Yield();
+    // fprintf(stderr, "Interrupt\n");
+    // if ( stats->totalTicks > timeoutctr + TIMEOUT){
+    //     timeoutctr = stats->totalTicks;
+    //     // fprintf(stderr, "Setting Ready to Run\n");
+    //     scheduler->ReadyToRun(timeout);
+    // }
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
 }
+
+
+// void
+// TimeoutHandler() {
+//     for(;;) {
+//         IntStatus oldLevel = interrupt->SetLevel(IntOff);
+//         timeout->Sleep();
+//         (void) interrupt->SetLevel(oldLevel);
+//         for (int i = 0; i < 10; i++) {
+//             postOffice->ackLockAcquire(i);
+//             postOffice->hasAckSignal(i);
+//             postOffice->ackLockRelease(i);
+//         }
+//     }
+// }
+
+// static void TimeoutHandlerHelper(int arg)
+// { TimeoutHandler(); }
 
 //----------------------------------------------------------------------
 // Initialize
@@ -406,6 +443,8 @@ Initialize(int argc, char **argv)
     interrupt->Enable();
     CallOnUserAbort(Cleanup);           // if user hits ctl-C
     pid = 0;
+    msgctr = 0;
+    timeoutctr = 0;
     root = new(std::nothrow) FamilyNode(pid, pid, NULL);
 #ifdef USER_PROGRAM
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
@@ -413,7 +452,7 @@ Initialize(int argc, char **argv)
     bitMap = new(std::nothrow) BitMap(NumPhysPages);
     forking = new(std::nothrow) Semaphore("forking", 1);
     RandomInit(100);
-    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
+    
     // bitMap->Print();
 #endif
 
@@ -424,6 +463,7 @@ Initialize(int argc, char **argv)
     chillBrother = new(std::nothrow) Semaphore("chillBrother", 1);
     execing = new(std::nothrow) Semaphore("execing", 1);
     forkexecing = new(std::nothrow) Semaphore("forkexecing", 1);
+    
 
     for(int i = 0; i < NumPhysPages; i++){
         ramPages[i] = new(std::nothrow) ramEntry(-1, Free, -1, NULL);
@@ -443,7 +483,24 @@ Initialize(int argc, char **argv)
 
 #ifdef NETWORK
     postOffice = new(std::nothrow) PostOffice(netname, rely, 10);
+    mailboxes = new(std::nothrow) BitMap(10);
+    msgCTR = new(std::nothrow) Semaphore("msgCTR", 1);
+    msgctr = 0;
+    timeoutctr = 0;
+    //timeout = new(std::nothrow) Thread("timeout");
+    //timeout->Fork(TimeoutHandlerHelper, 0);
+    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
 #endif
+
+#ifndef NETWORK
+    synchDisk = new(std::nothrow) SynchDisk("DISK");
+#else
+    sprintf(diskname,"DISK_%d",netname);
+    synchDisk = new(std::nothrow) SynchDisk(diskname);
+
+#endif
+
+
 }
 
 //----------------------------------------------------------------------
@@ -463,6 +520,8 @@ Cleanup()
 //  }
 #ifdef NETWORK
     delete postOffice;
+    delete msgCTR;
+    delete timeoutTimer;
 #endif
     
 #ifdef USER_PROGRAM

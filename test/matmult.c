@@ -43,7 +43,7 @@ main()
     prints(",", ConsoleOutput); printd(Dim-1, ConsoleOutput);
     prints("] = ", ConsoleOutput); printd(C[Dim-1][Dim-1], ConsoleOutput);
     prints("\n", ConsoleOutput);
-    Halt();		/* and then we're done */
+    Exit(10);		/* and then we're done */
 }
 
 /* Print a null-terminated string "s" on open file

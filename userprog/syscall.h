@@ -172,6 +172,9 @@ void Close(OpenFileId id);
 #define SC_Fork		9
 #define SC_Dup		10
 #define SC_CheckPoint 11
+#define SC_Send 12
+#define SC_Recv 13
+#define SC_GetMailbox 14
 
 #ifndef IN_ASM
 
@@ -261,6 +264,9 @@ void Close(OpenFileId id);
 /* Returns a new OpenFileId referring to the same file as denoted by the argument */
 OpenFileId Dup(OpenFileId id);
 
+int Send(char *msg, int length, int frmMailBox, int machine, int location);
+int Recv(char *msg, int length, int location);
+int GetMailbox();
 
 #endif /* IN_ASM */
 

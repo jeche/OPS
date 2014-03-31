@@ -10,7 +10,6 @@
 
 #include "copyright.h"
 #include "system.h"
-#include <new>
 
 // Dummy functions because C++ can't call member functions indirectly 
 static void NetworkReadPoll(int arg)
@@ -34,7 +33,7 @@ Network::Network(NetworkAddress addr, double reliability,
     writeHandler = writeDone;
     readHandler = readAvail;
     handlerArg = callArg;
-    sendBusy = FALSE;
+    sendBusy = false;
     inHdr.length = 0;
     
     sock = OpenSocket();
@@ -67,7 +66,7 @@ Network::CheckPktAvail()
 	return;
 
     // otherwise, read packet in
-    char *buffer = new(std::nothrow) char[MaxWireSize];
+    char *buffer = new char[MaxWireSize];
     ReadFromSocket(sock, buffer, MaxWireSize);
 
     // divide packet into header and data
@@ -88,7 +87,7 @@ Network::CheckPktAvail()
 void
 Network::SendDone()
 {
-    sendBusy = FALSE;
+    sendBusy = false;
     stats->numPacketsSent++;
     (*writeHandler)(handlerArg);
 }
@@ -105,7 +104,7 @@ Network::Send(PacketHeader hdr, char* data)
 
     sprintf(toName, "SOCKET_%d", (int)hdr.to);
     
-    ASSERT((sendBusy == FALSE) && (hdr.length > 0) 
+    ASSERT((sendBusy == false) && (hdr.length > 0) 
 		&& (hdr.length <= MaxPacketSize) && (hdr.from == ident));
     DEBUG('n', "Sending to addr %d, %d bytes... ", hdr.to, hdr.length);
 
@@ -117,7 +116,7 @@ Network::Send(PacketHeader hdr, char* data)
     }
 
     // concatenate hdr and data into a single buffer, and send it out
-    char *buffer = new(std::nothrow) char[MaxWireSize];
+    char *buffer = new char[MaxWireSize];
     *(PacketHeader *)buffer = hdr;
     bcopy(data, buffer + sizeof(PacketHeader), hdr.length);
     SendToSocket(sock, buffer, MaxWireSize, toName);

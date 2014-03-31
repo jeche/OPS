@@ -94,7 +94,7 @@ extern PostOffice* postOffice;
 #include "bitmap.h"
 //#include "disk.h"
 #include <new>
-
+#define TIMEOUT 100000
 class SynchConsole {
     private:
     Console *console;   
@@ -178,7 +178,6 @@ enum Status { Free,           // No page here yet!
              MarkedForReplacement,    // Found by replacement algorithm to be removed
              CowPage
 };
-
 
 
 class ramEntry{ 
@@ -410,6 +409,7 @@ public:
 };
 
 
+
 #ifdef USER_PROGRAM
 #include "machine.h"
 extern Machine* machine;	// user program memory and registers
@@ -419,6 +419,7 @@ extern Semaphore *forking;
 extern BitMap *bitMap;
 extern FamilyNode* root;
 extern unsigned int pid;
+
 #endif
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
 #include "filesys.h"
@@ -440,6 +441,13 @@ extern Semaphore *forkexecing;
 #ifdef NETWORK
 #include "post.h"
 extern PostOffice* postOffice;
+extern BitMap *mailboxes;
+extern Semaphore *msgCTR;
+extern unsigned int msgctr;
+extern unsigned int timeoutctr;
+extern Timer *timeoutTimer;    
+extern Thread *timeout;
+
 #endif
 
 #endif // SYSTEM_H
