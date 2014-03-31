@@ -424,17 +424,19 @@ void sendPacket(int mailMessage){
     int toMach = pktHdr.to;
     int cPack = ackHdr.curPack;
     int systime = stats->totalTicks;
-    fprintf(stderr, "sent pack %d %d\n", msgID, cPack);
+    // fprintf(stderr, "sent pack %d %d\n", msgID, cPack);
     postOffice->Send(pktHdr, mailHdr, ackHdr, data);
     /*Grab the Lock*/
     postOffice->ackLockAcquire(fromBox);
-
+    fprintf(stderr, "systime %d, stats time %d, %d \n", systime, stats->totalTicks, TIMEOUT);
     while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
       /*Timeout situation goes here, not below hasAckWait*/
-      if(stats->totalTicks > systime + TIMEOUT){//This will need to be modified to account for how often the timeoutctr is incremented
+      if(stats->totalTicks > (systime + 50000)){//This will need to be modified to account for how often the timeoutctr is incremented
         //fprintf(stderr, "resend %d %d\n", msgID,cPack);
+        fprintf(stderr, "current time %d\n", stats->totalTicks);
         postOffice->Send(pktHdr, mailHdr, ackHdr, data);
         systime = stats->totalTicks;
+        
       }
       postOffice->hasAckWait(fromBox);
     }
@@ -719,7 +721,7 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('j', "Write\n");
                 forking->P();
                 size = machine->ReadRegister(5);
-                fprintf(stderr, "size: %d\n", size);
+                // fprintf(stderr, "size: %d\n", size);
                 if (size > 0){
                   stringArg = new(std::nothrow) char[128];
                   whence = machine->ReadRegister(4);
@@ -1147,7 +1149,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Send:
                 mailBuffer = new (std::nothrow) char[MaxMailSize];
-                fprintf(stderr, "%d\n", sizeof(mailBuffer));
+                // fprintf(stderr, "%d\n", sizeof(mailBuffer));
                 memset(mailBuffer, 0, MaxMailSize);
                 whence = machine->ReadRegister(4); // message
                 size = machine->ReadRegister(5);  // length
@@ -1159,7 +1161,7 @@ ExceptionHandler(ExceptionType which)
                 msgctr++;
                 msgID=msgctr;
                 msgCTR->V();
-                fprintf(stderr, "%d\n", MaxMailSize);
+                // fprintf(stderr, "%d\n", MaxMailSize);
                 for(i = 0; i < size/MaxMailSize; i++){
                   for (j = 0; j < MaxMailSize; j++) {
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[j]);
@@ -1232,7 +1234,7 @@ ExceptionHandler(ExceptionType which)
                   remain = 0;
                 }
                 fprintf(stderr, "%d\n", (inAckHdr.totalSize/MaxMailSize));
-                for (j = 0; j < (inAckHdr.totalSize / MaxMailSize) + remain; j++) {
+                for (j = 0; j < (inAckHdr.totalSize / MaxMailSize) + remain; ) {
                   memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
                   
                   postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
@@ -1244,6 +1246,7 @@ ExceptionHandler(ExceptionType which)
                     memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
                     postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
                   }
+                  j = inAckHdr.curPack;
                   for (i = 0; i < inMailHdr.length; i++) {
                     bufferList[i + (inAckHdr.curPack * MaxMailSize)] = mailBuffer[i];
                   }

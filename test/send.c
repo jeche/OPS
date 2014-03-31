@@ -15,8 +15,10 @@ main(int argc, char **argv)
   for (i = 120; i < 126; i++) {
     Recv(args, i, mailbox);
     Write(args, i, ConsoleOutput);
+    Send("Got it!", 7, mailbox, 1, 0);
   }
-  Halt();
+  Write("\nAll done********************************************************\n", 66 ,ConsoleOutput);
+  Exit(0);
   /* not reached */
 }
 

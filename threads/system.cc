@@ -337,6 +337,7 @@ TimerInterruptHandler2(int )
     if ( stats->totalTicks > timeoutctr + TIMEOUT){
         timeoutctr = stats->totalTicks;
         // fprintf(stderr, "Setting Ready to Run\n");
+        // fprintf(stderr, "running time out at %ld\n", timeoutctr);
         scheduler->ReadyToRun(timeout);
     }
     if (interrupt->getStatus() != IdleMode)
@@ -350,6 +351,7 @@ TimeoutHandler() {
         IntStatus oldLevel = interrupt->SetLevel(IntOff);
         timeout->Sleep();
         (void) interrupt->SetLevel(oldLevel);
+        // fprintf(stderr, "Awakening mboxes at time %ld\n", stats->totalTicks);
         for (int i = 0; i < 10; i++) {
             postOffice->ackLockAcquire(i);
             postOffice->hasAckSignal(i);
