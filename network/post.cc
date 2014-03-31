@@ -181,7 +181,7 @@ MailBox::PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char 
     MailNode *mn = new(std::nothrow) MailNode(mail);
     acks->Append(mn);
     ackLock->Acquire();
-    hasAck->Signal(ackLock);
+    hasAck->Broadcast(ackLock);
     ackLock->Release();
 }
 
@@ -397,6 +397,9 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char
 
     delete [] buffer;			// we've sent the message, so
 					// we can delete our buffer
+    ackLockAcquire(mailHdr.from);
+    hasAckSignal(mailHdr.from);
+    ackLockRelease(mailHdr.from);
 }
 
 //----------------------------------------------------------------------
@@ -470,6 +473,7 @@ PostOffice::RestoreUnwanted(int box)
 {
     while (boxes[box].unwantedMessages->Peek() != 0) {
         Mail *mail = (Mail *) boxes[box].unwantedMessages->Remove();
+        fprintf(stderr, "Putting mail back!!!\n");
         boxes[box].Put(mail->pktHdr, mail->mailHdr, mail->ackHdr, mail->data);
     }
 }

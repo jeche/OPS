@@ -438,7 +438,7 @@ void sendPacket(int mailMessage){
       }
       postOffice->hasAckWait(fromBox);
     }
-    postOffice->hasAckSignal(fromBox);
+    //postOffice->hasAckSignal(fromBox);
     postOffice->ackLockRelease(fromBox);
     /*Release the Lock*/
     //fprintf(stderr, "end of function %d %d\n", msgID,cPack);
@@ -1198,10 +1198,7 @@ ExceptionHandler(ExceptionType which)
                   outAckHdr.messageID = msgID;
                   mail = new (std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
                   t = new(std::nothrow) Thread("messageSender");
-                  //sendPacket((int) mail);
-                  //sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
                   t->Fork(sendPacket, (int) mail);
-                  //sendPacket(outPktHdr, outMailHdr, mailBuffer);
                 }
                 if (remain > 0) {
                   fprintf(stderr, "sent %d packets\n", (size/MaxMailSize) + 1);
@@ -1242,7 +1239,8 @@ ExceptionHandler(ExceptionType which)
                   while (inPktHdr.from != origMachine && inAckHdr.messageID != origID) { 
                     //fprintf(stderr, "multiple messages!!!!\n");
                     //fprintf(stderr, "%d %d %d %d\n", inPktHdr.from, origMachine, inMailHdr.messageID, origID);
-                    //postOffice->PutUnwanted(location, inPktHdr, inMailHdr, mailBuffer);
+                    postOffice->PutUnwanted(location, inPktHdr, inMailHdr, inAckHdr, mailBuffer);
+                    //postOffice->RestoreUnwanted(location);
                     memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
                     postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
                   }
@@ -1254,7 +1252,7 @@ ExceptionHandler(ExceptionType which)
                 for (j = 0; j < size; j++) {
                   currentThread->space->WriteMem(whence++, sizeof(char), bufferList[j]);
                 }
-                //postOffice->RestoreUnwanted(location);
+                postOffice->RestoreUnwanted(location);
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));

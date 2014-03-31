@@ -333,33 +333,33 @@ TimerInterruptHandler(int )
 static void
 TimerInterruptHandler2(int )
 {
-    // fprintf(stderr, "Interrupt\n");
-    // if ( stats->totalTicks > timeoutctr + TIMEOUT){
-    //     timeoutctr = stats->totalTicks;
-    //     // fprintf(stderr, "Setting Ready to Run\n");
-    //     scheduler->ReadyToRun(timeout);
-    // }
+    //fprintf(stderr, "Interrupt\n");
+    if ( stats->totalTicks > timeoutctr + TIMEOUT){
+        timeoutctr = stats->totalTicks;
+        // fprintf(stderr, "Setting Ready to Run\n");
+        scheduler->ReadyToRun(timeout);
+    }
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
 }
 
 
-// void
-// TimeoutHandler() {
-//     for(;;) {
-//         IntStatus oldLevel = interrupt->SetLevel(IntOff);
-//         timeout->Sleep();
-//         (void) interrupt->SetLevel(oldLevel);
-//         for (int i = 0; i < 10; i++) {
-//             postOffice->ackLockAcquire(i);
-//             postOffice->hasAckSignal(i);
-//             postOffice->ackLockRelease(i);
-//         }
-//     }
-// }
+void
+TimeoutHandler() {
+    for(;;) {
+        IntStatus oldLevel = interrupt->SetLevel(IntOff);
+        timeout->Sleep();
+        (void) interrupt->SetLevel(oldLevel);
+        for (int i = 0; i < 10; i++) {
+            postOffice->ackLockAcquire(i);
+            postOffice->hasAckSignal(i);
+            postOffice->ackLockRelease(i);
+        }
+    }
+}
 
-// static void TimeoutHandlerHelper(int arg)
-// { TimeoutHandler(); }
+static void TimeoutHandlerHelper(int arg)
+{ TimeoutHandler(); }
 
 //----------------------------------------------------------------------
 // Initialize
@@ -487,8 +487,8 @@ Initialize(int argc, char **argv)
     msgCTR = new(std::nothrow) Semaphore("msgCTR", 1);
     msgctr = 0;
     timeoutctr = 0;
-    //timeout = new(std::nothrow) Thread("timeout");
-    //timeout->Fork(TimeoutHandlerHelper, 0);
+    timeout = new(std::nothrow) Thread("timeout");
+    timeout->Fork(TimeoutHandlerHelper, 0);
     timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
 #endif
 

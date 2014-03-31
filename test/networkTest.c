@@ -13,8 +13,8 @@ main(int argc, char **argv)
   char* args;
   args = "Hello world. I would like to make magic things happen because that would be really nice.  Maybe this actually works, but that\n";
   mailbox = GetMailbox();
-  for (i = 0; i < 101; i++) {
-    Send(args, i + 25, mailbox, 0, 0);
+  for (i = 120; i < 126; i++) {
+    Send(args, i, mailbox, 0, 0);
   }
   Exit(0);
   /* not reached */
