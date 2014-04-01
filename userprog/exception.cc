@@ -434,7 +434,9 @@ void sendPacket(int mailMessage){
       if(stats->totalTicks > (systime + 50000)){//This will need to be modified to account for how often the timeoutctr is incremented
         //fprintf(stderr, "resend %d %d\n", msgID,cPack);
         fprintf(stderr, "current time %d\n", stats->totalTicks);
+        postOffice->ackLockRelease(fromBox);
         postOffice->Send(pktHdr, mailHdr, ackHdr, data);
+        postOffice->ackLockAcquire(fromBox);
         systime = stats->totalTicks;
         
       }
@@ -873,12 +875,6 @@ ExceptionHandler(ExceptionType which)
                 forking->P();
                 oldLevel = interrupt->SetLevel(IntOff);
                 DEBUG('j', "Exec\n");
-                curr = root;
-                DEBUG('j', "Join\n");
-                while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
-                  curr = curr->next;  // Iterate to find the correct semapohre to P on
-                }
-                
                 argcount = 1;
                 stringArg = new(std::nothrow) char[128];
                 whence = machine->ReadRegister(4);
@@ -1192,7 +1188,7 @@ ExceptionHandler(ExceptionType which)
                   }
                   outPktHdr.to = machineNum;   
                   outMailHdr.to = location;
-                  outMailHdr.from = 1; 
+                  outMailHdr.from = myMB; 
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = remain; // had a plus 1 here before?????????
                   outAckHdr.totalSize = size;
@@ -1223,6 +1219,7 @@ ExceptionHandler(ExceptionType which)
                 origMachine = inPktHdr.from;
                 origID = inAckHdr.messageID;
                 bufferList = new (std::nothrow) char[inAckHdr.totalSize];
+                memset(bufferList, '\0', inAckHdr.totalSize);
                 for (i = 0; i < inMailHdr.length; i++) {
                   bufferList[i + (inAckHdr.curPack * MaxMailSize)] = mailBuffer[i];
                 }
@@ -1234,7 +1231,7 @@ ExceptionHandler(ExceptionType which)
                   remain = 0;
                 }
                 fprintf(stderr, "%d\n", (inAckHdr.totalSize/MaxMailSize));
-                for (j = 0; j < (inAckHdr.totalSize / MaxMailSize) + remain; ) {
+                for (j = 0; j < (inAckHdr.totalSize / MaxMailSize) + remain;) {
                   memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
                   
                   postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
@@ -1246,7 +1243,10 @@ ExceptionHandler(ExceptionType which)
                     memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
                     postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
                   }
-                  j = inAckHdr.curPack;
+                  //j = inAckHdr.curPack;
+                  if(bufferList[inAckHdr.curPack * MaxMailSize]=='\0'){
+                    j++;
+                  }
                   for (i = 0; i < inMailHdr.length; i++) {
                     bufferList[i + (inAckHdr.curPack * MaxMailSize)] = mailBuffer[i];
                   }
