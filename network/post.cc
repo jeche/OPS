@@ -42,12 +42,13 @@ Mail::Mail(PacketHeader pktH, MailHeader mailH, AckHeader ackH, char *msgData)
 MailNode::MailNode(Mail *mail){
     cur = mail;
     next = NULL;
+    prev = NULL;
 }
 
 MailNode::~MailNode(){
     delete cur;
-    delete next;
 }
+
 void
 MailNode::Append(MailNode *mn){
     if(cur == NULL){
@@ -58,6 +59,18 @@ MailNode::Append(MailNode *mn){
         else{
             next = mn;
         }
+    }
+}
+void
+MailNode::Remove(MailNode *mn){
+    if( mn->prev != NULL && mn->next == NULL){
+        mn->prev->next = NULL;
+        delete mn;
+    }
+    else if(mn->prev != NULL && mn->next != NULL){
+        mn->prev->next = mn->next;
+        mn->next->prev = mn->prev;
+        delete mn;
     }
 }
 
@@ -203,6 +216,7 @@ MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox,
         if((temp->ackHdr.messageID == msgID) && (temp->mailHdr.from == toBox) &&
             (temp->mailHdr.to == fromBox) && 
             (temp->pktHdr.from == toMach) && (temp->ackHdr.curPack == cPack)){ // Removed this (temp->pktHdr.to == fromMach) &&
+            curMN->Remove(curMN);
             return 1;
         }
         curMN = curMN->next;

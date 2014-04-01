@@ -85,8 +85,10 @@ class MailNode{
     MailNode(Mail *mail);
     ~MailNode();
     void Append(MailNode *mn);
+    void Remove(MailNode *mn);
     Mail *cur;
     MailNode *next;
+    MailNode *prev;
 };
 
 // The following class defines a single mailbox, or temporary storage
