@@ -32,7 +32,7 @@ class SynchList {
     void *Remove();		// remove the first item from the front of
 				// the list, waiting if the list is empty
 				// apply function to every item in the list
-    int Peek();
+    void *Peek();
     void Mapcar(VoidFunctionPtr func);
 
   private:

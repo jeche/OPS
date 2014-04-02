@@ -12,9 +12,8 @@ main(int argc, char **argv)
   int i;
   char args[126];
   int mailbox = GetMailbox();
-  for (i = 120; i < 126; i++) {
-    Recv(args, i, mailbox);
-    Write(args, i, ConsoleOutput);
+  for (i = 0; i < 900; i++) {
+    Recv(args, 10, mailbox);
     Send("Got it!", 7, mailbox, 1, 0);
   }
   Write("\nAll done********************************************************\n", 66 ,ConsoleOutput);

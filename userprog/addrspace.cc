@@ -976,7 +976,7 @@ void AddrSpace::pageFaultHandler2(int badVAddr) {
       ASSERT(false);  
     }
   }
-  delete stringArg;
+  delete[] stringArg;
 }
 
 //----------------------------------------------------------------------

@@ -81,17 +81,20 @@ SynchList::Remove()
     return item;
 }
 
-int
+void *
 SynchList::Peek()
 {
+    void *item;
     lock->Acquire();
     if (list->IsEmpty()) {
         lock->Release();
-        return 0;
+        return NULL;
     }
     else {
+        item = list->Remove();
+        ASSERT(item != NULL);
         lock->Release();
-        return 1;
+        return item;
     }
 }
 //----------------------------------------------------------------------

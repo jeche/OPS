@@ -59,7 +59,7 @@ class AckHeader {
 // Maximum "payload" -- real data -- that can included in a single message
 // Excluding the MailHeader and the PacketHeader
 
-#define MaxMailSize 	(MaxPacketSize - sizeof(struct MailHeader) - sizeof(struct AckHeader) - 3) // Random three here because it works...
+#define MaxMailSize 	(MaxPacketSize - sizeof(struct MailHeader) - sizeof(struct AckHeader)) // Random three here because it works...
 
 
 // The following class defines the format of an incoming/outgoing 
@@ -113,8 +113,8 @@ class MailBox {
 
 
 
-    Lock *ackLock, *ackProcLock;
-    Condition *hasAck, *ackResolved;
+    Lock *ackLock;
+    Condition *hasAck;
     SynchList *unwantedMessages;
   private:
     SynchList *messages;	// A mailbox is just a list of arrived messages
@@ -138,7 +138,7 @@ class PostOffice {
 				//   "reliability" is how many packets
 				//   get dropped by the underlying network
     ~PostOffice();		// De-allocate Post Office data
-    
+    void postalDeliverySend(int mailMessage);
     void Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data);
     				// Send a message to a mailbox on a remote 
 				// machine.  The fromBox in the MailHeader is 
@@ -165,15 +165,8 @@ class PostOffice {
     void hasAckWait(int box);
     void hasAckSignal(int box);
 
-    void ackResolvedWait(int box);
-
-    void ackResolvedSignal(int box);
-
     void ackLockAcquire(int box);
     void ackLockRelease(int box);
-    void ackProcLockAcquire(int box);
-    void ackProcLockRelease(int box);
-
 
   private:
     Network *network;		// Physical network connection
@@ -183,6 +176,7 @@ class PostOffice {
     Semaphore *messageAvailable;// V'ed when message has arrived from network
     Semaphore *messageSent;	// V'ed when next message can be sent to network
     Lock *sendLock;		// Only one outgoing message at a time
+    Thread *t;
 };
 
 

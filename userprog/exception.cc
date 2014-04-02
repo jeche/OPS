@@ -404,6 +404,12 @@ void outputRamPages(){
     fprintf(stderr, "\n");
   }
 }
+
+class pwrap{
+public:
+  Mail* m;
+  Thread* t;
+};
 //------------------------------
 // sendPacket
 //    Handles the sending and waiting for an 'ack'. Should 
@@ -412,7 +418,8 @@ void outputRamPages(){
 //------------------------------
 void sendPacket(int mailMessage){
     //fprintf(stderr, "in send packet!!!\n");
-    Mail* mail = (Mail *) mailMessage;
+    pwrap* p = (pwrap *) mailMessage;
+    Mail* mail = (Mail *) p->m;
     MailHeader mailHdr = mail->mailHdr;
     PacketHeader pktHdr = mail->pktHdr;
     AckHeader ackHdr = mail->ackHdr;
@@ -444,6 +451,7 @@ void sendPacket(int mailMessage){
     }
     //postOffice->hasAckSignal(fromBox);
     postOffice->ackLockRelease(fromBox);
+    p->t->Finish();
     /*Release the Lock*/
     //fprintf(stderr, "end of function %d %d\n", msgID,cPack);
 }
@@ -482,6 +490,7 @@ ExceptionHandler(ExceptionType which)
     Status stuffing;
     AddrSpace *oldSpacer;
 
+    pwrap* rap;
     int pos=0, divisor=1000000000, d, zflag=1;
     char c;
     char buffer[20];
@@ -1178,6 +1187,7 @@ ExceptionHandler(ExceptionType which)
                   //perror("WHY WHY WHY");
                   t = new(std::nothrow) Thread("messageSender");
                   //sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
+
                   t->Fork(sendPacket, (int) mail);
                 }
 
@@ -1196,7 +1206,10 @@ ExceptionHandler(ExceptionType which)
                   outAckHdr.messageID = msgID;
                   mail = new (std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
                   t = new(std::nothrow) Thread("messageSender");
-                  t->Fork(sendPacket, (int) mail);
+                  rap = new(std::nothrow) pwrap();
+                  rap->t = t;
+                  rap->m = mail;
+                  t->Fork(sendPacket, (int) rap);
                 }
                 if (remain > 0) {
                   fprintf(stderr, "sent %d packets\n", (size/MaxMailSize) + 1);
@@ -1204,7 +1217,7 @@ ExceptionHandler(ExceptionType which)
                 else {
                   fprintf(stderr, "sent %d packets\n", (size/MaxMailSize));
                 }
-                
+                delete [] mailBuffer;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -1256,6 +1269,7 @@ ExceptionHandler(ExceptionType which)
                   currentThread->space->WriteMem(whence++, sizeof(char), bufferList[j]);
                 }
                 postOffice->RestoreUnwanted(location);
+                delete [] mailBuffer;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
