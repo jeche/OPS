@@ -341,7 +341,7 @@ TimerInterruptHandler2(int )
         timeoutctr = stats->totalTicks;
         // fprintf(stderr, "Setting Ready to Run\n");
         // fprintf(stderr, "running time out at %ld\n", timeoutctr);
-        scheduler->ReadyToRun(timeout);
+        // scheduler->ReadyToRun(timeout);
     }
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();

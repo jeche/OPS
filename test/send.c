@@ -10,10 +10,10 @@ int
 main(int argc, char **argv)
 {
   int i;
-  char args[126];
+  char args[128];
   int mailbox = GetMailbox();
-  for (i = 0; i < 900; i++) {
-    Recv(args, 10, mailbox);
+  for (i = 0; i < 3; i++) {
+    Recv(args, 128, mailbox);
     printd(i, ConsoleOutput);
     Write("\n", 1, ConsoleOutput);
     /*Send("Got it!", 7, mailbox, 1, 0);*/

@@ -29,6 +29,8 @@
 //	"data" -- payload data
 //----------------------------------------------------------------------
 
+
+
 Mail::Mail(PacketHeader pktH, MailHeader mailH, AckHeader ackH, char *msgData)
 {
     ASSERT(mailH.length <= MaxMailSize);
@@ -43,20 +45,32 @@ MailNode::MailNode(Mail *mail){
     cur = mail;
     next = NULL;
     prev = NULL;
+    curPack = mail->ackHdr.curPack;
 }
 
 MailNode::~MailNode(){
     delete cur;
 }
 
+
+MessageNode::MessageNode(Mail *mail){
+    head = new (std::nothrow) MailNode(mail);
+    msgID = mail->ackHdr.messageID;
+    fromMachine = mail->mailHdr.from;
+    fromBox = mail->pktHdr.from;
+    totalSize = mail->ackHdr.totalSize;
+    finished = 0;
+}
+
 void
 MailNode::Append(MailNode *mn){
     if(cur == NULL){
         cur = mn->cur;
+        curPack = mn->curPack;
         return;
     }
     MailNode* temp = this;
-    while (temp->next != NULL) {
+    while (temp->next != NULL && temp->next->curPack < mn->curPack) {
         temp = temp->next;
     }
     temp->next = mn;
@@ -95,13 +109,35 @@ MailNode::Remove(MailNode *mn){
 //----------------------------------------------------------------------
 
 
+static void SendHelper(int arg)
+{ MailBox* po = (MailBox *) arg; po->SendPackets(); }
+
+static void CompleteHelper(int arg)
+{ MailBox* po = (MailBox *) arg; po->CompleteMessages(); }
+
+static void AckHelper(int arg)
+{ MailBox* po = (MailBox *) arg; po->ackAttackSend(); }
+
 MailBox::MailBox()
 { 
     messages = new(std::nothrow) SynchList();
     unwantedMessages = new(std::nothrow) SynchList(); 
-    acks = new(std::nothrow) MailNode(NULL);
+    
+    curmsg = NULL; // new(std::nothrow) MailNode(NULL);
     ackLock = new(std::nothrow) Lock("ackLock");
     hasAck = new(std::nothrow) Condition("hasAck");
+    
+    // notRightAck = new(std::nothrow) SynchList();
+    ackList = new(std::nothrow) SynchList();
+    retAck = new(std::nothrow) SynchList();
+    sendList = new(std::nothrow) SynchList();
+    completeList = new(std::nothrow) SynchList();
+    sendThread = new (std::nothrow) Thread("mailbox sender");
+    sendThread->Fork(SendHelper,(int) this);
+    recvThread = new(std::nothrow) Thread("mailbox receiver");
+    recvThread->Fork(CompleteHelper, (int)this);
+    ackAttack = new (std::nothrow) Thread("mailbox ackattack sender");
+    ackAttack->Fork(AckHelper, (int)this);
 }
 
 //----------------------------------------------------------------------
@@ -111,14 +147,116 @@ MailBox::MailBox()
 //	Just delete the mailbox, and throw away all the queued messages 
 //	in the mailbox.
 //----------------------------------------------------------------------
+void MailBox::ackAttackSend(){
+    MailHeader mailHdr;
+    PacketHeader pktHdr;
+    AckHeader ackHdr;
+    Mail* m;
+    for(;;){
+        m = (Mail *)retAck->Remove();
+        mailHdr = m->mailHdr;
+        pktHdr = m->pktHdr;
+        ackHdr = m->ackHdr;
+        char *data = m->data;
+        ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
+    }
+}
+
+
+void MailBox::SendPackets(){
+    MailHeader mailHdr;
+    PacketHeader pktHdr;
+    AckHeader ackHdr;
+    Mail* m;
+    for(;;){
+        // Remove a message ready for sendings
+        m = (Mail *)sendList->Remove();
+        // Prep to send it to the post office
+        mailHdr = m->mailHdr;
+        pktHdr = m->pktHdr;
+        ackHdr = m->ackHdr;
+        char *data = m->data;
+        // GO LITTLE MESSAGE!  BE FREE!
+        ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
+        // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
+        m = (Mail *) ackList->Remove(); // timeout will add an invalid ack packet
+        while(m->ackHdr.totalSize != -1){
+            // keep trying to send same packet until it goes through
+            ASSERT(false);
+            ASSERT(ackHdr.curPack == m->ackHdr.curPack);
+            // sending Ack
+            ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
+            m = (Mail *) ackList->Remove();
+        }
+    }
+}
+
+
+void MailBox::CompleteMessages(){
+    Mail *m;
+    MessageNode* temp;
+    int tempInt;
+    MailHeader mailHdr;
+    PacketHeader pktHdr;
+    AckHeader ackHdr;
+    Mail *ackMail;
+    char* data;
+    for(;;){
+        m = (Mail *) messages->Remove();
+        // flip information for Ack sending
+
+        mailHdr = m->mailHdr;
+        pktHdr = m->pktHdr;
+        ackHdr = m->ackHdr;
+
+
+
+        if(curmsg == NULL){
+            curmsg = new (std::nothrow) MessageNode(m);
+            curmsg->finished = curmsg->finished + 1;
+        } else if(m->pktHdr.from == curmsg->fromMachine && m->mailHdr.from == curmsg->fromBox && m->ackHdr.messageID){
+            // if this is the correct message to attach to attach
+            MailNode * mn = new (std::nothrow) MailNode(m);
+            curmsg->head->Append(mn);
+            // add one to the amount we have finished receiving
+            curmsg->finished = curmsg->finished + 1;
+            if(curmsg->finished == curmsg->totalSize){
+                completeList->Append((void*) curmsg);
+                curmsg = (MessageNode*) unwantedMessages->Peek();
+            }
+        } else{
+            unwantedMessages->Append((void *) curmsg);
+            curmsg = (MessageNode*) unwantedMessages->Remove();
+        }
+        if(curmsg->finished == curmsg->totalSize){
+            completeList->Append((void*) curmsg);
+            curmsg = (MessageNode*) unwantedMessages->Peek();
+        }
+        tempInt = pktHdr.to;
+        pktHdr.to = pktHdr.from;
+        pktHdr.from = tempInt;
+        tempInt = mailHdr.to;
+        mailHdr.to = mailHdr.from;
+        mailHdr.from = tempInt;
+        ackHdr.totalSize = -1;
+        data = m->data;
+        // set up ackMail
+        ackMail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, data);
+        retAck->Append((void*)ackMail);
+    }
+}
+
+
 
 MailBox::~MailBox()
 { 
     delete messages; 
     delete unwantedMessages;
-    delete acks;
+    // delete acks;
     delete ackLock;
     delete hasAck;
+
+
 }
 
 //----------------------------------------------------------------------
@@ -154,11 +292,11 @@ void
 MailBox::Put(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data)
 { 
     Mail *mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, data); 
-    // TODO ******
+    // // TODO ******
 
     messages->Append((void *)mail);	// put on the end of the list of 
-					// arrived messages, and wake up 
-					// any waiters
+				// 	// arrived messages, and wake up 
+				// 	// any waiters
 }
 
 //----------------------------------------------------------------------
@@ -199,40 +337,39 @@ MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, AckHeader *ackHdr, char 
 void
 MailBox::PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data){
     Mail *mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, data); 
-    MailNode *mn = new(std::nothrow) MailNode(mail);
-    
-
-    ackLock->Acquire();
-    acks->Append(mn);
-    hasAck->Broadcast(ackLock);
-    ackLock->Release();
+    // MailNode *mn = new(std::nothrow) MailNode(mail);
+    ackList->Append((void*) mail);
+    // ackLock->Acquire();
+    // acks->Append(mn);
+    // hasAck->Broadcast(ackLock);
+    // ackLock->Release();
 }
 
 int
 
 MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
-    Mail *temp;
-    MailNode *curMN;
-    curMN  = acks;
+    // Mail *temp;
+    // MailNode *curMN;
+    // curMN  = acks;
 
-    ASSERT(ackLock->isHeldByCurrentThread());
+    // ASSERT(ackLock->isHeldByCurrentThread());
 
-    if(curMN->cur == NULL){
-        curMN = NULL;
-    }
+    // if(curMN->cur == NULL){
+    //     curMN = NULL;
+    // }
 
-    while(curMN != NULL){//This could be an issue if the size of acks changes duing th eiteratio thorugh, it shouldn't though
-        temp = curMN->cur;
-        if((temp->ackHdr.messageID == msgID) && (temp->mailHdr.from == toBox) &&
-            (temp->mailHdr.to == fromBox) && 
-            (temp->pktHdr.from == toMach) && (temp->ackHdr.curPack == cPack)){ // Removed this (temp->pktHdr.to == fromMach) &&
-            ackCount++;
-            curMN->Remove(curMN);
-            return 1;
-        }
-        curMN = curMN->next;
-    }
-    return 0;
+    // while(curMN != NULL){//This could be an issue if the size of acks changes duing th eiteratio thorugh, it shouldn't though
+    //     temp = curMN->cur;
+    //     if((temp->ackHdr.messageID == msgID) && (temp->mailHdr.from == toBox) &&
+    //         (temp->mailHdr.to == fromBox) && 
+    //         (temp->pktHdr.from == toMach) && (temp->ackHdr.curPack == cPack)){ // Removed this (temp->pktHdr.to == fromMach) &&
+    //         // ackCount++;
+    //         curMN->Remove(curMN);
+    //         return 1;
+    //     }
+    //     curMN = curMN->next;
+    // }
+    // return 0;
 
 }
 
@@ -293,6 +430,9 @@ PostOffice::PostOffice(NetworkAddress addr, double reliability, int nBoxes)
     netAddr = addr; 
     numBoxes = nBoxes;
     boxes = new(std::nothrow) MailBox[nBoxes];
+    for(int i = 0; i < nBoxes; i++){
+        boxes[i].post = (void *) this;
+    }
 
 // Third, initialize the network; tell it which interrupt handlers to call
     network = new(std::nothrow) Network(addr, reliability, ReadAvail, WriteDone, (int) this);
@@ -373,50 +513,51 @@ PostOffice::PostalDelivery()
     	ASSERT(mailHdr.length <= MaxMailSize);
 
     	// put into mailbox
-        if(ackHdr.totalSize!=-1){
-            /*Need to Ack-Back*/
-            fuckingWithShit.totalSize = ackHdr.totalSize;
-            fuckingWithShit.curPack = ackHdr.curPack;
-            fuckingWithShit.messageID = ackHdr.messageID;
+        if(ackHdr.totalSize != -1){
+            // /*Need to Ack-Back*/
+            // fuckingWithShit.totalSize = ackHdr.totalSize;
+            // fuckingWithShit.curPack = ackHdr.curPack;
+            // fuckingWithShit.messageID = ackHdr.messageID;
 
-            fucking.to = mailHdr.to;
-            fucking.from = mailHdr.from;
-            fucking.length = mailHdr.length;
+            // fucking.to = mailHdr.to;
+            // fucking.from = mailHdr.from;
+            // fucking.length = mailHdr.length;
 
-            pucking.to =pktHdr.to;
-            pucking.from =pktHdr.from;
-            pucking.length =pktHdr.length;
+            // pucking.to =pktHdr.to;
+            // pucking.from =pktHdr.from;
+            // pucking.length =pktHdr.length;
 
-            int pktTemp = pktHdr.to;
-            pktHdr.to = pktHdr.from;
-            //pktHdr.from = NULL;
+            // int pktTemp = pktHdr.to;
+            // pktHdr.to = pktHdr.from;
+            // //pktHdr.from = NULL;
 
-            int tempSize = ackHdr.totalSize; // Need to save this variable in order pull it into a buffer of the right size on the recieve
-            ackHdr.totalSize = -1;
+            // int tempSize = ackHdr.totalSize; // Need to save this variable in order pull it into a buffer of the right size on the recieve
+            // ackHdr.totalSize = -1;
             int mailTemp = mailHdr.to;
-            mailHdr.to = mailHdr.from;
-            mailHdr.from = mailTemp;
-            Mail *mail2 = new (std::nothrow) Mail(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
-            Thread *t2 = new(std::nothrow) Thread("ackSender");
-            postwrap* p = new(std::nothrow) postwrap();
-            p->p = this;
-            p->m = mail2;
-            p->t3 = t2;
-            t2->Fork(doStuff, (int) p);
-            // fprintf(stderr, "sent magic message %d %d\n", ackHdr.messageID, ackHdr.curPack);
-            //this->Send(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
-            // Reset the variables for to put in the mailbox
-            // mailHdr.from = mailHdr.to;
-            // mailHdr.to = mailTemp;
-            // pktHdr.from = pktHdr.to;
-            // pktHdr.to = pktTemp;
-            boxes[mailTemp].Put(pucking, fucking, fuckingWithShit, buffer + sizeof(MailHeader) + sizeof(AckHeader));
-            //This should be done in a separate thread....
+            // mailHdr.to = mailHdr.from;
+            // mailHdr.from = mailTemp;
+            // Mail *mail2 = new (std::nothrow) Mail(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+            // Thread *t2 = new(std::nothrow) Thread("ackSender");
+            // postwrap* p = new(std::nothrow) postwrap();
+            // p->p = this;
+            // p->m = mail2;
+            // p->t3 = t2;
+            // t2->Fork(doStuff, (int) p);
+            // // fprintf(stderr, "sent magic message %d %d\n", ackHdr.messageID, ackHdr.curPack);
+            // //this->Send(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+            // // Reset the variables for to put in the mailbox
+            // // mailHdr.from = mailHdr.to;
+            // // mailHdr.to = mailTemp;
+            // // pktHdr.from = pktHdr.to;
+            // // pktHdr.to = pktTemp;
+            boxes[mailTemp].Put(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+            // //This should be done in a separate thread....
 
-            /*Signal the appropriate condition variable
-                **REMEMBER YOU HAVE TO GRAB THE APPROPRIATE LOCK THEN YOU CAN USE THE COND VAR
-            */
-            //boxes[box].hasAck->Signal(boxes[box].ackLock);
+            // /*Signal the appropriate condition variable
+            //     **REMEMBER YOU HAVE TO GRAB THE APPROPRIATE LOCK THEN YOU CAN USE THE COND VAR
+            // */
+            // //boxes[box].hasAck->Signal(boxes[box].ackLock);
+
         }
         else{
             boxes[mailHdr.to].PutAck(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
@@ -479,6 +620,10 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char
     // ackLockRelease(mailHdr.from);
 }
 
+
+void PostOffice::SendThings(Mail *mail, int box){
+    boxes[box].sendList->Append((void *)mail);
+}
 //----------------------------------------------------------------------
 // PostOffice::Send
 // 	Retrieve a message from a specific box if one is available, 
@@ -493,6 +638,10 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char
 //	"mailHdr" -- address to put: source, destination mailbox ID's
 //	"data" -- address to put: payload message data
 //----------------------------------------------------------------------
+MessageNode* PostOffice::GrabMessage(int box){
+    return (MessageNode*) boxes[box].completeList->Remove();
+}
+
 
 void
 PostOffice::Receive(int box, PacketHeader *pktHdr, 
@@ -500,7 +649,8 @@ PostOffice::Receive(int box, PacketHeader *pktHdr,
 {
     ASSERT((box >= 0) && (box < numBoxes));
 
-    boxes[box].Get(pktHdr, mailHdr, ackHdr, data);
+    // boxes[box].Get(pktHdr, mailHdr, ackHdr, data);
+
 
     ASSERT(mailHdr->length <= MaxMailSize);
 }

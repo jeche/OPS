@@ -10,7 +10,7 @@ int
 main(int argc, char **argv)
 {
   int i, mailbox;
-  char argl[126];
+  char argl[128];
   /*char* args;*/
   char args[128];
   /*args = "Hello world. I would like to make magic things happen because that would be really nice.  Maybe this actually works, but that\n";*/
@@ -21,8 +21,8 @@ main(int argc, char **argv)
     args[i+3] = 'k';
   }
   mailbox = GetMailbox();
-  for (i = 0; i < 900; i++) {
-    Send(args, 10, mailbox, 0, 0);
+  for (i = 0; i < 3; i++) {
+    Send(args, 128, mailbox, 0, 0);
     /*Recv(argl, 10, mailbox);*/
 /*    Write(argl, 7, ConsoleOutput);
     Write(" ", 1, ConsoleOutput);

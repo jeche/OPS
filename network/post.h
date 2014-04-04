@@ -59,7 +59,7 @@ class AckHeader {
 // Maximum "payload" -- real data -- that can included in a single message
 // Excluding the MailHeader and the PacketHeader
 
-#define MaxMailSize 	(MaxPacketSize - sizeof(struct MailHeader) - sizeof(struct AckHeader)) // Random three here because it works...
+#define MaxMailSize 	(MaxPacketSize - sizeof(struct MailHeader) - sizeof(struct AckHeader) - 3) // Random three here because it works...
 
 
 // The following class defines the format of an incoming/outgoing 
@@ -89,7 +89,20 @@ class MailNode{
     Mail *cur;
     MailNode *next;
     MailNode *prev;
+    int curPack;
 };
+
+class MessageNode{
+  public:
+    MessageNode(Mail *mail);
+    MailNode* head;
+    int msgID;
+    int fromBox;
+    int fromMachine;
+    int totalSize;
+    int finished;
+};
+
 
 // The following class defines a single mailbox, or temporary storage
 // for messages.   Incoming messages are put by the PostOffice into the 
@@ -111,14 +124,29 @@ class MailBox {
     void PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHeader, char *data);
     int CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
 
-
+    void SendPackets();
+    void CompleteMessages();
+    void ackAttackSend();
 
     Lock *ackLock;
     Condition *hasAck;
     SynchList *unwantedMessages;
+
+
+
+
+    SynchList *ackList;
+    SynchList *sendList;
+    SynchList *completeList;
+    SynchList *retAck;
+    Thread *sendThread;
+    Thread *recvThread;
+    Thread *ackAttack;
+    void* post;
   private:
     SynchList *messages;	// A mailbox is just a list of arrived messages
-    MailNode *acks;
+    MessageNode *curmsg;
+
 
 };
 
@@ -147,6 +175,8 @@ class PostOffice {
     void Receive(int box, PacketHeader *pktHdr, 
 		MailHeader *mailHdr, AckHeader *ackHdr, char *data);
 
+    void SendThings(Mail* m, int box);
+
     void PostalDelivery();	// Wait for incoming messages, 
 				// and then put them in the correct mailbox
 
@@ -167,6 +197,7 @@ class PostOffice {
 
     void ackLockAcquire(int box);
     void ackLockRelease(int box);
+    MessageNode* GrabMessage(int box);
 
   private:
     int ackCount;
