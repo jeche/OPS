@@ -85,6 +85,7 @@ Initialize(int argc, char **argv)
     char *debugArgs = (char *)""; 
     bool randomYield = false;
 
+
 #ifdef USER_PROGRAM
     bool debugUserProg = false;	// single step user program
 #endif
@@ -248,7 +249,7 @@ SynchConsole *synchConsole;
 BitMap *bitMap;
 FamilyNode* root;
 unsigned int pid;
-unsigned int timeoutctr;
+unsigned long long timeoutctr;
 unsigned int msgctr;
 
 #ifdef FILESYS_NEEDED
@@ -334,6 +335,8 @@ static void
 TimerInterruptHandler2(int )
 {
     //fprintf(stderr, "Interrupt\n");
+    unsigned long long TIMEOUT;
+    TIMEOUT =  100000000;
     if ( stats->totalTicks > timeoutctr + TIMEOUT){
         timeoutctr = stats->totalTicks;
         // fprintf(stderr, "Setting Ready to Run\n");
@@ -376,6 +379,7 @@ static void TimeoutHandlerHelper(int arg)
 void
 Initialize(int argc, char **argv)
 {
+    // TIMEOUT =  10000000;
     int argCount;
     char *debugArgs = (char *)""; 
     bool randomYield = false;

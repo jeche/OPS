@@ -53,6 +53,7 @@ void
 MailNode::Append(MailNode *mn){
     if(cur == NULL){
         cur = mn->cur;
+        return;
     }
     MailNode* temp = this;
     while (temp->next != NULL) {
@@ -225,6 +226,7 @@ MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox,
         if((temp->ackHdr.messageID == msgID) && (temp->mailHdr.from == toBox) &&
             (temp->mailHdr.to == fromBox) && 
             (temp->pktHdr.from == toMach) && (temp->ackHdr.curPack == cPack)){ // Removed this (temp->pktHdr.to == fromMach) &&
+            ackCount++;
             curMN->Remove(curMN);
             return 1;
         }
@@ -286,7 +288,7 @@ PostOffice::PostOffice(NetworkAddress addr, double reliability, int nBoxes)
     messageAvailable = new(std::nothrow) Semaphore("message available", 0);
     messageSent = new(std::nothrow) Semaphore("message sent", 0);
     sendLock = new(std::nothrow) Lock("message send lock");
-
+    ackCount = 0;
 // Second, initialize the mailboxes
     netAddr = addr; 
     numBoxes = nBoxes;
@@ -328,6 +330,7 @@ PostOffice::postalDeliverySend(int p) {
     PacketHeader pktHdr = mail->pktHdr;
     AckHeader ackHdr = mail->ackHdr;
     char *data = mail->data;
+    ackHdr.totalSize = -1;
     pp->p->Send(pktHdr, mailHdr, ackHdr, data);
     t->Finish();
 }
@@ -346,6 +349,9 @@ PostOffice::PostalDelivery()
     PacketHeader pktHdr;
     MailHeader mailHdr;
     AckHeader ackHdr;
+    AckHeader fuckingWithShit;
+    MailHeader fucking;
+    PacketHeader pucking;
     char *buffer = new(std::nothrow) char[MaxPacketSize];
 
     for (;;) {
@@ -354,7 +360,7 @@ PostOffice::PostalDelivery()
         pktHdr = network->Receive(buffer);
 
         mailHdr = *(MailHeader *)buffer;
-        ackHdr = *(AckHeader *)(buffer + sizeof(MailHeader));  // not sure if this is how you would do this...
+        ackHdr = *(AckHeader *)(buffer + sizeof(struct MailHeader));  // not sure if this is how you would do this...
         
         if (DebugIsEnabled('n')) {
     	    printf("Putting mail into mailbox: ");
@@ -369,6 +375,18 @@ PostOffice::PostalDelivery()
     	// put into mailbox
         if(ackHdr.totalSize!=-1){
             /*Need to Ack-Back*/
+            fuckingWithShit.totalSize = ackHdr.totalSize;
+            fuckingWithShit.curPack = ackHdr.curPack;
+            fuckingWithShit.messageID = ackHdr.messageID;
+
+            fucking.to = mailHdr.to;
+            fucking.from = mailHdr.from;
+            fucking.length = mailHdr.length;
+
+            pucking.to =pktHdr.to;
+            pucking.from =pktHdr.from;
+            pucking.length =pktHdr.length;
+
             int pktTemp = pktHdr.to;
             pktHdr.to = pktHdr.from;
             //pktHdr.from = NULL;
@@ -388,12 +406,11 @@ PostOffice::PostalDelivery()
             // fprintf(stderr, "sent magic message %d %d\n", ackHdr.messageID, ackHdr.curPack);
             //this->Send(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
             // Reset the variables for to put in the mailbox
-            ackHdr.totalSize = tempSize; 
-            mailHdr.from = mailHdr.to;
-            mailHdr.to = mailTemp;
-            pktHdr.from = pktHdr.to;
-            pktHdr.to = pktTemp;
-            boxes[mailTemp].Put(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+            // mailHdr.from = mailHdr.to;
+            // mailHdr.to = mailTemp;
+            // pktHdr.from = pktHdr.to;
+            // pktHdr.to = pktTemp;
+            boxes[mailTemp].Put(pucking, fucking, fuckingWithShit, buffer + sizeof(MailHeader) + sizeof(AckHeader));
             //This should be done in a separate thread....
 
             /*Signal the appropriate condition variable
@@ -426,6 +443,8 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char
 {
     char *buffer = new(std::nothrow) char[MaxPacketSize];	// space to hold concatenated
 						// mailHdr + data
+    pktHdr.from = netAddr;
+    pktHdr.length = mailHdr.length + sizeof(MailHeader) + sizeof(AckHeader);
     if (DebugIsEnabled('n')) {
 	printf("Post send: ");
 	PrintHeader(pktHdr, mailHdr);
@@ -434,8 +453,7 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char
     ASSERT(0 <= mailHdr.to && mailHdr.to < numBoxes);
     
     // fill in pktHdr, for the Network layer
-    pktHdr.from = netAddr;
-    pktHdr.length = mailHdr.length + sizeof(MailHeader) + sizeof(AckHeader);
+
     if (DebugIsEnabled('n')) {
     printf("Packet Length: %d", pktHdr.length);
     
@@ -447,8 +465,10 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char
     sendLock->Acquire();   		// only one message can be sent
 			// to the network at any one time
     //fprintf(stderr, "here %s\n", data);
+
     network->Send(pktHdr, buffer);
-    messageSent->P();			// wait for interrupt to tell us
+    messageSent->P();   
+    		// wait for interrupt to tell us
 					// ok to send the next message
     sendLock->Release();
 

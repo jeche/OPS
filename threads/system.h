@@ -94,7 +94,7 @@ extern PostOffice* postOffice;
 #include "bitmap.h"
 //#include "disk.h"
 #include <new>
-#define TIMEOUT 10000000
+// extern unsigned long long TIMEOUT;
 class SynchConsole {
     private:
     Console *console;   
@@ -438,13 +438,14 @@ extern Semaphore *forkexecing;
 #ifdef FILESYS 
 #endif
 
+
 #ifdef NETWORK
 #include "post.h"
 extern PostOffice* postOffice;
 extern BitMap *mailboxes;
 extern Semaphore *msgCTR;
 extern unsigned int msgctr;
-extern unsigned int timeoutctr;
+extern unsigned long long timeoutctr;
 extern Timer *timeoutTimer;    
 extern Thread *timeout;
 

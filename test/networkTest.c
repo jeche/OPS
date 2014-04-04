@@ -23,7 +23,7 @@ main(int argc, char **argv)
   mailbox = GetMailbox();
   for (i = 0; i < 900; i++) {
     Send(args, 10, mailbox, 0, 0);
-    Recv(argl, 10, mailbox);
+    /*Recv(argl, 10, mailbox);*/
 /*    Write(argl, 7, ConsoleOutput);
     Write(" ", 1, ConsoleOutput);
     printd(i, ConsoleOutput);
