@@ -335,10 +335,11 @@ static void
 TimerInterruptHandler2(int )
 {
     //fprintf(stderr, "Interrupt\n");
-    unsigned long long TIMEOUT;
-    TIMEOUT =  100000000;
-    if ( stats->totalTicks > timeoutctr + TIMEOUT){
+    unsigned long long TIMEOUTKILLER;
+    TIMEOUTKILLER =  100000000;
+    if ( stats->totalTicks > timeoutctr + TIMEOUTKILLER){
         timeoutctr = stats->totalTicks;
+        postOffice->KaputTime();
         // fprintf(stderr, "Setting Ready to Run\n");
         // fprintf(stderr, "running time out at %ld\n", timeoutctr);
         // scheduler->ReadyToRun(timeout);

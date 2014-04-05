@@ -25,6 +25,7 @@ main()
   int turnB;
   int turnC;
 
+  int l;
   int count;
   int  i;
   int rowlength;
@@ -67,6 +68,7 @@ main()
   }
 
   mMbox = GetMailbox();
+  l = mMbox;
 
   /* Open a specific mailBox here */
   mPid = 0;

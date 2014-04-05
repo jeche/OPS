@@ -56,8 +56,8 @@ MailNode::~MailNode(){
 MessageNode::MessageNode(Mail *mail){
     head = new (std::nothrow) MailNode(mail);
     msgID = mail->ackHdr.messageID;
-    fromMachine = mail->mailHdr.from;
-    fromBox = mail->pktHdr.from;
+    fromMachine = mail->pktHdr.from;
+    fromBox = mail->mailHdr.from;
     totalSize = mail->ackHdr.totalSize;
     finished = 0;
 }
@@ -70,7 +70,7 @@ MailNode::Append(MailNode *mn){
         return;
     }
     MailNode* temp = this;
-    while (temp->next != NULL && temp->next->curPack < mn->curPack) {
+    while (temp->next != NULL) {
         temp = temp->next;
     }
     temp->next = mn;
@@ -87,6 +87,28 @@ MailNode::Append(MailNode *mn){
     //     }
     // }
 }
+
+int MailNode::Find(MailNode *mn){
+    if(cur == NULL || mn == NULL || mn->cur == NULL){
+        return 0;
+    }
+    MailNode *temp = this;
+    if(mn->curPack == temp->curPack){
+        return 1;
+    }
+    while(temp->next != NULL){
+        if(mn->curPack == temp->curPack){
+            return 1;
+        }
+        temp = temp->next;
+    }
+    
+    if(mn->curPack == temp->curPack){
+        return 1;
+    }    
+    return 0;
+}
+
 void
 MailNode::Remove(MailNode *mn){
     if( mn->prev != NULL && mn->next == NULL){
@@ -180,11 +202,12 @@ void MailBox::SendPackets(){
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
         m = (Mail *) ackList->Remove(); // timeout will add an invalid ack packet
-        while(m->ackHdr.totalSize != -1){
+        while(m->mailHdr.length == -1){
             // keep trying to send same packet until it goes through
-            ASSERT(false);
-            ASSERT(ackHdr.curPack == m->ackHdr.curPack);
+            // ASSERT(false);
+            // ASSERT(ackHdr.curPack == m->ackHdr.curPack);
             // sending Ack
+            ASSERT(mailHdr.length != -1 && ackHdr.totalSize != -1);
             ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
             m = (Mail *) ackList->Remove();
         }
@@ -208,15 +231,18 @@ void MailBox::CompleteMessages(){
         mailHdr = m->mailHdr;
         pktHdr = m->pktHdr;
         ackHdr = m->ackHdr;
+        MailNode * mn = new (std::nothrow) MailNode(m);
 
 
 
         if(curmsg == NULL){
             curmsg = new (std::nothrow) MessageNode(m);
             curmsg->finished = curmsg->finished + 1;
-        } else if(m->pktHdr.from == curmsg->fromMachine && m->mailHdr.from == curmsg->fromBox && m->ackHdr.messageID){
+        }
+        else if(m->pktHdr.from == curmsg->fromMachine && m->mailHdr.from == curmsg->fromBox && m->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 0){
             // if this is the correct message to attach to attach
-            MailNode * mn = new (std::nothrow) MailNode(m);
+            // MailNode * mn = new (std::nothrow) MailNode(m);
+            mn = new (std::nothrow) MailNode(m);
             curmsg->head->Append(mn);
             // add one to the amount we have finished receiving
             curmsg->finished = curmsg->finished + 1;
@@ -228,7 +254,7 @@ void MailBox::CompleteMessages(){
             unwantedMessages->Append((void *) curmsg);
             curmsg = (MessageNode*) unwantedMessages->Remove();
         }
-        if(curmsg->finished == curmsg->totalSize){
+        if(curmsg != NULL && curmsg->finished == curmsg->totalSize){
             completeList->Append((void*) curmsg);
             curmsg = (MessageNode*) unwantedMessages->Peek();
         }
@@ -730,3 +756,29 @@ PostOffice::ackLockRelease(int box){
     boxes[box].ackLock->Release();
 }
 
+void PostOffice::KaputTime(){
+    PacketHeader pktHdr;
+    AckHeader ackHdr;
+    MailHeader mailHdr;
+    Mail * mail;
+    ackHdr.totalSize = -1;
+    ackHdr.curPack = -1;
+    ackHdr.messageID = -1;
+
+    mailHdr.to = -1;
+    mailHdr.from = -1;
+    mailHdr.length = 1;
+
+    pktHdr.to = -1;
+    pktHdr.from = -1;
+    pktHdr.length = -1;
+
+    mailHdr.length = 1;
+    char data;
+    for(int i = 0; i < numBoxes; i++){
+            mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, &data); 
+        mail->mailHdr.length = -1;
+        boxes[i].ackList->Append((void *) mail);
+    }
+
+}

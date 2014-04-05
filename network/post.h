@@ -86,6 +86,7 @@ class MailNode{
     ~MailNode();
     void Append(MailNode *mn);
     void Remove(MailNode *mn);
+    int Find(MailNode *mn);
     Mail *cur;
     MailNode *next;
     MailNode *prev;
@@ -197,6 +198,7 @@ class PostOffice {
 
     void ackLockAcquire(int box);
     void ackLockRelease(int box);
+    void KaputTime();
     MessageNode* GrabMessage(int box);
 
   private:
