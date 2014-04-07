@@ -12,7 +12,7 @@ main(int argc, char **argv)
   int i;
   char args[128];
   int mailbox = GetMailbox();
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < 1000000000; i++) {
     Recv(args, 128, mailbox);
     printd(i, ConsoleOutput);
     Write("\n", 1, ConsoleOutput);

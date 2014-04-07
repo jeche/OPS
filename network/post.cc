@@ -154,6 +154,7 @@ MailBox::MailBox()
     retAck = new(std::nothrow) SynchList();
     sendList = new(std::nothrow) SynchList();
     completeList = new(std::nothrow) SynchList();
+    tempMessages = new(std::nothrow) SynchList();
     sendThread = new (std::nothrow) Thread("mailbox sender");
     sendThread->Fork(SendHelper,(int) this);
     recvThread = new(std::nothrow) Thread("mailbox receiver");
@@ -217,8 +218,10 @@ void MailBox::SendPackets(){
 
 void MailBox::CompleteMessages(){
     Mail *m;
-    MessageNode* temp;
+    //MessageNode* temp;
+    Mail *temp;
     int tempInt;
+    int msgComplete;
     MailHeader mailHdr;
     PacketHeader pktHdr;
     AckHeader ackHdr;
@@ -248,15 +251,79 @@ void MailBox::CompleteMessages(){
             curmsg->finished = curmsg->finished + 1;
             if(curmsg->finished == curmsg->totalSize){
                 completeList->Append((void*) curmsg);
-                curmsg = (MessageNode*) unwantedMessages->Peek();
+                msgComplete = 1;
+                while (msgComplete == 1) {
+                    msgComplete = 0;
+                    temp = (Mail*) unwantedMessages->Peek();
+                    while (temp != NULL) {
+                        if (temp->ackHdr.curPack == 0) {
+                            curmsg = new (std::nothrow) MessageNode(temp);
+                            curmsg->finished = curmsg->finished + 1;
+                        }
+                        else {
+                            ASSERT(curmsg != NULL);
+                            mn = new (std::nothrow) MailNode(temp);
+                            if (temp->pktHdr.from == curmsg->fromMachine && temp->mailHdr.from == curmsg->fromBox && temp->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 0) {
+                                curmsg->head->Append(mn);
+                                // add one to the amount we have finished receiving
+                                curmsg->finished = curmsg->finished + 1;
+                            }
+                            else if (curmsg->head->Find(mn) != 1) {
+                                tempMessages->Append((void *) temp);
+                            }
+                        }
+                        if(curmsg != NULL && curmsg->finished == curmsg->totalSize){
+                            completeList->Append((void*) curmsg);
+                            msgComplete = 1;
+                        }
+                        temp = (Mail*) unwantedMessages->Peek();
+                    }
+                    temp = (Mail*) tempMessages->Peek();
+                    while (temp != NULL) {
+                        unwantedMessages->Append((void *) temp);
+                        temp = (Mail*) tempMessages->Peek();
+                    }
+                }
+                //curmsg = (MessageNode*) unwantedMessages->Peek();
             }
-        } else{
-            unwantedMessages->Append((void *) curmsg);
-            curmsg = (MessageNode*) unwantedMessages->Remove();
+        } else if (curmsg->head->Find(mn) != 1) {
+            unwantedMessages->Append((void *) m);
         }
         if(curmsg != NULL && curmsg->finished == curmsg->totalSize){
             completeList->Append((void*) curmsg);
-            curmsg = (MessageNode*) unwantedMessages->Peek();
+            msgComplete = 1;
+            while (msgComplete == 1) {
+                msgComplete = 0;
+                temp = (Mail*) unwantedMessages->Peek();
+                while (temp != NULL) {
+                    if (temp->ackHdr.curPack == 0) {
+                        curmsg = new (std::nothrow) MessageNode(temp);
+                        curmsg->finished = curmsg->finished + 1;
+                    }
+                    else {
+                        ASSERT(curmsg != NULL);
+                        mn = new (std::nothrow) MailNode(temp);
+                        if (temp->pktHdr.from == curmsg->fromMachine && temp->mailHdr.from == curmsg->fromBox && temp->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 0) {
+                            curmsg->head->Append(mn);
+                            // add one to the amount we have finished receiving
+                            curmsg->finished = curmsg->finished + 1;
+                        }
+                        else if (curmsg->head->Find(mn) != 1) {
+                            tempMessages->Append((void *) temp);
+                        }
+                    }
+                    if(curmsg != NULL && curmsg->finished == curmsg->totalSize){
+                        completeList->Append((void*) curmsg);
+                        msgComplete = 1;
+                    }
+                    temp = (Mail*) unwantedMessages->Peek();
+                }
+                temp = (Mail*) tempMessages->Peek();
+                while (temp != NULL) {
+                    unwantedMessages->Append((void *) temp);
+                    temp = (Mail*) tempMessages->Peek();
+                }
+            }
         }
         tempInt = pktHdr.to;
         pktHdr.to = pktHdr.from;
@@ -773,7 +840,6 @@ void PostOffice::KaputTime(){
     pktHdr.from = -1;
     pktHdr.length = -1;
 
-    mailHdr.length = 1;
     char data;
     for(int i = 0; i < numBoxes; i++){
             mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, &data); 

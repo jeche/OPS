@@ -21,7 +21,7 @@ main(int argc, char **argv)
     args[i+3] = 'k';
   }
   mailbox = GetMailbox();
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < 1000000000; i++) {
     Send(args, 128, mailbox, 0, 0);
     /*Recv(argl, 10, mailbox);*/
 /*    Write(argl, 7, ConsoleOutput);

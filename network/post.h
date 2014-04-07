@@ -140,6 +140,7 @@ class MailBox {
     SynchList *sendList;
     SynchList *completeList;
     SynchList *retAck;
+    SynchList *tempMessages;
     Thread *sendThread;
     Thread *recvThread;
     Thread *ackAttack;
