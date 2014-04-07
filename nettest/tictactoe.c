@@ -16,10 +16,12 @@ main(int argc, char **argv)
   char c;
   char m;
   char t;
-  char buf[11];
+  char playerChar;
+  char otherChar;
   char recvInfo[5];
   char sends[4];
-  char board[61];
+  char board[10];
+  char buf[11];
   char * ans;
   i = 0;
   l = GetMailbox();
@@ -41,13 +43,14 @@ main(int argc, char **argv)
   recvInfo[4] = '\0';
   prints(recvInfo, ConsoleOutput);
   Send(recvInfo, 5, l, 0, i);
-  Recv(board, 61, l);
-  m = board[0];
-  if(board[0] != 'o'){
-    printBoard(board);
-  }
+  Recv(board, 10, l);
+  m = board[9];
+  printBoard(board);
   if(m == '1'){
-    while(board[0] != 's'){
+    playerChar = 'X';
+    otherChar = 'O';
+    board[9] = 'e';
+    while(board[9] == 'e'){
       prints("Row of move: ", ConsoleOutput);
       prints("\n", ConsoleOutput);
       Read(&c, 1, ConsoleInput);
@@ -62,49 +65,66 @@ main(int argc, char **argv)
       sends[2] = c;
       prints("\n", ConsoleOutput);
       Send(sends, 4, l, 0, i);
-      Recv(board, 61, l);
-      if(board[0] == 'e'){
+      Recv(board, 10, l);
+      if(board[9] == 'e'){
         prints("Retry, invalid move\n", ConsoleOutput);
       }
     }
-    if(board[0] != 'o'){
+    if(board[9] != 'o'){
       printBoard(board);
     }
-  }
-  while(board[0] != 'o'){
-    prints("Waiting for opponent make a move\n", ConsoleOutput);
-    Recv(board, 61, l);
-    if(board[0] != 'o'){
-      printBoard(board);
-    }
-    while(board[0] != 's' && board[0] != 'o'){
-      prints("Row of move: ", ConsoleOutput);
-      prints("\n", ConsoleOutput);
-      Read(&c, 1, ConsoleInput);
-      Read(&t, 1, ConsoleInput);
-    
-      sends[0] = m;
-      sends[1] = c;
 
-      prints("Col of move: ", ConsoleOutput);
-      Read(&c, 1, ConsoleInput);
-      Read(&t, 1, ConsoleInput);
-      sends[2] = c;    
-      prints("\n", ConsoleOutput);
-      Send(sends, 4, l, 0, i);
-      Recv(board, 61, l);
-      if(board[0] == 'e'){
-        prints("Retry, invalid move\n", ConsoleOutput);
-      }
-    }    
-    if(board[0] != 'o'){
-      printBoard(board);
-    }
+  } else{
+    playerChar = 'O';
+    otherChar = 'X';
+    board[9] = 's';
   }
-  if(board[1] == m){
+  while(board[9] == 's'){
+    prints("Waiting for opponent ", ConsoleOutput);
+    Write(otherChar, 1, ConsoleOutput);
+    prints("to make a move current board is:\n", ConsoleOutput);
+    printBoard(board);
+    /* get the updated board */
+    Recv(board, 10, l);
+    if(board[9] != 's'){
+      break;
+    }else{
+      prints("Make a move player ", ConsoleOutput);
+      Write(playerChar, 1, ConsoleOutput);
+      prints(":\n",ConsoleOutput);
+      printBoard(board);
+      board[9] = 'e';
+      while(board[9] =='e'){
+        prints("Row of move: ", ConsoleOutput);
+        prints("\n", ConsoleOutput);
+        Read(&c, 1, ConsoleInput);
+        Read(&t, 1, ConsoleInput);
+    
+        sends[0] = m;
+        sends[1] = c;
+
+        prints("Col of move: ", ConsoleOutput);
+        Read(&c, 1, ConsoleInput);
+        Read(&t, 1, ConsoleInput);
+        sends[2] = c;    
+        prints("\n", ConsoleOutput);
+        Send(sends, 4, l, 0, i);
+        Recv(board, 10, l);
+        if(board[9] == 'e'){
+          prints("Retry, invalid move\n", ConsoleOutput);
+        }
+      }
+    }
+
+    prints("After you moved (player ", ConsoleOutput);
+    prints(playerChar, ConsoleOutput);
+    prints(") the board looks like:\n", ConsoleOutput);
+    printBoard(board);
+  }
+  if(board[9] == 'w'){
     prints("You won!\n", ConsoleOutput);
   }
-  else if(board[1] == 'D'){
+  else if(board[9] == 'd'){
     prints("Draw.\n", ConsoleOutput);
   }
   else{
@@ -138,11 +158,35 @@ main(int argc, char **argv)
 printBoard(b)
 char* b;
 {
-  int polo = 0;
+  int polo;
+  int timeT;
   char bobo[60];
+  polo =  0;
+  timeT = 0;
+  bobo[0] = ' ';
+  /*prints(b, ConsoleOutput);
   for(polo; polo < 60; polo++){
-    bobo[polo] = b[polo + 1];
-  }
+    if((polo / 12 % 2) == 0){
+      bobo[polo] = ' ';
+      bobo[polo + 1] = b[timeT];
+      bobo[polo + 2] = ' ';
+      bobo[polo + 3] = '|';
+      timeT = timeT + 1;
+      if(timeT > 9){
+        Halt();
+      }
+    } else{
+      bobo[polo] = '-';
+      bobo[polo + 1] = '-';
+      bobo[polo + 2] = '-';
+      bobo[polo + 3] = '-';
+    }
+    polo = polo + 3;
+    if(polo % 11 == 1){
+      bobo[polo] = '\n';
+    }
+
+  }*/
   prints(bobo, ConsoleOutput);
 }
 

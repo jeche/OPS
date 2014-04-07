@@ -24,6 +24,7 @@ main()
   int turnM;
   int turnB;
   int turnC;
+  int turns;
 
   int l;
   int count;
@@ -32,7 +33,8 @@ main()
 
   int row;
   int col;
-  char board[61];
+  char turnChar;
+  char board[10];
   char buf[11];
   char recvInfo[5];
   char split1[3];
@@ -44,9 +46,14 @@ main()
   count = 0;
   i = 1;
   rowlength = 12;
-  board[0] = 's';
+  
+  for( i = 0 ; i < 10; i++){
+    board[i] = ' ';
+  }
+  board[9] = 's';
+  i = 1;
   /* Generates a blank tic tac toe board for sending back and forth */
-  while(count < 5){
+  /*while(count < 5){
     count = count + 1;
     if(count % 2 == 1){
       for(i; i < count * rowlength; i++){
@@ -65,7 +72,7 @@ main()
       }
     }
     board[i - 1] = '\n';
-  }
+  }*/
 
   mMbox = GetMailbox();
   l = mMbox;
@@ -110,261 +117,64 @@ main()
   prints("\n", ConsoleOutput);
   turnM = p1;
   turnB = mp1;
-  board[0] = '1';
-  Send(board, 61, l, p1, mp1);
-  board[0] = '2';
-  Send(board, 61, l, p2, mp2);
-  board[0] = 's';
-  while(board[0] != 'o'){
+  board[9] = '1';
+  Send(board, 10, l, p1, mp1);
+  board[9] = '2';
+  Send(board, 10, l, p2, mp2);
+  board[9] = 's';
+  turnChar = 'X';
+  turns = 0;
+  /* Game logic code */
+  while(board[9] == 's'){
     /* Receive move from tictactoe process */
     Recv(recvInfo, 4, mMbox);
-    i = 0;
-    if(turnM == p1 && recvInfo[0] == '1'){
+    c = recvInfo[1];
+    row = atoi(&c);
+    c = recvInfo[2];
+    col = atoi(&c);
+    turns = turns + 1;
+    while(checkValidMove(row, col, turnChar, board) != 1){
+      /* keep attempting to recv until you get the correct move */
+      board[9] = 'e';
+      Send(board, 10, l, turnM, turnB);
+      Recv(recvInfo, 4, mMbox);
       c = recvInfo[1];
       row = atoi(&c);
       c = recvInfo[2];
       col = atoi(&c);
-
-      if(board[1+ row*24 +col * 4] == ' '){
-        board[0] = 's';
-        board[1+ row*24 +col * 4] = 'X';
-        /* check for winning move */
-        if(getIndex(row - 1, col - 1) < 61 && getIndex(row - 1, col - 1) >= 0 && board[getIndex(row - 1, col - 1)] == 'X'){
-          if(getIndex(row + 1, col + 1) < 61 && getIndex(row + 1, col + 1) >= 0 && board[getIndex(row + 1, col + 1)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row - 2, col - 2) < 61 && getIndex(row - 2, col - 2) >= 0 && board[getIndex(row - 2, col - 2)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }
-        if(getIndex(row + 1, col + 1) < 61 && getIndex(row + 1, col + 1) >= 0 && board[getIndex(row + 1, col + 1)] == 'X'){
-          if(getIndex(row - 1, col - 1) < 61 && getIndex(row - 1, col - 1) >= 0 && board[getIndex(row - 1, col - 1)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row + 2, col + 2) < 61 && getIndex(row + 2, col + 2) >= 0 && board[getIndex(row + 2, col + 2)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }
-        if (getIndex(row + 1, col - 1) < 61 && getIndex(row + 1, col - 1) >= 0 && board[getIndex(row + 1, col - 1)] == 'X'){
-          if(getIndex(row + 2, col - 2) < 61 && getIndex(row + 2, col - 2) >= 0 && board[getIndex(row + 2, col - 2)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row - 1, col + 1) < 61 && getIndex(row - 1, col + 1) >= 0 && board[getIndex(row - 1, col + 1)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }
-        if (getIndex(row - 1, col + 1) < 61 && getIndex(row - 1, col + 1) >= 0 && board[getIndex(row - 1, col + 1)] == 'X'){
-          if(getIndex(row - 2, col + 2) < 61 && getIndex(row - 2, col + 2) >= 0 && board[getIndex(row - 2, col + 2)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row + 1, col - 1) < 61 && getIndex(row + 1, col - 1) >= 0 && board[getIndex(row + 1, col - 1)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }
-        if (getIndex(row, col + 1) < 61 && getIndex(row, col + 1) >= 0 && board[getIndex(row, col + 1)] == 'X'){
-          if(getIndex(row, col + 2) < 61 && getIndex(row, col + 2) >= 0 && board[getIndex(row, col + 2)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row, col - 1) < 61 && getIndex(row, col - 1) >= 0 && board[getIndex(row, col - 1)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }
-        if (getIndex(row, col  - 1 ) < 61 && getIndex(row, col  - 1 ) >= 0 && board[getIndex(row, col  - 1 )] == 'X'){
-          if(getIndex(row, col - 2) < 61 && getIndex(row, col - 2) >= 0 && board[getIndex(row, col - 2)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row, col  + 1) < 61 && getIndex(row, col  + 1) >= 0 && board[getIndex(row, col  + 1)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }
-        if (getIndex(row - 1, col ) < 61 && getIndex(row - 1, col) >= 0 && board[getIndex(row - 1, col)] == 'X'){
-          if(getIndex(row - 2, col) < 61 && getIndex(row - 2, col) >= 0 && board[getIndex(row - 2, col)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row + 1, col ) < 61 && getIndex(row + 1, col) >= 0 && board[getIndex(row + 1, col)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }        
-        if (getIndex(row + 1, col ) < 61 && getIndex(row + 1, col) >= 0 && board[getIndex(row + 1, col)] == 'X'){
-          if(getIndex(row + 2, col) < 61 && getIndex(row + 2, col) >= 0 && board[getIndex(row + 2, col)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-          else if(getIndex(row - 1, col ) < 61 && getIndex(row - 1, col) >= 0 && board[getIndex(row - 1, col)] == 'X'){
-            board[0] = 'o';
-            board[1] = '1';
-          }
-        }
-        if(turnC >= 8 && board[0] != 'o'){
-          board[0] = 'o';
-          board[1] = 'D';
-        }  
-        turnM = p2;
-        turnB = mp2;
-        turnC = turnC + 1;
-        Send(board, 61, l, p1, mp1);
-        if(board[0] != 'o'){
-          board[0] = 'u';
-        }
-        Send(board, 61, l, p2, mp2);
-        if(board[0] != 'o'){
-          board[0] = 's';
-        }
-      }
-      else{
-        prints("\n", ConsoleOutput);
-        prints("TURNM:  ", ConsoleOutput);
-        printd(row, ConsoleOutput);
-        prints("\n", ConsoleOutput);
-        prints("FIRST  IFFFFERRR   RECVINFO:  ", ConsoleOutput);
-        prints(recvInfo, ConsoleOutput);
-        prints("\n Board SPot:  ", ConsoleOutput);
-        c = board[1+ row*24 +col * 4];
-        printd(col, ConsoleOutput);
-        prints(c, ConsoleOutput);
-        prints("\n", ConsoleOutput);
-        prints("\n", ConsoleOutput);
-        prints("\n", ConsoleOutput);
-        prints(board, ConsoleOutput);
-
-        board[0] = 'e';
-        Send(board, 61, l, p1, mp1);
-      }  
     }
-    else if (turnM == p2 && recvInfo[0] == '2'){
-      c = recvInfo[1];
-      row = atoi(&c);
-      c = recvInfo[2];
-      col = atoi(&c);
-
-      if(board[1+ row*24 +col * 4] == ' '){
-        board[0] = 's';
-        board[1+ row*24 +col * 4] = 'O';
-        /* check for winning move */
-        if(getIndex(row - 1, col - 1) < 61 && getIndex(row - 1, col - 1) >= 0 && board[getIndex(row - 1, col - 1)] == 'O'){
-          if(getIndex(row + 1, col + 1) < 61 && getIndex(row + 1, col + 1) >= 0 && board[getIndex(row + 1, col + 1)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row - 2, col - 2) < 61 && getIndex(row - 2, col - 2) >= 0 && board[getIndex(row - 2, col - 2)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }
-        if(getIndex(row + 1, col + 1) < 61 && getIndex(row + 1, col + 1) >= 0 && board[getIndex(row + 1, col + 1)] == 'O'){
-          if(getIndex(row - 1, col - 1) < 61 && getIndex(row - 1, col - 1) >= 0 && board[getIndex(row - 1, col - 1)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row + 2, col + 2) < 61 && getIndex(row + 2, col + 2) >= 0 && board[getIndex(row + 2, col + 2)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }
-        if (getIndex(row + 1, col - 1) < 61 && getIndex(row + 1, col - 1) >= 0 && board[getIndex(row + 1, col - 1)] == 'O'){
-          if(getIndex(row + 2, col - 2) < 61 && getIndex(row + 2, col - 2) >= 0 && board[getIndex(row + 2, col - 2)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row - 1, col + 1) < 61 && getIndex(row - 1, col + 1) >= 0 && board[getIndex(row - 1, col + 1)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }
-        if (getIndex(row - 1, col + 1) < 61 && getIndex(row - 1, col + 1) >= 0 && board[getIndex(row - 1, col + 1)] == 'O'){
-          if(getIndex(row - 2, col + 2) < 61 && getIndex(row - 2, col + 2) >= 0 && board[getIndex(row - 2, col + 2)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row + 1, col - 1) < 61 && getIndex(row + 1, col - 1) >= 0 && board[getIndex(row + 1, col - 1)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }
-        if (getIndex(row, col + 1) < 61 && getIndex(row, col + 1) >= 0 && board[getIndex(row, col + 1)] == 'O'){
-          if(getIndex(row, col + 2) < 61 && getIndex(row, col + 2) >= 0 && board[getIndex(row, col + 2)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row, col - 1) < 61 && getIndex(row, col - 1) >= 0 && board[getIndex(row, col - 1)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }
-        if (getIndex(row, col  - 1 ) < 61 && getIndex(row, col  - 1 ) >= 0 && board[getIndex(row, col  - 1 )] == 'O'){
-          if(getIndex(row, col - 2) < 61 && getIndex(row, col - 2) >= 0 && board[getIndex(row, col - 2)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row, col  + 1) < 61 && getIndex(row, col  + 1) >= 0 && board[getIndex(row, col  + 1)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }
-        if (getIndex(row - 1, col ) < 61 && getIndex(row - 1, col) >= 0 && board[getIndex(row - 1, col)] == 'O'){
-          if(getIndex(row - 2, col) < 61 && getIndex(row - 2, col) >= 0 && board[getIndex(row - 2, col)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row + 1, col ) < 61 && getIndex(row + 1, col) >= 0 && board[getIndex(row + 1, col)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }        
-        if (getIndex(row + 1, col ) < 61 && getIndex(row + 1, col) >= 0 && board[getIndex(row + 1, col)] == 'O'){
-          if(getIndex(row + 2, col) < 61 && getIndex(row + 2, col) >= 0 && board[getIndex(row + 2, col)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-          else if(getIndex(row - 1, col ) < 61 && getIndex(row - 1, col) >= 0 && board[getIndex(row - 1, col)] == 'O'){
-            board[0] = 'o';
-            board[1] = '2';
-          }
-        }
-
-        if(turnC >= 8 && board[0] != 'o'){
-          board[0] = 'o';
-          board[1] = 'D';
-        }
-
-        turnM = p1;
-        turnB = mp1;
-        turnC = turnC + 1;
-        Send(board, 61, l, p2, mp2);
-        if(board[0] != 'o'){
-          board[0] = 'u';
-        }
-        Send(board, 61, l, p1, mp1);
-        if(board[0] != 'o'){
-          board[0] = 's';
-        }
-      } else{
-        prints("\n", ConsoleOutput);
-        prints("TURNM:  ", ConsoleOutput);
-        printd(turnM, ConsoleOutput);
-        prints("\n", ConsoleOutput);
-        prints("RECVINFO:  ", ConsoleOutput);
-        prints(recvInfo, ConsoleOutput);
-        board[0] = 'e';
-        Send(board, 61, l, p2, mp2);
-      }      
+    board[9] = 's';
+    board[row * 3 + col] = turnChar;
+    if(winningMove(row, col, turnChar, board) == 1){
+      /* if this is the winning move change the board to reflect it */
+      board[9] = 'o';
+    } else if (turns >= 9){
+      /* draw case */
+      board[9] = 'd';
     }
+    /* Send information back on how it went */
+    if(board[9] == 'o'){
+      board[9] = 'w';
+    }
+    Send(board, 10, l, turnM, turnB);
+    /* flip the turn here */
+    if(turnM == p1){
+      turnM = p2;
+      turnB = mp2;
+      turnChar = 'O';
+    } else{
+      turnM = p1;
+      turnB = mp1;
+      turnChar = 'X';
+    }
+    if(board[9] == 'w'){
+      /* send l so that machine knows it lost */
+      board[9] = 'l';
+    }
+    Send(board, 10, l, turnM, turnB);
   }
-
+  
+  }
 
   /* Open a specific mailbox here */
   
@@ -381,6 +191,7 @@ main()
 
 
 
+
   /*while(1){
     /* Receive connections of machine id and mailbox number*/
     /* Mark a machine as waiting, if one is not waiting, if not waiting send back machine to connect to with mailbox
@@ -390,7 +201,6 @@ main()
   Recv(args, 6, 1);*/
   /*}
   */
-}
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
 
@@ -410,11 +220,9 @@ OpenFileId file;
 
 
 /* Print an integer "n" on open file descriptor "file". */
-
 printd(n,file)
 int n;
 OpenFileId file;
-
 {
 
   int i, pos=0, divisor=1000000000, d, zflag=1;
@@ -444,6 +252,7 @@ OpenFileId file;
   Write(buffer,pos,file);
 }
 
+/* converts integer to char */
 char * itoa(n, buffer)
 int n;
 char* buffer;
@@ -474,6 +283,7 @@ char* buffer;
   return buffer;
 }
 
+/* gets the appropriate index on the board */
 int getIndex(op, lop)
 int op;
 int lop;
@@ -481,6 +291,7 @@ int lop;
   return 1+ op*24 +lop * 4;
 }
 
+/* converts char* to int */
 int atoi(m)
 char *m;
 {
@@ -534,3 +345,60 @@ char *m;
   return num;
 }
 
+/* valid move returns 1, invalid returns 0 */
+int checkValidMove(row, col, board)
+int row;
+int col;
+char* board;
+{
+  if(row < 0 || col < 0 || row > 2 || col > 2){
+    return 0;
+  }
+  if(board[row * 3 + col] != ' '){
+    return 0;
+  }
+  return 1;
+}
+
+/* checks to see if someone has won, return 1 if so, 0 if no one has won */
+int winningMove(row, col, player, board)
+int row;
+int col;
+char player;
+char* board;
+{
+  if(board[0] == board [1] == board[2] == player){
+    /*check top row */
+    return 1;
+  }
+  if(board[0] == board[3] == board[6] == player){
+    /*check first column */
+    return 1;
+  }
+  if(board[0] == board[4] == board[8] == player){
+    /* check from top left corner to bottom right corner diagonal */
+    return 1;
+  }
+  if(board[1] == board[4] == board[7] == player){
+    /* check middle column */
+    return 1;
+  }
+  if(board[2] == board[5] == board[8] == player){
+    /* check last column */
+    return 1;
+  }
+  if(board[2] == board[4] == board[6] == player){
+    /*check top right corner to bottom left corner */
+    return 1;
+  }
+  if(board[3] == board[4] == board [5] == player){
+    /* check middle row */
+    return 1;
+  }
+  if(board[6] == board[7] == board[8] == player){
+    /* check bottom row */
+    return 1;
+  }
+  return 0;
+
+}
