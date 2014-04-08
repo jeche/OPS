@@ -404,6 +404,12 @@ void outputRamPages(){
     fprintf(stderr, "\n");
   }
 }
+
+class pwrap{
+public:
+  Mail* m;
+  Thread* t;
+};
 //------------------------------
 // sendPacket
 //    Handles the sending and waiting for an 'ack'. Should 
@@ -412,7 +418,8 @@ void outputRamPages(){
 //------------------------------
 void sendPacket(int mailMessage){
     //fprintf(stderr, "in send packet!!!\n");
-    Mail* mail = (Mail *) mailMessage;
+    pwrap* p = (pwrap *) mailMessage;
+    Mail* mail = (Mail *) p->m;
     MailHeader mailHdr = mail->mailHdr;
     PacketHeader pktHdr = mail->pktHdr;
     AckHeader ackHdr = mail->ackHdr;
@@ -423,23 +430,31 @@ void sendPacket(int mailMessage){
     int fromMach = pktHdr.from;
     int toMach = pktHdr.to;
     int cPack = ackHdr.curPack;
-    int systime = stats->totalTicks;
-    fprintf(stderr, "sent pack %d %d\n", msgID, cPack);
+    unsigned long long systime = stats->totalTicks;
+    // fprintf(stderr, "sent pack %d %d\n", msgID, cPack);
     postOffice->Send(pktHdr, mailHdr, ackHdr, data);
     /*Grab the Lock*/
     postOffice->ackLockAcquire(fromBox);
-
+    unsigned long long TIMEOUT;
+    TIMEOUT =  10000000;
+    fprintf(stderr, "systime %llu, stats time %llu \n", systime, stats->totalTicks);
     while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
       /*Timeout situation goes here, not below hasAckWait*/
-      if(stats->totalTicks > systime + TIMEOUT){//This will need to be modified to account for how often the timeoutctr is incremented
+      if(stats->totalTicks > (systime + TIMEOUT)){//This will need to be modified to account for how often the timeoutctr is incremented
         //fprintf(stderr, "resend %d %d\n", msgID,cPack);
+        fprintf(stderr, "current time %d\n", stats->totalTicks);
+        postOffice->ackLockRelease(fromBox);
         postOffice->Send(pktHdr, mailHdr, ackHdr, data);
+        postOffice->ackLockAcquire(fromBox);
         systime = stats->totalTicks;
+        
       }
       postOffice->hasAckWait(fromBox);
     }
-    postOffice->hasAckSignal(fromBox);
+    //postOffice->hasAckSignal(fromBox);
     postOffice->ackLockRelease(fromBox);
+    delete mail;
+    p->t->Finish();
     /*Release the Lock*/
     //fprintf(stderr, "end of function %d %d\n", msgID,cPack);
 }
@@ -450,6 +465,7 @@ void sendPacket(int mailMessage){
 void
 ExceptionHandler(ExceptionType which)
 {
+    BitMap *msgMap;
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -462,6 +478,9 @@ ExceptionHandler(ExceptionType which)
     OpenFile* open;
     int descriptor = -1;
     int incrementPC;
+    
+    int packetNums;
+
     char whee;
     char *whee2;
     int i, j;
@@ -478,6 +497,11 @@ ExceptionHandler(ExceptionType which)
     Status stuffing;
     AddrSpace *oldSpacer;
 
+    MessageNode* recved;
+    Mail* curMail;
+    MailNode* curNode;
+    
+    pwrap* rap;
     int pos=0, divisor=1000000000, d, zflag=1;
     char c;
     char buffer[20];
@@ -719,7 +743,7 @@ ExceptionHandler(ExceptionType which)
                 DEBUG('j', "Write\n");
                 forking->P();
                 size = machine->ReadRegister(5);
-                fprintf(stderr, "size: %d\n", size);
+                // fprintf(stderr, "size: %d\n", size);
                 if (size > 0){
                   stringArg = new(std::nothrow) char[128];
                   whence = machine->ReadRegister(4);
@@ -871,12 +895,6 @@ ExceptionHandler(ExceptionType which)
                 forking->P();
                 oldLevel = interrupt->SetLevel(IntOff);
                 DEBUG('j', "Exec\n");
-                curr = root;
-                DEBUG('j', "Join\n");
-                while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
-                  curr = curr->next;  // Iterate to find the correct semapohre to P on
-                }
-                
                 argcount = 1;
                 stringArg = new(std::nothrow) char[128];
                 whence = machine->ReadRegister(4);
@@ -1147,7 +1165,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Send:
                 mailBuffer = new (std::nothrow) char[MaxMailSize];
-                fprintf(stderr, "%d\n", sizeof(mailBuffer));
+                // fprintf(stderr, "%d\n", sizeof(mailBuffer));
                 memset(mailBuffer, 0, MaxMailSize);
                 whence = machine->ReadRegister(4); // message
                 size = machine->ReadRegister(5);  // length
@@ -1155,11 +1173,16 @@ ExceptionHandler(ExceptionType which)
                 machineNum = machine->ReadRegister(7); // machine
                 location = machine->ReadRegister(8); // where to send the message
                 remain = size % MaxMailSize;
+                if(remain > 0){
+                  packetNums = size/MaxMailSize + 1;
+                }else{
+                  packetNums = size/MaxMailSize;
+                }
                 msgCTR->P();
                 msgctr++;
                 msgID=msgctr;
                 msgCTR->V();
-                fprintf(stderr, "%d\n", MaxMailSize);
+                // fprintf(stderr, "%d\n", MaxMailSize);
                 for(i = 0; i < size/MaxMailSize; i++){
                   for (j = 0; j < MaxMailSize; j++) {
                     currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[j]);
@@ -1170,7 +1193,7 @@ ExceptionHandler(ExceptionType which)
                   outMailHdr.from = myMB;//1; 
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = MaxMailSize; // had a plus 1 here before?????????
-                  outAckHdr.totalSize = size; 
+                  outAckHdr.totalSize = packetNums;// size/MaxMailSize ; 
                   outAckHdr.curPack = i;
                   outAckHdr.messageID = msgID;
 
@@ -1178,9 +1201,10 @@ ExceptionHandler(ExceptionType which)
                   //fprintf(stderr, "%s\n", mailBuffer);
                   mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
                   //perror("WHY WHY WHY");
-                  t = new(std::nothrow) Thread("messageSender");
+                  // t = new(std::nothrow) Thread("messageSender");
                   //sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
-                  t->Fork(sendPacket, (int) mail);
+                  postOffice->SendThings(mail, myMB);
+                  // t->Fork(sendPacket, (int) mail);
                 }
 
                 if (remain > 0) {
@@ -1190,18 +1214,19 @@ ExceptionHandler(ExceptionType which)
                   }
                   outPktHdr.to = machineNum;   
                   outMailHdr.to = location;
-                  outMailHdr.from = 1; 
+                  outMailHdr.from = myMB; 
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = remain; // had a plus 1 here before?????????
-                  outAckHdr.totalSize = size;
+                  outAckHdr.totalSize = packetNums;// size;
                   outAckHdr.curPack = i;
                   outAckHdr.messageID = msgID;
                   mail = new (std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
-                  t = new(std::nothrow) Thread("messageSender");
-                  //sendPacket((int) mail);
-                  //sendPacket(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
-                  t->Fork(sendPacket, (int) mail);
-                  //sendPacket(outPktHdr, outMailHdr, mailBuffer);
+                  postOffice->SendThings(mail, myMB);
+                  // t = new(std::nothrow) Thread("messageSender");
+                  // rap = new(std::nothrow) pwrap();
+                  // rap->t = t;
+                  // rap->m = mail;
+                  // t->Fork(sendPacket, (int) rap);
                 }
                 if (remain > 0) {
                   fprintf(stderr, "sent %d packets\n", (size/MaxMailSize) + 1);
@@ -1209,7 +1234,7 @@ ExceptionHandler(ExceptionType which)
                 else {
                   fprintf(stderr, "sent %d packets\n", (size/MaxMailSize));
                 }
-                
+                delete [] mailBuffer;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -1220,41 +1245,66 @@ ExceptionHandler(ExceptionType which)
                 size = machine->ReadRegister(5);  // length
                 whence = machine->ReadRegister(4); // message
                 location = machine->ReadRegister(6); // location
-                postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
-                origMachine = inPktHdr.from;
-                origID = inAckHdr.messageID;
-                bufferList = new (std::nothrow) char[inAckHdr.totalSize];
-                for (i = 0; i < inMailHdr.length; i++) {
-                  bufferList[i + (inAckHdr.curPack * MaxMailSize)] = mailBuffer[i];
-                }
-                remain = inAckHdr.totalSize % MaxMailSize;
-                if (remain == 0) {
-                  remain = -1; 
-                }
-                else {
-                  remain = 0;
-                }
-                fprintf(stderr, "%d\n", (inAckHdr.totalSize/MaxMailSize));
-                for (j = 0; j < (inAckHdr.totalSize / MaxMailSize) + remain; j++) {
-                  memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
+                recved = postOffice->GrabMessage(location);
+                // postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, recved);
+                // // origMachine = inPktHdr.from;
+                // // origID = inAckHdr.messageID;
+                // bufferList = new (std::nothrow) char[recved.];
+                // msgMap = new(std::nothrow) BitMap(inAckHdr.totalSize);
+                // memset(bufferList, '\0', inAckHdr.totalSize);
+                // for (i = 0; i < inMailHdr.length; i++) {
+                //   bufferList[i + (inAckHdr.curPack * MaxMailSize)] = mailBuffer[i];
+                // }
+                // remain = inAckHdr.totalSize % MaxMailSize;
+                // if (remain == 0) {
+                //   remain = -1; 
+                // }
+                // else {
+                //   remain = 0;
+                // }
+                // // fprintf(stderr, "%d\n", (inAckHdr.totalSize/MaxMailSize));
+                // for (j = 0; j < (inAckHdr.totalSize / MaxMailSize) + remain;) {
+                //   memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
                   
-                  postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
-                  while (inPktHdr.from != origMachine && inAckHdr.messageID != origID) { 
-                    //fprintf(stderr, "multiple messages!!!!\n");
-                    //fprintf(stderr, "%d %d %d %d\n", inPktHdr.from, origMachine, inMailHdr.messageID, origID);
-                    //postOffice->PutUnwanted(location, inPktHdr, inMailHdr, mailBuffer);
-                    memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
-                    postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
-                  }
-                  for (i = 0; i < inMailHdr.length; i++) {
-                    bufferList[i + (inAckHdr.curPack * MaxMailSize)] = mailBuffer[i];
+                //   postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
+                //   while (inPktHdr.from != origMachine && inAckHdr.messageID != origID) { 
+                //     //fprintf(stderr, "multiple messages!!!!\n");
+                //     //fprintf(stderr, "%d %d %d %d\n", inPktHdr.from, origMachine, inMailHdr.messageID, origID);
+
+                //     postOffice->PutUnwanted(location, inPktHdr, inMailHdr, inAckHdr, mailBuffer);
+                //     //postOffice->RestoreUnwanted(location);
+                //     memset(mailBuffer, '\0', MaxMailSize);  // make sure maxmailsize is the same as sizeof(mailbuffer)
+                //     // postOffice->Receive(location, &inPktHdr, &inMailHdr, &inAckHdr, mailBuffer);
+                //     // postOffice->
+                //   }
+                //   //j = inAckHdr.curPack;
+                //   if(bufferList[inAckHdr.curPack * MaxMailSize]=='\0'){
+                //     j++;
+                //   }
+                //   for (i = 0; i < inMailHdr.length; i++) {
+                //     bufferList[i + (inAckHdr.curPack * MaxMailSize)] = mailBuffer[i];
+                //   }
+                // }
+                // //fprintf(stderr, "%s\n", bufferList);
+               // fprintf(stderr, "RECEIVE");
+                curNode = recved->head;
+                curMail = curNode->cur;
+                i = 0;
+                for (j = 0; j < size && curNode != NULL; j++) {
+                  currentThread->space->WriteMem(whence++, sizeof(char), curMail->data[i]);
+                  i++;
+                  if(i == curMail->mailHdr.length){
+                    i = 0;
+                    curNode = curNode->next;
+                    if(curNode != NULL){
+                      curMail = curNode->cur;
+                    }
                   }
                 }
-                //fprintf(stderr, "%s\n", bufferList);
-                for (j = 0; j < size; j++) {
-                  currentThread->space->WriteMem(whence++, sizeof(char), bufferList[j]);
-                }
-                //postOffice->RestoreUnwanted(location);
+               // fprintf(stderr, "\n****************************************RECEIVE SUCCESS******************************************************\n");
+                // postOffice->RestoreUnwanted(location);
+                // delete [] mailBuffer;
+                // delete msgMap;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
