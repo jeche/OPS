@@ -85,9 +85,45 @@ class MailNode{
     MailNode(Mail *mail);
     ~MailNode();
     void Append(MailNode *mn);
+    void Remove(MailNode *mn);
+    int Find(MailNode *mn);
     Mail *cur;
     MailNode *next;
+    MailNode *prev;
+    int curPack;
 };
+
+class MessageNode{
+  public:
+    MessageNode(Mail *mail);
+    MailNode* head;
+    int msgID;
+    int fromBox;
+    int fromMachine;
+    int totalSize;
+    int finished;
+};
+
+class HistoryNode{
+public:
+    int msgID;
+    int machineID;
+    HistoryNode *next;
+
+
+    HistoryNode(int t, int p){
+        msgID = p;
+        machineID = t;
+        next = NULL;
+    };
+
+    ~HistoryNode(){
+        if(next != NULL){
+            delete next;
+        }
+    };
+};
+
 
 // The following class defines a single mailbox, or temporary storage
 // for messages.   Incoming messages are put by the PostOffice into the 
@@ -109,14 +145,31 @@ class MailBox {
     void PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHeader, char *data);
     int CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
 
+    void SendPackets();
+    void CompleteMessages();
+    void ackAttackSend();
 
-
-    Lock *ackLock, *ackProcLock;
-    Condition *hasAck, *ackResolved;
+    Lock *ackLock;
+    Condition *hasAck;
     SynchList *unwantedMessages;
+
+
+
+
+    SynchList *ackList;
+    SynchList *sendList;
+    SynchList *completeList;
+    SynchList *retAck;
+    SynchList *tempMessages;
+    Thread *sendThread;
+    Thread *recvThread;
+    HistoryNode *head;
+    Thread *ackAttack;
+    void* post;
   private:
     SynchList *messages;	// A mailbox is just a list of arrived messages
-    MailNode *acks;
+    MessageNode *curmsg;
+
 
 };
 
@@ -136,7 +189,7 @@ class PostOffice {
 				//   "reliability" is how many packets
 				//   get dropped by the underlying network
     ~PostOffice();		// De-allocate Post Office data
-    
+    void postalDeliverySend(int mailMessage);
     void Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data);
     				// Send a message to a mailbox on a remote 
 				// machine.  The fromBox in the MailHeader is 
@@ -144,6 +197,8 @@ class PostOffice {
     
     void Receive(int box, PacketHeader *pktHdr, 
 		MailHeader *mailHdr, AckHeader *ackHdr, char *data);
+
+    void SendThings(Mail* m, int box);
 
     void PostalDelivery();	// Wait for incoming messages, 
 				// and then put them in the correct mailbox
@@ -163,17 +218,13 @@ class PostOffice {
     void hasAckWait(int box);
     void hasAckSignal(int box);
 
-    void ackResolvedWait(int box);
-
-    void ackResolvedSignal(int box);
-
     void ackLockAcquire(int box);
     void ackLockRelease(int box);
-    void ackProcLockAcquire(int box);
-    void ackProcLockRelease(int box);
-
+    void KaputTime();
+    MessageNode* GrabMessage(int box);
 
   private:
+    int ackCount;
     Network *network;		// Physical network connection
     NetworkAddress netAddr;	// Network address of this machine
     MailBox *boxes;		// Table of mail boxes to hold incoming mail
@@ -181,6 +232,7 @@ class PostOffice {
     Semaphore *messageAvailable;// V'ed when message has arrived from network
     Semaphore *messageSent;	// V'ed when next message can be sent to network
     Lock *sendLock;		// Only one outgoing message at a time
+    Thread *t;
 };
 
 
