@@ -9,14 +9,31 @@
 int
 main(int argc, char **argv)
 {
-  int i;
-  char args[126];
+  int i, j, k;
+  char args[128];
   int mailbox = GetMailbox();
-  for (i = 0; i < 101; i++) {
-    Recv(args, i + 25, mailbox);
-    Write(args, i + 25, ConsoleOutput);
+  for(k = 0; k < 3; k++){
+  for (i = 128; i > 0; i--) {
+    Recv(args, i, mailbox);
+    printd(i, ConsoleOutput);
+    prints(args, ConsoleOutput);
+    Write("\n", 1, ConsoleOutput);
+    for(j = 0; j < 128; j++){args[j]='\0';}
+    Recv(args, i, mailbox);
+    printd(i, ConsoleOutput);
+    prints(args, ConsoleOutput);
+    Write("\n", 1, ConsoleOutput);
+    for(j = 0; j < 128; j++){args[j]='\0';}
+    Recv(args, i, mailbox);
+    printd(i, ConsoleOutput);
+    prints(args, ConsoleOutput);
+    Write("\n", 1, ConsoleOutput);
+    for(j = 0; j < 128; j++){args[j]='\0';}
+    /*Send("Got it!", 7, mailbox, 1, 0);*/
   }
-  Halt();
+}
+  Write("\nAll done********************************************************\n", 66 ,ConsoleOutput);
+  Exit(0);
   /* not reached */
 }
 
@@ -51,4 +68,18 @@ OpenFileId file;
     divisor = divisor/10;
   }
   Write(buffer,pos,file);
+}
+
+prints(s,file)
+char *s;
+OpenFileId file;
+
+{
+  int count = 0;
+  char *p;
+
+  p = s;
+  while (*p++ != '\0') count++;
+  Write(s, count, file);  
+
 }
