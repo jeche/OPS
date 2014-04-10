@@ -48,6 +48,11 @@ Dealing with timeouts
  PostOffice::KaputTime()
   This method generates a fake ack for the sending message that will force it to send again.  We create a new piece of Mail with -1s for all of the attributes of the PacketHeader, MailHeader and AckHeader except for the mailHdr.length which we must change after we create the Mail object.  We then append this piece of Mail to the ackList for every mailbox on the system.  Since mailHdr.length will be -1 when the sendThread pulls the ack off of the acksList, it will resend the original message because of our fake ack.
   
+tictactoe.c
+It asks the user for a machine ID so that it can tell the server where it is sending from.  It then opens the serve file and reads out the mailbox to send to on the server.  It then sends it's machine number and mailbox to the server.  It receives the board back and prints it out and depending on what the last character of the board is the user can identify which player they will be.  Player 1 always gets a move request first.  When asking for a move request we ask for a row and column input one at a time.  The user may only enter one character and hit enter otherwise the system will have unexpected behavior.  We do check for valid input assuming the length is right (that row is greater than the largest row on the board).  The board is then printed with the new move and the board is sent to the server.  The server passes it to the second player while player 1 waits to receive the new board.  This continues until someone wins, loses, or there is a draw.  An appropriate message is printed out to state the game status.
+
+server.c
+The server for the game must be started first, and must have a machine ID of 0.  The server writes the mailbox it will use for the game out to a file called serve for the connection machines to read and send to.  The server only handles passing the board back and forth and changing the board to denote a win, lose or draw.
 Limitations:
    Currently we fail some sort of ASSERT related to threads when we decide to Control+C out of the program.  Since we are Cntrl+C-ing out of the program we have decided that it's okay if nachos breaks when we try to kill it.
    
