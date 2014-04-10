@@ -148,7 +148,7 @@ MailBox::MailBox()
     curmsg = NULL; // new(std::nothrow) MailNode(NULL);
     ackLock = new(std::nothrow) Lock("ackLock");
     hasAck = new(std::nothrow) Condition("hasAck");
-    
+    head = new(std::nothrow) HistoryNode(-1, -1);
     // notRightAck = new(std::nothrow) SynchList();
     ackList = new(std::nothrow) SynchList();
     retAck = new(std::nothrow) SynchList();
@@ -161,6 +161,7 @@ MailBox::MailBox()
     recvThread->Fork(CompleteHelper, (int)this);
     ackAttack = new (std::nothrow) Thread("mailbox ackattack sender");
     ackAttack->Fork(AckHelper, (int)this);
+
 }
 
 //----------------------------------------------------------------------
@@ -203,15 +204,20 @@ void MailBox::SendPackets(){
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
         m = (Mail *) ackList->Remove(); // timeout will add an invalid ack packet
-        while(m->mailHdr.length == -1){
+        while(m->mailHdr.length == -1 || m->pktHdr.from != pktHdr.to || m->mailHdr.from != mailHdr.to){
             // keep trying to send same packet until it goes through
             // ASSERT(false);
             // ASSERT(ackHdr.curPack == m->ackHdr.curPack);
             // sending Ack
+            ASSERT(m->ackHdr.totalSize == -1);
             ASSERT(mailHdr.length != -1 && ackHdr.totalSize != -1);
             ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
             m = (Mail *) ackList->Remove();
+            if(m->pktHdr.from != pktHdr.to && m->mailHdr.from != mailHdr.to &&m->mailHdr.from != -1 &&m->pktHdr.from != -1){
+                ackList->Append((void*)m);
+            }
         }
+        ASSERT(m->pktHdr.from == pktHdr.to && m->mailHdr.from == mailHdr.to);
     }
 }
 
@@ -223,44 +229,133 @@ void MailBox::CompleteMessages(){
     int tempInt;
     int msgComplete;
     MailHeader mailHdr;
+    int flag = 0;
     PacketHeader pktHdr;
     AckHeader ackHdr;
     Mail *ackMail;
+    HistoryNode *kemper;
+    HistoryNode *temper;
     char* data;
     for(;;){
         m = (Mail *) messages->Remove();
         // flip information for Ack sending
-
         mailHdr = m->mailHdr;
         pktHdr = m->pktHdr;
         ackHdr = m->ackHdr;
         MailNode * mn = new (std::nothrow) MailNode(m);
-
-
-
-        if(curmsg == NULL){
-            curmsg = new (std::nothrow) MessageNode(m);
-            curmsg->finished = curmsg->finished + 1;
+        temper = head;
+        flag = 0;
+        while(temper != NULL){
+            if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID && curmsg == NULL){
+                flag = 1;
+                // ASSERT(false);
+                break;
+            }
+            temper = temper->next;
+        } // check and see if in cur msg already.  is this the message we are processing, nad if it is do
+        if(curmsg != NULL && m->pktHdr.from == curmsg->fromMachine && m->mailHdr.from == curmsg->fromBox && m->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 1){
+            flag = 1;
         }
-        else if(m->pktHdr.from == curmsg->fromMachine && m->mailHdr.from == curmsg->fromBox && m->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 0){
-            // if this is the correct message to attach to attach
-            // MailNode * mn = new (std::nothrow) MailNode(m);
-            mn = new (std::nothrow) MailNode(m);
-            curmsg->head->Append(mn);
-            // add one to the amount we have finished receiving
-            curmsg->finished = curmsg->finished + 1;
-            if(curmsg->finished == curmsg->totalSize){
-                completeList->Append((void*) curmsg);
-                msgComplete = 1;
+        if(flag == 0){
+            if(curmsg == NULL){
+                
+                // while(ackHdr.curPack != 0){
+                //     temper = head;
+                //     flag = 0;
+                //     while(temper != NULL){
+                //         if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID){
+                //             flag = 1;
+                //             // ASSERT(false);
+                //             break;
+                //         }
+                //         temper = temper->next;
+                //     }
+                //     if(flag == 0){
+                //         unwantedMessages->Append((void *) m);
+                //     }
+                //     m = (Mail *) messages->Remove();
+                //     mailHdr = m->mailHdr;
+                //     pktHdr = m->pktHdr;
+                //     ackHdr = m->ackHdr;
+                // }
+                ASSERT(ackHdr.curPack == 0);
+
+                // temper = head;
+                // flag = 0;
+                // while(temper != NULL){
+                //     if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID){
+                //         flag = 1;
+                //         // ASSERT(false);
+                //         break;
+                //     }
+                //     temper = temper->next;
+                // }
+                // if(flag == 0){
+                curmsg = new (std::nothrow) MessageNode(m);
+                curmsg->finished = curmsg->finished + 1;
+                // }
+
+            }
+            else if(m->pktHdr.from == curmsg->fromMachine && m->mailHdr.from == curmsg->fromBox && m->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 0){
+                // if this is the correct message to attach to attach
+                // MailNode * mn = new (std::nothrow) MailNode(m);
+                mn = new (std::nothrow) MailNode(m);
+                curmsg->head->Append(mn);
+                // add one to the amount we have finished receiving
+                curmsg->finished = curmsg->finished + 1;
+            } else if (m->pktHdr.from != curmsg->fromMachine && m->mailHdr.from != curmsg->fromBox && m->ackHdr.messageID != curmsg->msgID &&curmsg->head->Find(mn) != 1) {
+                temper = head;
+                flag = 0;
+                while(temper != NULL){
+                    if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID){
+                        flag = 1;
+                        ASSERT(false);
+                        break;
+                    }
+                    temper = temper->next;
+                }
+                if(flag == 0){
+                    unwantedMessages->Append((void *) m);
+                }
+            } else{
+                ASSERT(false);
+            }
+
+            if(curmsg != NULL && curmsg->finished >= curmsg->totalSize){
+                // temper = head;
+                // flag = 0;
+                // while(temper != NULL){
+                //     if (m->ackHdr.messageID == temper->msgID && m->pktHdr.from == temper->machineID) {//if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID){
+                //         flag = 1;
+                //         // ASSERT(false);
+                //         break;
+                //     }
+                //     temper = temper->next;
+                // }
+                // if(flag == 0){
+                    completeList->Append((void*) curmsg);
+                // }
+                
+                kemper = head;
+                while(kemper->next != NULL){
+                    kemper = kemper->next;
+                }
+                kemper->next = new(std::nothrow) HistoryNode(curmsg->fromMachine, curmsg->msgID);
+                msgComplete = 1; // if unwatned list is empty  msgComplete = 0, else msgCompelte = 1
+                curmsg = NULL;
                 while (msgComplete == 1) {
+                    // grab first in the unwatned list (should be where curPack = 0)
+                    // setup new curmsg
                     msgComplete = 0;
                     temp = (Mail*) unwantedMessages->Peek();
-                    while (temp != NULL) {
-                        if (temp->ackHdr.curPack == 0) {
-                            curmsg = new (std::nothrow) MessageNode(temp);
-                            curmsg->finished = curmsg->finished + 1;
-                        }
-                        else {
+                    if (temp != NULL && temp->ackHdr.curPack == 0) {
+                        ASSERT(false);
+                        curmsg = new (std::nothrow) MessageNode(temp);
+                        curmsg->finished = curmsg->finished + 1;
+                    
+                        while (temp != NULL) {
+                            
+                            
                             ASSERT(curmsg != NULL);
                             mn = new (std::nothrow) MailNode(temp);
                             if (temp->pktHdr.from == curmsg->fromMachine && temp->mailHdr.from == curmsg->fromBox && temp->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 0) {
@@ -268,74 +363,74 @@ void MailBox::CompleteMessages(){
                                 // add one to the amount we have finished receiving
                                 curmsg->finished = curmsg->finished + 1;
                             }
-                            else if (curmsg->head->Find(mn) != 1) {
-                                tempMessages->Append((void *) temp);
+                            else {
+                                flag = 0;
+                                temper = head;
+                                while(temper != NULL){
+                                    if(temp->ackHdr.messageID == temper->msgID && temp->pktHdr.from == temper->machineID){
+                                        flag = 1;
+                                        break;
+
+                                    }
+                                    temper = temper->next;
+                                }
+                                if(flag == 0){
+                                    tempMessages->Append((void *) temp);
+                                }
                             }
+                            
+                            if(curmsg != NULL && curmsg->finished >= curmsg->totalSize){
+                                temper = head;
+                                flag = 0;
+                                ASSERT(false);
+                                while(temper != NULL){
+                                    if (temp->ackHdr.messageID == temper->msgID && temp->pktHdr.from == temper->machineID) {//if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID){
+                                        flag = 1;
+                                        ASSERT(false);
+                                        break;
+                                    }
+                                    temper = temper->next;
+                                }
+                                if(flag == 0){
+                                    completeList->Append((void*) curmsg);
+                                }
+                                
+                                kemper = head;
+                                while(kemper->next != NULL){
+                                    kemper = kemper->next;
+                                }
+                                kemper->next = new(std::nothrow) HistoryNode(curmsg->fromMachine, curmsg->msgID);
+                               // curmsg = NULL;
+                                msgComplete = 1;
+                            }
+                            temp = (Mail*) unwantedMessages->Peek();
                         }
-                        if(curmsg != NULL && curmsg->finished == curmsg->totalSize){
-                            completeList->Append((void*) curmsg);
-                            msgComplete = 1;
-                        }
-                        temp = (Mail*) unwantedMessages->Peek();
-                    }
-                    temp = (Mail*) tempMessages->Peek();
-                    while (temp != NULL) {
-                        unwantedMessages->Append((void *) temp);
+                        if(msgComplete==1){curmsg = NULL;}
                         temp = (Mail*) tempMessages->Peek();
-                    }
-                }
-                //curmsg = (MessageNode*) unwantedMessages->Peek();
-            }
-        } else if (curmsg->head->Find(mn) != 1) {
-            unwantedMessages->Append((void *) m);
-        }
-        if(curmsg != NULL && curmsg->finished == curmsg->totalSize){
-            completeList->Append((void*) curmsg);
-            msgComplete = 1;
-            while (msgComplete == 1) {
-                msgComplete = 0;
-                temp = (Mail*) unwantedMessages->Peek();
-                while (temp != NULL) {
-                    if (temp->ackHdr.curPack == 0) {
-                        curmsg = new (std::nothrow) MessageNode(temp);
-                        curmsg->finished = curmsg->finished + 1;
-                    }
-                    else {
-                        ASSERT(curmsg != NULL);
-                        mn = new (std::nothrow) MailNode(temp);
-                        if (temp->pktHdr.from == curmsg->fromMachine && temp->mailHdr.from == curmsg->fromBox && temp->ackHdr.messageID == curmsg->msgID && curmsg->head->Find(mn) == 0) {
-                            curmsg->head->Append(mn);
-                            // add one to the amount we have finished receiving
-                            curmsg->finished = curmsg->finished + 1;
-                        }
-                        else if (curmsg->head->Find(mn) != 1) {
-                            tempMessages->Append((void *) temp);
+                        while (temp != NULL) {
+                            unwantedMessages->Append((void *) temp);
+                            temp = (Mail*) tempMessages->Peek();
                         }
                     }
-                    if(curmsg != NULL && curmsg->finished == curmsg->totalSize){
-                        completeList->Append((void*) curmsg);
-                        msgComplete = 1;
-                    }
-                    temp = (Mail*) unwantedMessages->Peek();
-                }
-                temp = (Mail*) tempMessages->Peek();
-                while (temp != NULL) {
-                    unwantedMessages->Append((void *) temp);
-                    temp = (Mail*) tempMessages->Peek();
+                    else if(temp != NULL){
+                        ASSERT(false);
+                        temper = head;
+                        flag = 0;
+                        while(temper != NULL){
+                            if (temp->ackHdr.messageID == temper->msgID && temp->pktHdr.from == temper->machineID) {//if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID){
+                                flag = 1;
+                                ASSERT(false);
+                                break;
+                            }
+                            temper = temper->next;
+                        }
+                        if(flag == 0){
+                            tempMessages->Append((void *) m);
+                        }
+                    }// ASSERT(false);}
                 }
             }
         }
-        tempInt = pktHdr.to;
-        pktHdr.to = pktHdr.from;
-        pktHdr.from = tempInt;
-        tempInt = mailHdr.to;
-        mailHdr.to = mailHdr.from;
-        mailHdr.from = tempInt;
-        ackHdr.totalSize = -1;
-        data = m->data;
-        // set up ackMail
-        ackMail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, data);
-        retAck->Append((void*)ackMail);
     }
 }
 
@@ -556,16 +651,16 @@ PostOffice::~PostOffice()
 
 void
 PostOffice::postalDeliverySend(int p) {
-    postwrap* pp = (postwrap*) p;
-    Mail* mail = pp->m;
-    Thread* t = pp->t3;
-    MailHeader mailHdr = mail->mailHdr;
-    PacketHeader pktHdr = mail->pktHdr;
-    AckHeader ackHdr = mail->ackHdr;
-    char *data = mail->data;
-    ackHdr.totalSize = -1;
-    pp->p->Send(pktHdr, mailHdr, ackHdr, data);
-    t->Finish();
+    // postwrap* pp = (postwrap*) p;
+    // Mail* mail = pp->m;
+    // Thread* t = pp->t3;
+    // MailHeader mailHdr = mail->mailHdr;
+    // PacketHeader pktHdr = mail->pktHdr;
+    // AckHeader ackHdr = mail->ackHdr;
+    // char *data = mail->data;
+    // ackHdr.totalSize = -1;
+    // pp->p->Send(pktHdr, mailHdr, ackHdr, data);
+    // t->Finish();
 }
 
 //----------------------------------------------------------------------
@@ -586,6 +681,7 @@ PostOffice::PostalDelivery()
     MailHeader fucking;
     PacketHeader pucking;
     char *buffer = new(std::nothrow) char[MaxPacketSize];
+    Mail* ackMail;
 
     for (;;) {
         // first, wait for a message
@@ -608,17 +704,17 @@ PostOffice::PostalDelivery()
     	// put into mailbox
         if(ackHdr.totalSize != -1){
             // /*Need to Ack-Back*/
-            // fuckingWithShit.totalSize = ackHdr.totalSize;
-            // fuckingWithShit.curPack = ackHdr.curPack;
-            // fuckingWithShit.messageID = ackHdr.messageID;
+            fuckingWithShit.totalSize = ackHdr.totalSize;
+            fuckingWithShit.curPack = ackHdr.curPack;
+            fuckingWithShit.messageID = ackHdr.messageID;
 
-            // fucking.to = mailHdr.to;
-            // fucking.from = mailHdr.from;
-            // fucking.length = mailHdr.length;
+            fucking.to = mailHdr.from;
+            fucking.from = mailHdr.to;
+            fucking.length = mailHdr.length;
 
-            // pucking.to =pktHdr.to;
-            // pucking.from =pktHdr.from;
-            // pucking.length =pktHdr.length;
+            pucking.to =pktHdr.from;
+            pucking.from =pktHdr.to;
+            pucking.length =pktHdr.length;
 
             // int pktTemp = pktHdr.to;
             // pktHdr.to = pktHdr.from;
@@ -644,6 +740,17 @@ PostOffice::PostalDelivery()
             // // pktHdr.from = pktHdr.to;
             // // pktHdr.to = pktTemp;
             boxes[mailTemp].Put(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+        //     tempInt = pktHdr.to;
+        // pktHdr.to = pktHdr.from;
+        // pktHdr.from = tempInt;
+        // tempInt = mailHdr.to;
+        // mailHdr.to = mailHdr.from;
+        // mailHdr.from = tempInt;
+        fuckingWithShit.totalSize = -1;
+        // data = m->data;
+        // set up ackMail
+        ackMail = new(std::nothrow) Mail(pucking, fucking, fuckingWithShit, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+        boxes[mailHdr.to].retAck->Append((void*)ackMail);
             // //This should be done in a separate thread....
 
             // /*Signal the appropriate condition variable
