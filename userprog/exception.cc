@@ -1307,7 +1307,6 @@ ExceptionHandler(ExceptionType which)
                     // }
                   }
                 }
-                fprintf(stderr, "Received %d packets\n", incrementPC);
                // fprintf(stderr, "\n****************************************RECEIVE SUCCESS******************************************************\n");
                 // postOffice->RestoreUnwanted(location);
                 // delete [] mailBuffer;

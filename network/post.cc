@@ -677,8 +677,8 @@ PostOffice::PostalDelivery()
     PacketHeader pktHdr;
     MailHeader mailHdr;
     AckHeader ackHdr;
-    AckHeader fuckingWithShit;
-    MailHeader fucking;
+    AckHeader muckingWithWit;
+    MailHeader ducking;
     PacketHeader pucking;
     char *buffer = new(std::nothrow) char[MaxPacketSize];
     Mail* ackMail;
@@ -704,13 +704,13 @@ PostOffice::PostalDelivery()
     	// put into mailbox
         if(ackHdr.totalSize != -1){
             // /*Need to Ack-Back*/
-            fuckingWithShit.totalSize = ackHdr.totalSize;
-            fuckingWithShit.curPack = ackHdr.curPack;
-            fuckingWithShit.messageID = ackHdr.messageID;
+            muckingWithWit.totalSize = ackHdr.totalSize;
+            muckingWithWit.curPack = ackHdr.curPack;
+            muckingWithWit.messageID = ackHdr.messageID;
 
-            fucking.to = mailHdr.from;
-            fucking.from = mailHdr.to;
-            fucking.length = mailHdr.length;
+            ducking.to = mailHdr.from;
+            ducking.from = mailHdr.to;
+            ducking.length = mailHdr.length;
 
             pucking.to =pktHdr.from;
             pucking.from =pktHdr.to;
@@ -746,10 +746,10 @@ PostOffice::PostalDelivery()
         // tempInt = mailHdr.to;
         // mailHdr.to = mailHdr.from;
         // mailHdr.from = tempInt;
-        fuckingWithShit.totalSize = -1;
+        muckingWithWit.totalSize = -1;
         // data = m->data;
         // set up ackMail
-        ackMail = new(std::nothrow) Mail(pucking, fucking, fuckingWithShit, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+        ackMail = new(std::nothrow) Mail(pucking, ducking, muckingWithWit, buffer + sizeof(MailHeader) + sizeof(AckHeader));
         boxes[mailHdr.to].retAck->Append((void*)ackMail);
             // //This should be done in a separate thread....
 

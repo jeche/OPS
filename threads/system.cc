@@ -336,7 +336,7 @@ TimerInterruptHandler2(int )
 {
     //fprintf(stderr, "Interrupt\n");
     unsigned long long TIMEOUTKILLER;
-    TIMEOUTKILLER =  1000000;
+    TIMEOUTKILLER =  100000000;
     if ( stats->totalTicks > timeoutctr + TIMEOUTKILLER){
         timeoutctr = stats->totalTicks;
         postOffice->KaputTime();

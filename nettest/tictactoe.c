@@ -48,7 +48,6 @@ main(int argc, char **argv)
   ans = itoa3(l, buf);
   recvInfo[3] = ans[0];
   recvInfo[4] = '\0';
-  prints(recvInfo, ConsoleOutput);
   Send(recvInfo, 5, l, 0, i);
   Recv(board, 10, l);
   m = board[9];
@@ -59,14 +58,14 @@ main(int argc, char **argv)
     otherChar = 'O';
     board[9] = 's';
     while(board[9] == 's'){
-      prints("Row of move: ", ConsoleOutput);
+      prints("Row of move (0 - 2): ", ConsoleOutput);
       Read(&c, 1, ConsoleInput);
       Read(&t, 1, ConsoleInput);
       stupid[0] = c;
       stupid[1] = '\0';
       row = atoi2(stupid);
 
-      prints("Col of move: ", ConsoleOutput);
+      prints("Col of move (0 - 2): ", ConsoleOutput);
       Read(&c, 1, ConsoleInput);
       Read(&t, 1, ConsoleInput);
       stupid[0] = c;
@@ -75,14 +74,14 @@ main(int argc, char **argv)
 
       while(checkValidMove(row, col, board) != 1) {
         prints("Retry, invalid move\n", ConsoleOutput);
-        prints("Row of move: ", ConsoleOutput);
+        prints("Row of move (0 - 2): ", ConsoleOutput);
         Read(&c, 1, ConsoleInput);
         Read(&t, 1, ConsoleInput);
         stupid[0] = c;
         stupid[1] = '\0';
         row = atoi2(stupid);
 
-        prints("Col of move: ", ConsoleOutput);
+        prints("Col of move (0 - 2): ", ConsoleOutput);
         Read(&c, 1, ConsoleInput);
         Read(&t, 1, ConsoleInput);
         stupid[0] = c;
@@ -109,14 +108,14 @@ main(int argc, char **argv)
       }
       else{
         printBoard(board);
-        prints("Row of move: ", ConsoleOutput);
+        prints("Row of move (0 - 2): ", ConsoleOutput);
         Read(&c, 1, ConsoleInput);
         Read(&t, 1, ConsoleInput);
         stupid[0] = c;
         stupid[1] = '\0';
         row = atoi2(stupid);
 
-        prints("Col of move: ", ConsoleOutput);
+        prints("Col of move (0 - 2): ", ConsoleOutput);
         Read(&c, 1, ConsoleInput);
         Read(&t, 1, ConsoleInput);
         stupid[0] = c;
@@ -125,14 +124,14 @@ main(int argc, char **argv)
 
         while(checkValidMove(row, col, board) != 1) {
           prints("Retry, invalid move\n", ConsoleOutput);
-          prints("Row of move: ", ConsoleOutput);
+          prints("Row of move (0 - 2): ", ConsoleOutput);
           Read(&c, 1, ConsoleInput);
           Read(&t, 1, ConsoleInput);
           stupid[0] = c;
           stupid[1] = '\0';
           row = atoi2(stupid);
 
-          prints("Col of move: ", ConsoleOutput);
+          prints("Col of move (0 - 2): ", ConsoleOutput);
           Read(&c, 1, ConsoleInput);
           Read(&t, 1, ConsoleInput);
           stupid[0] = c;
@@ -216,7 +215,9 @@ char* b;
   bobo[47] = '\n';
   bobo[59] = '\n';
   bobo[60] = '\0';
+  prints("\n", ConsoleOutput);
   prints(bobo, ConsoleOutput);
+  prints("\n*******\n\n", ConsoleOutput);
 }
 
 prints(s,file)
@@ -359,17 +360,9 @@ int col;
 char* board;
 {
   if(row < 0 || col < 0 || row > 2 || col > 2){
-    prints("row or col is off", ConsoleOutput);
-    printd(row,ConsoleOutput);
-    prints(" ", ConsoleOutput);
-    printd(col,ConsoleOutput);
     return 0;
   }
   if(board[row * 3 + col] != ' '){
-    prints("poke row or col is off", ConsoleOutput);
-    printd(row,ConsoleOutput);
-    prints(" ", ConsoleOutput);
-    printd(col,ConsoleOutput);
     return 0;
   }
   return 1;

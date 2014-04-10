@@ -53,27 +53,6 @@ main()
   }
   board[9] = 's';
   i = 1;
-  /* Generates a blank tic tac toe board for sending back and forth */
-  /*while(count < 5){
-    count = count + 1;
-    if(count % 2 == 1){
-      for(i; i < count * rowlength; i++){
-        board[i] = ' ';
-        i = i + 1;
-        board[i] = ' ';
-        i = i + 1;
-        board[i] = ' ';
-        i = i + 1;
-        board[i] = '|';
-      }
-    }
-    else{
-      for(i; i < count * rowlength; i++){
-        board[i] = '-';
-      }
-    }
-    board[i - 1] = '\n';
-  }*/
 
   mMbox = GetMailbox();
 
@@ -83,12 +62,8 @@ main()
   fId = Open("serve");
   printd(mMbox, fId);
   Close(fId);
-  printd(mMbox, ConsoleOutput);
-  prints("\n", ConsoleOutput);
-  prints(itoa2(mMbox, buf), ConsoleOutput);
 
   Recv(recvInfo, 5, mMbox);
-  prints(recvInfo, ConsoleOutput);
   split1[0] = recvInfo[0];
   split1[1] = recvInfo[1];
   split1[2] = '\0';
@@ -97,15 +72,9 @@ main()
   split2[2] = '\0';
   p1 = atoi2(split1);
   mp1 = atoi2(split2);
-  prints("\n", ConsoleOutput);
-  printd(p1,ConsoleOutput);
-  printd(mp1,ConsoleOutput);
-  prints("\n", ConsoleOutput);
   board[9] = '1';
   Send(board, 10, l, p1, mp1);
-  prints("Sent\n", ConsoleOutput);
   Recv(recvInfo, 5, mMbox);
-  prints(recvInfo, ConsoleOutput);
   split1[0] = recvInfo[0];
   split1[1] = recvInfo[1];
   split1[2] = '\0';
@@ -114,7 +83,6 @@ main()
   split2[2] = '\0';
   p2 = atoi2(split1);
   mp2 = atoi2(split2);
-  printd(p2,ConsoleOutput);
   prints("\n", ConsoleOutput);
   printd(mp2,ConsoleOutput);
   prints("\n", ConsoleOutput);
