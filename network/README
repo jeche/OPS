@@ -47,3 +47,12 @@ Dealing with timeouts
 
  PostOffice::KaputTime()
   This method generates a fake ack for the sending message that will force it to send again.  We create a new piece of Mail with -1s for all of the attributes of the PacketHeader, MailHeader and AckHeader except for the mailHdr.length which we must change after we create the Mail object.  We then append this piece of Mail to the ackList for every mailbox on the system.  Since mailHdr.length will be -1 when the sendThread pulls the ack off of the acksList, it will resend the original message because of our fake ack.
+  
+Limitations:
+   Currently we fail some sort of ASSERT related to threads when we decide to Control+C out of the program.  Since we are Cntrl+C-ing out of the program we have decided that it's okay if nachos breaks when we try to kill it.
+   
+   We cannot perform two sends in a row to two different machines, this is questionable as to why this does not work seeing as we only allow for one packet/message to be sent at a time from a specific mailbox.  The way the Send Thread is structured seems to imply that it may be possible to do this, however mailboxes go missing when we try to so we abandoned that train of thought.
+   
+   In our test file tictactoe.c if you ever enter more than 1 character when entering a move, then it breaks.  The lack of argument checking was due to our general laziness and sadness over the fact we can't you standard C/C++ libraries in nachos C.  It is potentially the most unpleasant experience ever.
+   
+   There may be some left over profanity in the form of debugging statements and variable names, we apologize for this.
