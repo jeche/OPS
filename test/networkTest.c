@@ -14,24 +14,22 @@ main(int argc, char **argv)
   char letters[200];
 
   mailbox = GetMailbox();
+  for (i = 0; i < 200; i++) {
+    letters[i] = 'a';
+  }
   for (i = 0; i < 200; i = i + 4) {
+    Send(letters, 200, mailbox, 0, 0);
     Recv(letters, 200, mailbox);
     prints(letters, ConsoleOutput);
-    letters[i] = 'b';
-    Send(letters, 200, mailbox, 1, 0);
+    Send(letters, 200, mailbox, 0, 0);
     Recv(letters, 200, mailbox);
     prints(letters, ConsoleOutput);
-    letters[i + 1] = 'b';
-    Send(letters, 200, mailbox, 1, 0);
+    Send(letters, 200, mailbox, 0, 0);
     Recv(letters, 200, mailbox);
     prints(letters, ConsoleOutput);
-    letters[i + 2] = 'b';
-    Send(letters, 200, mailbox, 1, 0);
+    Send(letters, 200, mailbox, 0, 0);
     Recv(letters, 200, mailbox);
     prints(letters, ConsoleOutput);
-    letters[i + 3] = 'b';
-    Send(letters, 200, mailbox, 1, 0);
-
   }
   prints("*******************************************************************ALL DONE******************************************************************", ConsoleOutput);
   Exit(0);
