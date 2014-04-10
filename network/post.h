@@ -104,6 +104,26 @@ class MessageNode{
     int finished;
 };
 
+class HistoryNode{
+public:
+    int msgID;
+    int machineID;
+    HistoryNode *next;
+
+
+    HistoryNode(int t, int p){
+        msgID = p;
+        machineID = t;
+        next = NULL;
+    };
+
+    ~HistoryNode(){
+        if(next != NULL){
+            delete next;
+        }
+    };
+};
+
 
 // The following class defines a single mailbox, or temporary storage
 // for messages.   Incoming messages are put by the PostOffice into the 
@@ -143,6 +163,7 @@ class MailBox {
     SynchList *tempMessages;
     Thread *sendThread;
     Thread *recvThread;
+    HistoryNode *head;
     Thread *ackAttack;
     void* post;
   private:
