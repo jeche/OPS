@@ -1,0 +1,63 @@
+SC_Send(msg, length, from, to_machine, to_mailbox)
+ In the Send() call, we first increase the message counter to keep track of which message is being sent.  This should be a unique integer that is added to each of the packets sent for that message to help with acknowledgments.  After we increase the counter, we read in a packet's worth of the message to be sent and set up the headers.  We have the traditional PacketHeader and MailHeader that are populated with the proper data, but we've also added an AckHeader that is populated with the message id, the total size of the message and the number of the current packet that is being sent.  We create a new Mail object with these headers and the part of the message being sent and call SendThings(mail, mailbox_to_send_to) to deal with actually sending the message.  We do this for all of the packets for a message, taking care to deal with the case when a packet is not full and we have to indicate that in the length.
+
+Changes to Mailboxes
+ We've added to each mailbox several new SynchLists to deal with the sending a recieving of messages and acks as well as several threads to do the same.  The sendList basically acts as a queue for outgoing messages.  They're pulled off that list by the sendThread.  The ackList is a place for acks from the other machine to be placed for the sendThread to remove.  The completeList is a place for completed messages to be placed.  retAck is a list to queue up acks to be returned to the sender so that they can be sent by the ackAttack thread.  The recvThread is the thread that takes packets off of the messages list and builds completed messages.  It also places an ack on the retAck list for the ackAttack thread to deal with.  In addition, we've add a NULL MessageNode to each mailbox.  This structure will be used to keep track of all the messages and all the packets of those messages that have arrived.  CompleteMessages() will be dealing with this structure.  We also have an unwantedMessages list to keep track of any packets we recieve that don't belong to the message we're currently trying to construct and a tempMessages list to use when we're removing messages from the unwantedMessages list.  We also have something called post in each mailbox which we use to send acknowledgements. 
+
+SendThings(mail, mailbox_to_send_to)
+ This method only takes the mail that has been given and places it on the sendList for the mailbox indicated.  A separate thread will take care of actually sending the message. 
+
+SendThread
+ SendHelper
+  Takes in an argument for the mailbox the SendThread will be dealing with and then begins running the SendPackets() method.
+
+ SendPackets
+  The Sendpackets method is constantly trying to remove an item from the sendList, hanging if there is no item ready to be pulled off.  Once there is an item, the thread removes it, sends the piece of mail to the appropriate machine and mailbox and then waits for an acknowledgement by trying to remove something from the ackList for its mailbox.  If the piece of mail that was removed has a length of -1, then this is our indication that there was a timeout and the original message needs to be sent again.  We repeat this process of sending and then trying to remove an ack until we get one with a proper length.  Once this is done, the thread begins sending the next message.
+
+SC_Recv(address_for_message, length, mailbox_to_recieve_from)
+ After we take in the user's arguments to this syscall, we call postOffice->GrabMessage(mailbox_to_recieve_from).  What we get back from this call is a MessageNode, which contains a linked list of MailNodes.  Each of the MailNodes contains a packet of the message that was recieved.  We iterate through these MailNodes and write the contents of their packets to memory at the place directed by the user.  We then return from the syscall.
+
+GrabMessage(mailbox_to_grab_from)
+ We try to remove a message from the completeList, waiting if there is no message really to be returned.
+
+Changes to PostalDelivery()
+ We changed PostalDelivery to deal with the acknowledgements.  When we recieve a message, we check to see if the ackHeader's total size is -1.  This would indicate that it is an ack rather than an actual message.  If it is an ack, we call PutAck() to put the message in the right place in the mailbox.  Otherwise, we use the Put method to place the message on the messages list and then send an ack.
+
+Mailbox::PutAck(packetHeader, mailHeader, ackHeader, message)
+ This creates a Mail object from the given pieces of information and places the Mail on the ackList for the SendThread to consume
+
+Mailbox::CompleteMessages()
+ This function is constantly being run by the recvThread in each mailbox.  The thread tries to remove a message from the messages list.  Once it has a Mail object, it checks to see if this packet is related to a message in the message history or has already been received for the current message we are attempting to build.  If so, it does nothing. Otherwise if we are not currently attempting to build a message (meaning curmsg is NULL) then it creates a new MessageNode and increases curmsg->finished which keeps track of the number of packets of a message the mailbox has recieved.  If curmsg is not NULL, then we check to see if part of the message has already been recieved (for our sanity, or lack there of).  We check the machine number of the sender, the mailbox number of the sender, and the message id of the packet to see if it belongs to the current message we're trying to recieve.  We also call MailNode::Find on the list of messages in the MessageNode to check if we've already recieved that packet.  If the packet belongs to the current message we're trying to recieve and we haven't already recieved it then we create a new MailNode with this message in it and append it to the list of MailNodes in curmsg.  We also increased the counter to keep track of how many messages we've recieved. 
+
+ If the counter is equal to the total number of packets we're supposed to recieve for this message, then we place this message on the completeList.  Since we're finished with this message, we check the unwantedMessages list to start a new message.  Currently, we ASSERT(false) at the beginning of that section of code because we coded the case to determine if that was causing our hanging.  If it ever hits that ASSERT(false) we will be surprised.  You may stop reading here and continue with the last few sentences before the "ackAttackSend()" call if you do not wish to know what we wanted the 'code bloat' to do.  
+
+ We grab all the packets off of this list that pertain to the new message we've started, moving any messages that don't to another list called tempMessages.  Once we've gone all the way through unwantedMessages, we put any messages we added to temp back on the unwantedMessages list.  If, during the grabbing of messages from unwantedMessages to make a new message we happen to complete a message, then we mark a flag as true and pull the start of a new message off of unwantedMessages and continue as before. 
+
+ If the message did not fulfill the criteria for the message we were recieving, then we check to make sure we don't already have a copy of the message.  If we don't, we append the mail to the unwantedMessages list. 
+
+ We have another check to see if the we're finished with the current message (this would occur if the message only contained one packet) and we do the same loop from above where we pull things off of the unwantedMessages list and try to construct more messages.
+
+ After we've done all of this, we create a new Mail object to send back to the original sender as an acknowledgement.  We append this Mail to the retAck list and then begin the entire function again.
+
+Mailbox::ackAttackSend()
+ This function is constantly being run by the ackAttack thread in each mailbox.  It tries to remove an ack from the retAck list.  Once it gets a piece of mail (which has already been classified as an ack by place a -1 as the ackHdr's totalSize attribute), it sends it by casting post to a PostOffice and then calling its Send method.
+
+Dealing with timeouts
+ In order to make our system timeout, we added a timeoutctr to the system.  We set this to 0 initially.  Every time the interrupt handler is run, we check to see if the timeoutctr + our timeout variable (which is set to 100,000,000 right now) is less than the current system time.  If it is, we reset the timeoutctr to the current system time (stats->totalTicks) and then run postOffice->KaputTime().
+
+ PostOffice::KaputTime()
+  This method generates a fake ack for the sending message that will force it to send again.  We create a new piece of Mail with -1s for all of the attributes of the PacketHeader, MailHeader and AckHeader except for the mailHdr.length which we must change after we create the Mail object.  We then append this piece of Mail to the ackList for every mailbox on the system.  Since mailHdr.length will be -1 when the sendThread pulls the ack off of the acksList, it will resend the original message because of our fake ack.
+  
+tictactoe.c
+It asks the user for a machine ID so that it can tell the server where it is sending from.  It then opens the serve file and reads out the mailbox to send to on the server.  It then sends it's machine number and mailbox to the server.  It receives the board back and prints it out and depending on what the last character of the board is the user can identify which player they will be.  Player 1 always gets a move request first.  When asking for a move request we ask for a row and column input one at a time.  The user may only enter one character and hit enter otherwise the system will have unexpected behavior.  We do check for valid input assuming the length is right (that row is greater than the largest row on the board).  The board is then printed with the new move and the board is sent to the server.  The server passes it to the second player while player 1 waits to receive the new board.  This continues until someone wins, loses, or there is a draw.  An appropriate message is printed out to state the game status.
+
+server.c
+The server for the game must be started first, and must have a machine ID of 0.  The server writes the mailbox it will use for the game out to a file called serve for the connection machines to read and send to.  The server only handles passing the board back and forth and changing the board to denote a win, lose or draw.
+Limitations:
+   Currently we fail some sort of ASSERT related to threads when we decide to Control+C out of the program.  Since we are Cntrl+C-ing out of the program we have decided that it's okay if nachos breaks when we try to kill it.
+   
+   We cannot perform two sends in a row to two different machines, this is questionable as to why this does not work seeing as we only allow for one packet/message to be sent at a time from a specific mailbox.  The way the Send Thread is structured seems to imply that it may be possible to do this, however mailboxes go missing when we try to so we abandoned that train of thought.
+   
+   In our test file tictactoe.c if you ever enter more than 1 character when entering a move, then it breaks.  The lack of argument checking was due to our general laziness and sadness over the fact we can't you standard C/C++ libraries in nachos C.  It is potentially the most unpleasant experience ever.
+   
+   There may be some left over profanity in the form of debugging statements and variable names, we apologize for this.
