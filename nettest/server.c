@@ -7,12 +7,18 @@
 int
 main()
 {
+  char turnChar;
+  char c;
+  char board[10];
+  char buf[11];
+  char recvInfo[5];
+  char split1[3];
+  char split2[3];
   int mPid;
   int wPid;
   int wMbox;
   int mMbox;
   int port;
-
 
   int p1;
   int p2;
@@ -33,13 +39,8 @@ main()
 
   int row;
   int col;
-  char turnChar;
-  char board[10];
-  char buf[11];
-  char recvInfo[5];
-  char split1[3];
-  char split2[3];
-  char c;
+
+  
 
   turnC = 0;
 
@@ -75,7 +76,6 @@ main()
   }*/
 
   mMbox = GetMailbox();
-  l = mMbox;
 
   /* Open a specific mailBox here */
   mPid = 0;
@@ -85,7 +85,7 @@ main()
   Close(fId);
   printd(mMbox, ConsoleOutput);
   prints("\n", ConsoleOutput);
-  prints(itoa(mMbox, buf), ConsoleOutput);
+  prints(itoa2(mMbox, buf), ConsoleOutput);
 
   Recv(recvInfo, 5, mMbox);
   prints(recvInfo, ConsoleOutput);
@@ -95,12 +95,15 @@ main()
   split2[0] = recvInfo[2];
   split2[1] = recvInfo[3];
   split2[2] = '\0';
-  p1 = atoi(split1);
-  mp1 = atoi(split2);
-  printd(p1,ConsoleOutput);
+  p1 = atoi2(split1);
+  mp1 = atoi2(split2);
   prints("\n", ConsoleOutput);
+  printd(p1,ConsoleOutput);
   printd(mp1,ConsoleOutput);
   prints("\n", ConsoleOutput);
+  board[9] = '1';
+  Send(board, 10, l, p1, mp1);
+  prints("Sent\n", ConsoleOutput);
   Recv(recvInfo, 5, mMbox);
   prints(recvInfo, ConsoleOutput);
   split1[0] = recvInfo[0];
@@ -109,98 +112,56 @@ main()
   split2[0] = recvInfo[2];
   split2[1] = recvInfo[3];
   split2[2] = '\0';
-  p2 = atoi(split1);
-  mp2 = atoi(split2);
+  p2 = atoi2(split1);
+  mp2 = atoi2(split2);
   printd(p2,ConsoleOutput);
   prints("\n", ConsoleOutput);
   printd(mp2,ConsoleOutput);
   prints("\n", ConsoleOutput);
   turnM = p1;
   turnB = mp1;
-  board[9] = '1';
+  /*board[9] = '1';
   Send(board, 10, l, p1, mp1);
+  prints("Sent\n", ConsoleOutput);*/
   board[9] = '2';
   Send(board, 10, l, p2, mp2);
+  prints("Sent\n", ConsoleOutput);
   board[9] = 's';
   turnChar = 'X';
   turns = 0;
   /* Game logic code */
   while(board[9] == 's'){
-    /* Receive move from tictactoe process */
-    Recv(recvInfo, 4, mMbox);
-    c = recvInfo[1];
-    row = atoi(&c);
-    c = recvInfo[2];
-    col = atoi(&c);
-    turns = turns + 1;
-    while(checkValidMove(row, col, turnChar, board) != 1){
-      /* keep attempting to recv until you get the correct move */
-      board[9] = 'e';
-      Send(board, 10, l, turnM, turnB);
-      Recv(recvInfo, 4, mMbox);
-      c = recvInfo[1];
-      row = atoi(&c);
-      c = recvInfo[2];
-      col = atoi(&c);
-    }
-    board[9] = 's';
-    board[row * 3 + col] = turnChar;
-    if(winningMove(row, col, turnChar, board) == 1){
-      /* if this is the winning move change the board to reflect it */
-      board[9] = 'o';
+    Recv(board, 10, mMbox);
+    turns += 1;
+    if(winningMove('X', board) == 1){
+      prints("winning!", ConsoleOutput);
+      board[9] = 'X';
+      Send(board, 10, mMbox, p1, mp1);
+      Recv(board, 10, mMbox);
     } else if (turns >= 9){
-      /* draw case */
       board[9] = 'd';
+      Send(board, 10, mMbox, p1, mp1);
+      Recv(board, 10, mMbox);
     }
     /* Send information back on how it went */
-    if(board[9] == 'o'){
-      board[9] = 'w';
+    
+    Send(board, 10, mMbox, p2, mp2);
+    Recv(board, 10, mMbox);
+    turns += 1;
+    if(winningMove('O', board) == 1){
+      board[9] = 'O';
+      Send(board, 10, mMbox, p2, mp2);
+      Recv(board, 10, mMbox);
+    } else if (turns >= 9){
+      board[9] = 'd';
+      Send(board, 10, mMbox, p1, mp1);
+      Recv(board, 10, mMbox);
     }
-    Send(board, 10, l, turnM, turnB);
-    /* flip the turn here */
-    if(turnM == p1){
-      turnM = p2;
-      turnB = mp2;
-      turnChar = 'O';
-    } else{
-      turnM = p1;
-      turnB = mp1;
-      turnChar = 'X';
-    }
-    if(board[9] == 'w'){
-      /* send l so that machine knows it lost */
-      board[9] = 'l';
-    }
-    Send(board, 10, l, turnM, turnB);
+    Send(board, 10, mMbox, p1, mp1);
   }
   
-  }
+}
 
-  /* Open a specific mailbox here */
-  
-
-  /*save for later*/
-  /*mMbox = GetMailbox();
-  printd(mMbox, fId);
-  Recv(&recvInfo, 2, mMbox);
-  prints(recvInfo, ConsoleOutput);
-  Close(fId);
-  while(1){
-    Recv(&recvInfo, 3, mMbox);
-  }
-
-
-
-
-  /*while(1){
-    /* Receive connections of machine id and mailbox number*/
-    /* Mark a machine as waiting, if one is not waiting, if not waiting send back machine to connect to with mailbox
-    char *args;*/
-    /* Send back another machine who wants to play 
-  Send(args, 6, 1, 1);
-  Recv(args, 6, 1);*/
-  /*}
-  */
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
 
@@ -253,7 +214,7 @@ OpenFileId file;
 }
 
 /* converts integer to char */
-char * itoa(n, buffer)
+char * itoa2(n, buffer)
 int n;
 char* buffer;
 {
@@ -292,7 +253,7 @@ int lop;
 }
 
 /* converts char* to int */
-int atoi(m)
+int atoi2(m)
 char *m;
 {
   int count = 0;
@@ -345,57 +306,44 @@ char *m;
   return num;
 }
 
-/* valid move returns 1, invalid returns 0 */
-int checkValidMove(row, col, board)
-int row;
-int col;
-char* board;
-{
-  if(row < 0 || col < 0 || row > 2 || col > 2){
-    return 0;
-  }
-  if(board[row * 3 + col] != ' '){
-    return 0;
-  }
-  return 1;
-}
-
 /* checks to see if someone has won, return 1 if so, 0 if no one has won */
-int winningMove(row, col, player, board)
-int row;
-int col;
+int winningMove(player, board)
 char player;
 char* board;
 {
-  if(board[0] == board [1] == board[2] == player){
+  prints(board, ConsoleOutput);
+  Write(&player,1, ConsoleOutput);
+  Write(board, 3, ConsoleOutput);
+  if(board[0] == board[1] && board[2] == board[1] && board[2] == player){
+    prints("top", ConsoleOutput);
     /*check top row */
     return 1;
   }
-  if(board[0] == board[3] == board[6] == player){
+  if(board[0] == board[3] && board[6] == board[3] && board[6] == player){
     /*check first column */
     return 1;
   }
-  if(board[0] == board[4] == board[8] == player){
+  if(board[0] == board[4] && board[8] == board[4] && board[8] == player){
     /* check from top left corner to bottom right corner diagonal */
     return 1;
   }
-  if(board[1] == board[4] == board[7] == player){
+  if(board[1] == board[4] && board[7] == board[4] && board[7] == player){
     /* check middle column */
     return 1;
   }
-  if(board[2] == board[5] == board[8] == player){
+  if(board[2] == board[5] && board[8] == board[5] && board[8] == player){
     /* check last column */
     return 1;
   }
-  if(board[2] == board[4] == board[6] == player){
+  if(board[2] == board[4] && board[6] == board[4] && board[6] == player){
     /*check top right corner to bottom left corner */
     return 1;
   }
-  if(board[3] == board[4] == board [5] == player){
+  if(board[3] == board[4] && board[5] == board[4] && board[5] == player){
     /* check middle row */
     return 1;
   }
-  if(board[6] == board[7] == board[8] == player){
+  if(board[6] == board[7] && board[8] == board[7] && board[8] == player){
     /* check bottom row */
     return 1;
   }
