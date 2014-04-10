@@ -9,31 +9,32 @@
 int
 main(int argc, char **argv)
 {
-  int i, mailbox;
-  char argl[128];
-  /*char* args;*/
-  char args[128];
-  /*args = "Hello world. I would like to make magic things happen because that would be really nice.  Maybe this actually works, but that\n";*/
-  for(i = 0; i < 128; i=i+4){
-    args[i] = 'f';
-    args[i+1] = 'u';
-    args[i+2] = 'c';
-    args[i+3] = 'k';
-  }
+  int mailbox;
+  int i;
+  char letters[200];
+
   mailbox = GetMailbox();
-  for (i = 0; i < 1000000000; i++) {
-    Send(args, 128, mailbox, 0, 0);
-    /*Recv(argl, 10, mailbox);*/
-/*    Write(argl, 7, ConsoleOutput);
-    Write(" ", 1, ConsoleOutput);
-    printd(i, ConsoleOutput);
-    Write("\n", 1, ConsoleOutput);*/
+  for (i = 0; i < 200; i = i + 4) {
+    Recv(letters, 200, mailbox);
+    prints(letters, ConsoleOutput);
+    letters[i] = 'b';
+    Send(letters, 200, mailbox, 1, 0);
+    Recv(letters, 200, mailbox);
+    prints(letters, ConsoleOutput);
+    letters[i + 1] = 'b';
+    Send(letters, 200, mailbox, 1, 0);
+    Recv(letters, 200, mailbox);
+    prints(letters, ConsoleOutput);
+    letters[i + 2] = 'b';
+    Send(letters, 200, mailbox, 1, 0);
+    Recv(letters, 200, mailbox);
+    prints(letters, ConsoleOutput);
+    letters[i + 3] = 'b';
+    Send(letters, 200, mailbox, 1, 0);
 
   }
-  Write("\nAll done********************************************************\n", 66 ,ConsoleOutput);
-  
+  prints("*******************************************************************ALL DONE******************************************************************", ConsoleOutput);
   Exit(0);
-  /* not reached */
 }
 
 printd(n,file)
@@ -69,3 +70,16 @@ OpenFileId file;
   Write(buffer,pos,file);
 }
 
+prints(s,file)
+char *s;
+OpenFileId file;
+
+{
+  int count = 0;
+  char *p;
+
+  p = s;
+  while (*p++ != '\0') count++;
+  Write(s, count, file);  
+
+}
