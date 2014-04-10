@@ -1172,6 +1172,8 @@ ExceptionHandler(ExceptionType which)
                 myMB = machine->ReadRegister(6);  // my mailbox for recieves
                 machineNum = machine->ReadRegister(7); // machine
                 location = machine->ReadRegister(8); // where to send the message
+                //fprintf(stderr, "location %d\n", location);
+                location = 0;
                 remain = size % MaxMailSize;
                 if(remain > 0){
                   packetNums = size/MaxMailSize + 1;
@@ -1190,6 +1192,7 @@ ExceptionHandler(ExceptionType which)
                   }
                   outPktHdr.to = machineNum;   
                   outMailHdr.to = location;
+                  //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
                   outMailHdr.from = myMB;//1; 
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = MaxMailSize; // had a plus 1 here before?????????
@@ -1214,6 +1217,7 @@ ExceptionHandler(ExceptionType which)
                   }
                   outPktHdr.to = machineNum;   
                   outMailHdr.to = location;
+                  //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
                   outMailHdr.from = myMB; 
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = remain; // had a plus 1 here before?????????
@@ -1229,10 +1233,10 @@ ExceptionHandler(ExceptionType which)
                   // t->Fork(sendPacket, (int) rap);
                 }
                 if (remain > 0) {
-                  fprintf(stderr, "sent %d packets\n", (size/MaxMailSize) + 1);
+                  // fprintf(stderr, "sent %d packets\n", (size/MaxMailSize) + 1);
                 }
                 else {
-                  fprintf(stderr, "sent %d packets\n", (size/MaxMailSize));
+                  // fprintf(stderr, "sent %d packets\n", (size/MaxMailSize));
                 }
                 delete [] mailBuffer;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -1286,25 +1290,29 @@ ExceptionHandler(ExceptionType which)
                 //   }
                 // }
                 // //fprintf(stderr, "%s\n", bufferList);
-                fprintf(stderr, "RECEIVE");
+               // fprintf(stderr, "RECEIVE");
                 curNode = recved->head;
                 curMail = curNode->cur;
                 i = 0;
-                for (j = 0; j < size && curNode != NULL; j++) {
-                  currentThread->space->WriteMem(whence++, sizeof(char), curMail->data[i]);
+                incrementPC = 0;
+                for (j = 0; j < size; j++) {
+                  currentThread->space->WriteMem(whence++, sizeof(char), curNode->cur->data[i]);
                   i++;
-                  if(i == curMail->mailHdr.length){
+                  if(i == curNode->cur->mailHdr.length){
                     i = 0;
+                    incrementPC++;
                     curNode = curNode->next;
-                    if(curNode != NULL){
-                      curMail = curNode->cur;
-                    }
+                    // if(curNode != NULL){
+                    //   curMail = curNode->cur;
+                    // }
                   }
                 }
-                fprintf(stderr, "\n****************************************RECEIVE SUCCESS******************************************************\n");
+                fprintf(stderr, "Received %d packets\n", incrementPC);
+               // fprintf(stderr, "\n****************************************RECEIVE SUCCESS******************************************************\n");
                 // postOffice->RestoreUnwanted(location);
                 // delete [] mailBuffer;
                 // delete msgMap;
+
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
