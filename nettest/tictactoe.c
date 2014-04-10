@@ -1,194 +1,169 @@
-/* ticTacToe.c
- *
- * Kid in simple argument test.
+/* server.c
  *
  */
 
- #include "syscall.h"
+#include "syscall.h"
+
 int
-main(int argc, char **argv)
+main()
 {
-  int i;
-  int mPid;
-  int l;
-  int count;
-  int rowlength;
+  char turnChar;
   char c;
-  char m;
-  char t;
-  char playerChar;
-  char otherChar;
-  char recvInfo[5];
-  char sends[4];
   char board[10];
   char buf[11];
-  char * ans;
-  i = 0;
-  l = GetMailbox();
-  sends[3] = '\0';
-  /* send machine ID to known server (0) */
-  /* Receive. If ID received is a w then receive until ID and mailbox comes in */
-  prints("What is your machine id? ", ConsoleOutput);
-  Read(&c, 1, ConsoleInput);
-  Read(&m, 1, ConsoleInput);
-  mPid = Open("serve");
-  Read(recvInfo, 1, mPid);
-  i = atoi(recvInfo);
+  char recvInfo[5];
+  char split1[3];
+  char split2[3];
+  int mPid;
+  int wPid;
+  int wMbox;
+  int mMbox;
+  int port;
+
+  int p1;
+  int p2;
+  int mp1;
+  int mp2;
+  int fId;
+  int pid;
+
+  int turnM;
+  int turnB;
+  int turnC;
+  int turns;
+
+  int l;
+  int count;
+  int  i;
+  int rowlength;
+
+  int row;
+  int col;
+
   
-  recvInfo[0] = '0';
-  recvInfo[1] = c;
-  recvInfo[2] = '0';
-  ans = itoa(l, buf);
-  recvInfo[3] = ans[0];
-  recvInfo[4] = '\0';
+
+  turnC = 0;
+
+  count = 0;
+  i = 1;
+  rowlength = 12;
+  
+  for( i = 0 ; i < 10; i++){
+    board[i] = ' ';
+  }
+  board[9] = 's';
+  i = 1;
+  /* Generates a blank tic tac toe board for sending back and forth */
+  /*while(count < 5){
+    count = count + 1;
+    if(count % 2 == 1){
+      for(i; i < count * rowlength; i++){
+        board[i] = ' ';
+        i = i + 1;
+        board[i] = ' ';
+        i = i + 1;
+        board[i] = ' ';
+        i = i + 1;
+        board[i] = '|';
+      }
+    }
+    else{
+      for(i; i < count * rowlength; i++){
+        board[i] = '-';
+      }
+    }
+    board[i - 1] = '\n';
+  }*/
+
+  mMbox = GetMailbox();
+
+  /* Open a specific mailBox here */
+  mPid = 0;
+  Create("serve");
+  fId = Open("serve");
+  printd(mMbox, fId);
+  Close(fId);
+  printd(mMbox, ConsoleOutput);
+  prints("\n", ConsoleOutput);
+  prints(itoa2(mMbox, buf), ConsoleOutput);
+
+  Recv(recvInfo, 5, mMbox);
   prints(recvInfo, ConsoleOutput);
-  Send(recvInfo, 5, l, 0, i);
-  Recv(board, 10, l);
-  m = board[9];
-  printBoard(board);
-  if(m == '1'){
-    playerChar = 'X';
-    otherChar = 'O';
-    board[9] = 'e';
-    while(board[9] == 'e'){
-      prints("Row of move: ", ConsoleOutput);
-      prints("\n", ConsoleOutput);
-      Read(&c, 1, ConsoleInput);
-      Read(&t, 1, ConsoleInput);
-    
-      sends[0] = m;
-      sends[1] = c;
-
-      prints("Col of move: ", ConsoleOutput);
-      Read(&c, 1, ConsoleInput);
-      Read(&t, 1, ConsoleInput);
-      sends[2] = c;
-      prints("\n", ConsoleOutput);
-      Send(sends, 4, l, 0, i);
-      Recv(board, 10, l);
-      if(board[9] == 'e'){
-        prints("Retry, invalid move\n", ConsoleOutput);
-      }
-    }
-    if(board[9] != 'o'){
-      printBoard(board);
-    }
-
-  } else{
-    playerChar = 'O';
-    otherChar = 'X';
-    board[9] = 's';
-  }
+  split1[0] = recvInfo[0];
+  split1[1] = recvInfo[1];
+  split1[2] = '\0';
+  split2[0] = recvInfo[2];
+  split2[1] = recvInfo[3];
+  split2[2] = '\0';
+  p1 = atoi2(split1);
+  mp1 = atoi2(split2);
+  prints("\n", ConsoleOutput);
+  printd(p1,ConsoleOutput);
+  printd(mp1,ConsoleOutput);
+  prints("\n", ConsoleOutput);
+  board[9] = '1';
+  Send(board, 10, l, p1, mp1);
+  prints("Sent\n", ConsoleOutput);
+  Recv(recvInfo, 5, mMbox);
+  prints(recvInfo, ConsoleOutput);
+  split1[0] = recvInfo[0];
+  split1[1] = recvInfo[1];
+  split1[2] = '\0';
+  split2[0] = recvInfo[2];
+  split2[1] = recvInfo[3];
+  split2[2] = '\0';
+  p2 = atoi2(split1);
+  mp2 = atoi2(split2);
+  printd(p2,ConsoleOutput);
+  prints("\n", ConsoleOutput);
+  printd(mp2,ConsoleOutput);
+  prints("\n", ConsoleOutput);
+  turnM = p1;
+  turnB = mp1;
+  /*board[9] = '1';
+  Send(board, 10, l, p1, mp1);
+  prints("Sent\n", ConsoleOutput);*/
+  board[9] = '2';
+  Send(board, 10, l, p2, mp2);
+  prints("Sent\n", ConsoleOutput);
+  board[9] = 's';
+  turnChar = 'X';
+  turns = 0;
+  /* Game logic code */
   while(board[9] == 's'){
-    prints("Waiting for opponent ", ConsoleOutput);
-    Write(otherChar, 1, ConsoleOutput);
-    prints("to make a move current board is:\n", ConsoleOutput);
-    printBoard(board);
-    /* get the updated board */
-    Recv(board, 10, l);
-    if(board[9] != 's'){
-      break;
-    }else{
-      prints("Make a move player ", ConsoleOutput);
-      Write(playerChar, 1, ConsoleOutput);
-      prints(":\n",ConsoleOutput);
-      printBoard(board);
-      board[9] = 'e';
-      while(board[9] =='e'){
-        prints("Row of move: ", ConsoleOutput);
-        prints("\n", ConsoleOutput);
-        Read(&c, 1, ConsoleInput);
-        Read(&t, 1, ConsoleInput);
-    
-        sends[0] = m;
-        sends[1] = c;
-
-        prints("Col of move: ", ConsoleOutput);
-        Read(&c, 1, ConsoleInput);
-        Read(&t, 1, ConsoleInput);
-        sends[2] = c;    
-        prints("\n", ConsoleOutput);
-        Send(sends, 4, l, 0, i);
-        Recv(board, 10, l);
-        if(board[9] == 'e'){
-          prints("Retry, invalid move\n", ConsoleOutput);
-        }
-      }
+    Recv(board, 10, mMbox);
+    turns += 1;
+    if(winningMove('X', board) == 1){
+      prints("winning!", ConsoleOutput);
+      board[9] = 'X';
+      Send(board, 10, mMbox, p1, mp1);
+      Recv(board, 10, mMbox);
+    } else if (turns >= 9){
+      board[9] = 'd';
+      Send(board, 10, mMbox, p1, mp1);
+      Recv(board, 10, mMbox);
     }
-
-    prints("After you moved (player ", ConsoleOutput);
-    prints(playerChar, ConsoleOutput);
-    prints(") the board looks like:\n", ConsoleOutput);
-    printBoard(board);
+    /* Send information back on how it went */
+    
+    Send(board, 10, mMbox, p2, mp2);
+    Recv(board, 10, mMbox);
+    turns += 1;
+    if(winningMove('O', board) == 1){
+      board[9] = 'O';
+      Send(board, 10, mMbox, p2, mp2);
+      Recv(board, 10, mMbox);
+    } else if (turns >= 9){
+      board[9] = 'd';
+      Send(board, 10, mMbox, p1, mp1);
+      Recv(board, 10, mMbox);
+    }
+    Send(board, 10, mMbox, p1, mp1);
   }
-  if(board[9] == 'w'){
-    prints("You won!\n", ConsoleOutput);
-  }
-  else if(board[9] == 'd'){
-    prints("Draw.\n", ConsoleOutput);
-  }
-  else{
-    prints("Loser :P\n", ConsoleOutput);
-  }
-
-  Halt();
-  /*Send(, 1, 0, i);
-
-
-  /*Read(&recvInfo, 1, mPid);
-  printd(atoi(recvInfo), ConsoleOutput);
-  /*Send(args, 6, 1, 1);
   
-  while(c != '\n'){
-
-  	i = i * 10;
-
-  	Read(&c, 1, ConsoleInput);
-  	prints(c, ConsoleOutput);
-  	printd(c, ConsoleOutput);
-  	i = i + atoi(c, 1);
-  }
-  /*printd(i, ConsoleOutput);*/
-  Exit(0);
-  /* not reached */
 }
+
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
-
-printBoard(b)
-char* b;
-{
-  int polo;
-  int timeT;
-  char bobo[60];
-  polo =  0;
-  timeT = 0;
-  bobo[0] = ' ';
-  /*prints(b, ConsoleOutput);
-  for(polo; polo < 60; polo++){
-    if((polo / 12 % 2) == 0){
-      bobo[polo] = ' ';
-      bobo[polo + 1] = b[timeT];
-      bobo[polo + 2] = ' ';
-      bobo[polo + 3] = '|';
-      timeT = timeT + 1;
-      if(timeT > 9){
-        Halt();
-      }
-    } else{
-      bobo[polo] = '-';
-      bobo[polo + 1] = '-';
-      bobo[polo + 2] = '-';
-      bobo[polo + 3] = '-';
-    }
-    polo = polo + 3;
-    if(polo % 11 == 1){
-      bobo[polo] = '\n';
-    }
-
-  }*/
-  prints(bobo, ConsoleOutput);
-}
 
 prints(s,file)
 char *s;
@@ -206,29 +181,27 @@ OpenFileId file;
 
 
 /* Print an integer "n" on open file descriptor "file". */
-
-printd(num,file)
-int num;
+printd(n,file)
+int n;
 OpenFileId file;
-
 {
 
   int i, pos=0, divisor=1000000000, d, zflag=1;
   char c;
   char buffer[11];
   
-  if (num < 0) {
+  if (n < 0) {
     buffer[pos++] = '-';
-    num = -num;
+    n = -n;
   }
   
-  if (num == 0) {
+  if (n == 0) {
     Write("0",1,file);
     return;
   }
 
   for (i=0; i<10; i++) {
-    d = num / divisor; num = num % divisor;
+    d = n / divisor; n = n % divisor;
     if (d == 0) {
       if (!zflag) buffer[pos++] =  (char) (d % 10) + '0';
     } else {
@@ -240,7 +213,47 @@ OpenFileId file;
   Write(buffer,pos,file);
 }
 
-int atoi(m)
+/* converts integer to char */
+char * itoa2(n, buffer)
+int n;
+char* buffer;
+{
+
+  int i, pos=0, divisor=1000000000, d, zflag=1;
+  char c;
+  
+  if (n < 0) {
+    buffer[pos++] = '-';
+    n = -n;
+  }
+  
+  if (n == 0) {
+    return "0";
+  }
+
+  for (i=0; i<10; i++) {
+    d = n / divisor; n = n % divisor;
+    if (d == 0) {
+      if (!zflag) buffer[pos++] =  (char) (d % 10) + '0';
+    } else {
+      zflag = 0;
+      buffer[pos++] =  (char) (d % 10) + '0';
+    }
+    divisor = divisor/10;
+  }
+  return buffer;
+}
+
+/* gets the appropriate index on the board */
+int getIndex(op, lop)
+int op;
+int lop;
+{
+  return 1+ op*24 +lop * 4;
+}
+
+/* converts char* to int */
+int atoi2(m)
 char *m;
 {
   int count = 0;
@@ -250,6 +263,7 @@ char *m;
     count++;
     neg = -1;
   }
+
   while(m[count] != '\0'){
     num = num * 10;
     if(m[count] == '0'){
@@ -290,35 +304,49 @@ char *m;
     count++;
   }
   return num;
-
 }
 
-char * itoa(n, buffer)
-int n;
-char* buffer;
+/* checks to see if someone has won, return 1 if so, 0 if no one has won */
+int winningMove(player, board)
+char player;
+char* board;
 {
+  prints(board, ConsoleOutput);
+  Write(&player,1, ConsoleOutput);
+  Write(board, 3, ConsoleOutput);
+  if(board[0] == board[1] && board[2] == board[1] && board[2] == player){
+    prints("top", ConsoleOutput);
+    /*check top row */
+    return 1;
+  }
+  if(board[0] == board[3] && board[6] == board[3] && board[6] == player){
+    /*check first column */
+    return 1;
+  }
+  if(board[0] == board[4] && board[8] == board[4] && board[8] == player){
+    /* check from top left corner to bottom right corner diagonal */
+    return 1;
+  }
+  if(board[1] == board[4] && board[7] == board[4] && board[7] == player){
+    /* check middle column */
+    return 1;
+  }
+  if(board[2] == board[5] && board[8] == board[5] && board[8] == player){
+    /* check last column */
+    return 1;
+  }
+  if(board[2] == board[4] && board[6] == board[4] && board[6] == player){
+    /*check top right corner to bottom left corner */
+    return 1;
+  }
+  if(board[3] == board[4] && board[5] == board[4] && board[5] == player){
+    /* check middle row */
+    return 1;
+  }
+  if(board[6] == board[7] && board[8] == board[7] && board[8] == player){
+    /* check bottom row */
+    return 1;
+  }
+  return 0;
 
-  int i, pos=0, divisor=1000000000, d, zflag=1;
-  char c;
-  
-  if (n < 0) {
-    buffer[pos++] = '-';
-    n = -n;
-  }
-  
-  if (n == 0) {
-    return "0";
-  }
-
-  for (i=0; i<10; i++) {
-    d = n / divisor; n = n % divisor;
-    if (d == 0) {
-      if (!zflag) buffer[pos++] =  (char) (d % 10) + '0';
-    } else {
-      zflag = 0;
-      buffer[pos++] =  (char) (d % 10) + '0';
-    }
-    divisor = divisor/10;
-  }
-  return buffer;
 }
