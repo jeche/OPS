@@ -336,7 +336,7 @@ TimerInterruptHandler2(int )
 {
     //fprintf(stderr, "Interrupt\n");
     unsigned long long TIMEOUTKILLER;
-    TIMEOUTKILLER =  100000000;
+    TIMEOUTKILLER =  1000000;
     if ( stats->totalTicks > timeoutctr + TIMEOUTKILLER){
         timeoutctr = stats->totalTicks;
         postOffice->KaputTime();
@@ -489,7 +489,7 @@ Initialize(int argc, char **argv)
 #endif
 
 #ifdef NETWORK
-    postOffice = new(std::nothrow) PostOffice(netname, rely, 10);
+    postOffice = new(std::nothrow) PostOffice(netname, rely, 1);
     mailboxes = new(std::nothrow) BitMap(10);
     msgCTR = new(std::nothrow) Semaphore("msgCTR", 1);
     msgctr = 0;
