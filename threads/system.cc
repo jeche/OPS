@@ -394,6 +394,8 @@ Initialize(int argc, char **argv)
 #ifdef NETWORK
     double rely = 1;        // network reliability
     int netname = 0;        // UNIX socket name
+    int server = -1;
+    int clients[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 #endif
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
     argCount = 1;
@@ -424,11 +426,30 @@ Initialize(int argc, char **argv)
         ASSERT(argc > 1);
         rely = atof(*(argv + 1));
         argCount = 2;
-    } else if (!strcmp(*argv, "-m")) {
+    } 
+    else if (!strcmp(*argv, "-m")) {
         ASSERT(argc > 1);
         netname = atoi(*(argv + 1));
         argCount = 2;
     }
+    else if (!strcmp(*argv, "-S")) {
+        ASSERT(argc > 1);
+        server = atoi(*(argv + 1));
+        argCount = 2;
+    }
+    else if (!strcmp(*argv, "-C")) {
+        ASSERT(argc > 1);
+        char* client_str = *(argv + 1);
+        int count = 0;
+        for (int i = 0; client_str[i] != '\0'; i++) {
+            if (client_str[i] != ',') {
+                clients[count] = atoi(&client_str[i]);
+                count++;
+            }
+        }
+        argCount = 2;
+    }
+
 #endif
     }
 
