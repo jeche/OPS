@@ -745,7 +745,12 @@ synchdisk.o: ../filesys/synchdisk.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/os_defines.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
- /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/list.h
+ /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/list.h \
+ ../threads/system.h ../threads/scheduler.h ../machine/interrupt.h \
+ ../threads/list.h ../machine/stats.h ../machine/timer.h \
+ ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../filesys/openfile.h ../filesys/synchdisk.h ../network/post.h \
+ ../machine/network.h ../threads/synchlist.h
 disk.o: ../machine/disk.cc ../threads/copyright.h ../machine/disk.h \
  ../threads/utility.h ../threads/copyright.h ../machine/sysdep.h \
  /usr/include/stdlib.h /usr/include/features.h /usr/include/stdc-predef.h \

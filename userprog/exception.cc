@@ -856,8 +856,8 @@ ExceptionHandler(ExceptionType which)
                 }
                 else{
                   DEBUG('j', "Creating a CowAddrSpace\n");
-                  fprintf(stderr, "WTF we be doin Cow lolol\n");
                   newSpacer = currentThread->space->newSpace(size);
+                  // newSpacer = currentThread->space->cowSpace(size);
                 }
                 //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {

@@ -54,7 +54,8 @@ class AckHeader {
     int totalSize; //if -1 then it is an Ack
     int curPack; 
     int messageID;
-    int pageId;
+    int pageID;
+
 };
 
 // Maximum "payload" -- real data -- that can included in a single message

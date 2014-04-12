@@ -1,0 +1,1115 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"page",
+				"pagebuf"
+			],
+			[
+				"cure",
+				"currentThread"
+			],
+			[
+				"sec",
+				"sectorNumber"
+			],
+			[
+				"vi",
+				"victim"
+			],
+			[
+				"Mar",
+				"MarkedForReplacement"
+			],
+			[
+				"ph",
+				"physicalPage"
+			],
+			[
+				"pag",
+				"pageTable"
+			],
+			[
+				"num",
+				"numPageFaults"
+			],
+			[
+				"sy",
+				"synchDik"
+			],
+			[
+				"size",
+				"sizeof"
+			],
+			[
+				"physi",
+				"physicalAddress"
+			],
+			[
+				"vmto",
+				"vmtorture"
+			],
+			[
+				"ck",
+				"ckpttorture"
+			],
+			[
+				"vpn",
+				"vpnReplacement"
+			],
+			[
+				"As",
+				"ASSERT"
+			],
+			[
+				"from",
+				"fromInput"
+			],
+			[
+				"virt",
+				"virtualPage"
+			],
+			[
+				"ram",
+				"ramPages"
+			],
+			[
+				"Con",
+				"ConsoleOutput"
+			],
+			[
+				"Restore",
+				"RestoreUserState"
+			],
+			[
+				"physical",
+				"physicalPage"
+			],
+			[
+				"Write",
+				"WriteRegister"
+			],
+			[
+				"new",
+				"newPageTable"
+			],
+			[
+				"Tran",
+				"TranslationEntry"
+			],
+			[
+				"nu",
+				"numPages"
+			],
+			[
+				"Page",
+				"PageSize"
+			],
+			[
+				"main",
+				"mainMemory"
+			],
+			[
+				"Console",
+				"ConsoleOutput"
+			],
+			[
+				"Conso",
+				"ConsoleOutput"
+			],
+			[
+				"Cons",
+				"ConsoleOutput"
+			],
+			[
+				"con",
+				"ConsoleOutput"
+			],
+			[
+				"str",
+				"stringArg"
+			],
+			[
+				"Wa",
+				"WawaBuffer"
+			],
+			[
+				"file",
+				"fileDescriptors"
+			],
+			[
+				"increme",
+				"incrementPC"
+			],
+			[
+				"Wri",
+				"WriteRegister"
+			],
+			[
+				"Read",
+				"ReadRegister"
+			],
+			[
+				"Wr",
+				"WriteRegister"
+			],
+			[
+				"current",
+				"currentThread"
+			],
+			[
+				"dwa",
+				"dwaiter"
+			],
+			[
+				"h",
+				"isHeldByCurrentThread"
+			],
+			[
+				"people",
+				"peopleWait"
+			],
+			[
+				"cur",
+				"curFloor"
+			],
+			[
+				"Par",
+				"PersonArgs"
+			],
+			[
+				"elevator",
+				"elevatorLock"
+			],
+			[
+				"ele",
+				"elevatorLock"
+			],
+			[
+				"get",
+				"getCurFloor"
+			],
+			[
+				"condition",
+				"conditionLock"
+			],
+			[
+				"is",
+				"isHeldByCurrentThread"
+			],
+			[
+				"curre",
+				"currentThread"
+			],
+			[
+				"red",
+				"red"
+			],
+			[
+				"derp",
+				"derp"
+			],
+			[
+				"tv",
+				"tv_usec"
+			],
+			[
+				"gt",
+				"gt"
+			],
+			[
+				"Buf",
+				"BUFFER_SIZE"
+			],
+			[
+				"n",
+				"n"
+			],
+			[
+				"buf",
+				"BUFFER_SIZE"
+			],
+			[
+				"pthread_mute",
+				"pthread_mutex_unlock"
+			],
+			[
+				"else",
+				"else"
+			],
+			[
+				"buffer",
+				"buffer"
+			],
+			[
+				"game",
+				"gameId"
+			],
+			[
+				"read",
+				"readSet"
+			],
+			[
+				"spac",
+				"spac"
+			],
+			[
+				"tem",
+				"tem"
+			],
+			[
+				"handle2",
+				"handle2"
+			],
+			[
+				"recv",
+				"recvHandle"
+			],
+			[
+				"M",
+				"M"
+			],
+			[
+				"c",
+				"column"
+			],
+			[
+				"r",
+				"r"
+			],
+			[
+				"LINE",
+				"LINE_MAX"
+			],
+			[
+				"w",
+				"w"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "/home/scratch/jlchen/adv/machine/timer.cc",
+			"settings":
+			{
+				"buffer_size": 3089,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/test/stuffer",
+			"settings":
+			{
+				"buffer_size": 0,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/atjones/OS/test1shell/funwoo",
+			"settings":
+			{
+				"buffer_size": 0,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/threads/main.cc",
+			"settings":
+			{
+				"buffer_size": 14210,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/machine/translate.cc",
+			"settings":
+			{
+				"buffer_size": 8236,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/test/vmtorture.c",
+			"settings":
+			{
+				"buffer_size": 0,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/machine/stats.h",
+			"settings":
+			{
+				"buffer_size": 2483,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/machine/mipssim.cc",
+			"settings":
+			{
+				"buffer_size": 18126,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/threads/system.h",
+			"settings":
+			{
+				"buffer_size": 7567,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/userprog/progtest.cc",
+			"settings":
+			{
+				"buffer_size": 3153,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/scratch/jlchen/adv/userprog/exception.cc",
+			"settings":
+			{
+				"buffer_size": 32886,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "Packages/AAAPackageDev/Support/JSON to Property List.sublime-build",
+	"command_palette":
+	{
+		"height": 392.0,
+		"selected_items":
+		[
+			[
+				"Sublime",
+				"SublimePTY"
+			],
+			[
+				"Package Control: Install",
+				"Package Control: Install Package"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 449.0
+	},
+	"console":
+	{
+		"height": 409.0
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/home/scratch/jlchen/adv/userprog/addrspace.cc",
+		"/home/scratch/jlchen/adv/userprog/exception.cc",
+		"/home/scratch/jlchen/adv/userprog/addrspace.h",
+		"/home/scratch/jlchen/adv/userprog/bitmap.cc",
+		"/home/scratch/jlchen/adv/threads/system.cc",
+		"/home/scratch/jlchen/adv/machine/machine.h",
+		"/home/scratch/jlchen/adv/threads/system.h",
+		"/home/scratch/jlchen/adv/userprog/progtest.cc",
+		"/home/scratch/jlchen/adv/test/DISK",
+		"/home/scratch/jlchen/adv/machine/machine.cc",
+		"/home/scratch/jlchen/adv/machine/interrupt.cc",
+		"/home/scratch/atjones/OS",
+		"/home/scratch/atjones/OS/test1shell",
+		"/home/scratch/atjones/OS/test1shell/funwoo",
+		"/home/scratch/atjones/OS/testshell1",
+		"/home/scratch/jlchen/nachos/machine/interrupt.cc",
+		"/home/scratch/jlchen/nachos/README.txt",
+		"/home/f85/jlchen/Downloads/jlchen.grades",
+		"/home/f85/jlchen/Downloads/exception.cc",
+		"/home/scratch/aablohm/nachos/OPS/userprog/exception.cc",
+		"/home/f85/jlchen/Downloads/addrspace.h",
+		"/home/scratch/jlchen/nachos/userprog/addrspace.h",
+		"/home/f85/jlchen/Downloads/addrspace.cc",
+		"/home/scratch/jlchen/nachos/userprog/addrspace.cc",
+		"/home/scratch/jlchen/nachos/threads/system.cc",
+		"/home/scratch/jlchen/nachos/threads/system.h",
+		"/home/f85/jlchen/Downloads/system.h",
+		"/home/f85/jlchen/Downloads/system.cc",
+		"/home/f85/aablohm/OPS",
+		"/home/f85/aablohm/nachos",
+		"/home/scratch/jlchen/nachos/userprog/exception.cc",
+		"/home/scratch/aablohm/nachos/OPS/userprog/addrspace.cc",
+		"/home/scratch/aablohm/OPS",
+		"/home/scratch/jlchen/nachos/machine/mipssim.cc",
+		"/home/scratch/jlchen/nachos/machine/machine.cc",
+		"/home/scratch/jlchen/nachos/test/Makefile",
+		"/home/scratch/jlchen/nachos/test/sharekidcrashstat",
+		"/home/scratch/jlchen/nachos/test/stuffsfs",
+		"/home/scratch/jlchen/nachos/test/sharepages",
+		"/home/scratch/jlchen/nachos/machine/machine.h",
+		"/home/scratch/jlchen/nachos2go/threads/system.cc",
+		"/home/scratch/jlchen/stepper/userprog/exception.cc",
+		"/home/scratch/jlchen/nachos/machine/disk.h",
+		"/home/scratch/jlchen/nachos/test/Xkid.c",
+		"/home/scratch/jlchen/nachos/test/vmtoobig.c",
+		"/home/scratch/jlchen/nachos/test/huge.c",
+		"/home/scratch/jlchen/nachos/machine/translate.h",
+		"/home/scratch/jlchen/nachos/machine/translate.cc",
+		"/home/scratch/jlchen/nachos/test/qsort.c",
+		"/home/scratch/jlchen/nachos/machine/disk.cc",
+		"/home/scratch/jlchen/nachos/test/sharekid.c",
+		"/home/scratch/jlchen/nachos/test/matmult.c",
+		"/home/scratch/jlchen/nachos/test/sort.c",
+		"/home/scratch/jlchen/nachos/test/ckmatmult.c",
+		"/home/scratch/jlchen/nachos/test/rematmult.c",
+		"/home/scratch/jlchen/nachos/userprog/progtest.cc",
+		"/home/scratch/jlchen/nachos/userprog/syscall.h",
+		"/home/scratch/jlchen/nachos/test/start.s",
+		"/home/scratch/jlchen/nachos/bin/int.h",
+		"/home/scratch/jlchen/nachos2go/threads/system.h",
+		"/home/scratch/jlchen/nachos/test/DISK",
+		"/home/scratch/jlchen/nachos/test/share.c",
+		"/home/scratch/jlchen/nachos/test/hellhell",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/test/sharekid.c",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/test/share.c",
+		"/home/scratch/jlchen/nachos/threads/scheduler.cc",
+		"/home/scratch/jlchen/nachos/test/shell.c",
+		"/home/scratch/jlchen/nachos/test/deepkid2",
+		"/home/scratch/jlchen/nachos/test/noffinfo.c",
+		"/home/scratch/jlchen/nachos/test/hell",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/test/gross",
+		"/home/scratch/jlchen/nachos/userprog/bitmap.h",
+		"/home/scratch/jlchen/nachos/test/stuff",
+		"/home/scratch/jlchen/nachos/test/pageslol",
+		"/home/scratch/jlchen/nachos/filesys/synchdisk.h",
+		"/home/scratch/jlchen/nachos/filesys/synchdisk.cc",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/test/shit",
+		"/home/scratch/jlchen/nachos/test/poop",
+		"/home/scratch/jlchen/nachos/threads/synch.cc",
+		"/home/scratch/jlchen/nachos/machine/sysdep.cc",
+		"/home/scratch/jlchen/nachos/test/hellocons.coff",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/test/shell.c",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/machine/translate.cc",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/userprog/addrspace.h",
+		"/home/scratch/jlchen/nachos2go/userprog/bitmap.cc",
+		"/home/scratch/jlchen/nachos2go/threads/synch.cc",
+		"/home/scratch/jlchen/nachos2go/threads/thread.cc",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/test/blarg",
+		"/home/scratch/jlchen/nachos2go/test/helper",
+		"/home/scratch/jlchen/nachos2go/userprog/progtest.cc",
+		"/home/scratch/jlchen/nachos2go/machine/translate.cc",
+		"/home/scratch/jlchen/nachos2go/test/shell.c",
+		"/home/scratch/jlchen/nachos2go/machine/machine.h",
+		"/home/scratch/jlchen/nachos2go/userprog/addrspace.cc",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/userprog/progtest.cc",
+		"/home/scratch/jlchen/nachos2go/userprog/exception.cc",
+		"/home/scratch/jlchen/nachos2go/threads/switch.h",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/userprog/addrspace.cc",
+		"/home/scratch/jlchen/nachos2go/userprog/addrspace.h",
+		"/home/scratch/jlchen/nachos2go/hi",
+		"/home/scratch/jlchen/nachos2go/test/hi",
+		"/home/scratch/jlchen/nachos2go/machine/translate.h",
+		"/home/scratch/jlchen/nachos/test/help",
+		"/home/scratch/jlchen/nachos/test/help2",
+		"/home/f85/jlchen/Downloads/OPS-nachos2fin/test/matmult.c",
+		"/home/scratch/jlchen/nachos/test/help4",
+		"/home/scratch/jlchen/nachos/test/help3",
+		"/home/scratch/jlchen/nachos/test/output",
+		"/home/scratch/jlchen/nachos/test/arg_seq_child.coff",
+		"/home/scratch/jlchen/nachos/help2",
+		"/home/scratch/jlchen/nachos/test/fuck",
+		"/home/scratch/jlchen/nachos/threads/synchlist.h",
+		"/home/f85/jlchen/scripts/genLast",
+		"/home/f85/jlchen/Downloads/stuff",
+		"/home/scratch/jlchen/nachos/test/cp.c",
+		"/home/scratch/jlchen/nachos/test/dupparent.c",
+		"/home/scratch/jlchen/nachos/test/superTestScript",
+		"/home/scratch/jlchen/nachos/test/deepkid2.c",
+		"/home/scratch/jlchen/nachos/test/dupkid.c",
+		"/home/scratch/jlchen/nachos/test/deepfork.c",
+		"/home/scratch/jlchen/nachos/filesys/openfile.h",
+		"/home/scratch/jlchen/nachos/userprog/README.md",
+		"/home/scratch/jlchen/nachos/userprog/bitmap.cc",
+		"/home/scratch/jlchen/nachos/test/arg_seq_child.c",
+		"/home/scratch/jlchen/nachos/test/seq_child.c",
+		"/home/scratch/jlchen/nachos/test/seq_child",
+		"/home/scratch/jlchen/nachos/test/parent_child.c",
+		"/home/scratch/jlchen/nachos/test/kid.c"
+	],
+	"find":
+	{
+		"height": 75.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"));\n",
+			"writesector",
+			"bzero",
+			"pid",
+			"readSector",
+			"~Addr",
+			"newSpace",
+			"~AddrSpace",
+			"otherAddr",
+			"new\\(std::nothrow\\) AddrSpace",
+			"new(std::nothrow) AddrSpace",
+			"AddrSpace::A",
+			"pid",
+			"128",
+			"readSector",
+			"READSECTOR",
+			"JOIN",
+			"~Addr",
+			"readsector",
+			"forking",
+			"Exit",
+			"~A",
+			"remDiskPages",
+			"~Addr",
+			"remDIskPages",
+			"cowPage",
+			"diskPages",
+			"forking-V()",
+			"delete",
+			"Exit",
+			"Find",
+			"copyCowPage",
+			"pagebuf",
+			"ReadSector",
+			"pageFault",
+			"setLevel",
+			"addAddr",
+			"addrSpace",
+			"stringARg",
+			"oagebuf",
+			"READonly",
+			"cowSpace",
+			"setLevel",
+			"AddrSpace\\(",
+			"AddrSpace(",
+			"newSPace",
+			"remDiskPages",
+			"removeAddr",
+			"SETlEVEL",
+			"setlEVEL",
+			"halt()",
+			"pageFaultHandler2",
+			"writemem",
+			"write",
+			"Address",
+			"Raise",
+			"fprintf",
+			"ADDRSPACE",
+			"while",
+			"exec",
+			"pageFaultException",
+			"valid",
+			"Reading VA 0x16ac, size 4",
+			"184",
+			"RamPages",
+			"xkid",
+			"code segment",
+			"xkid",
+			"data segment",
+			"Initializing code",
+			"initializing",
+			"0x250",
+			"threadtest",
+			"CheckIfDue",
+			"OneTIck",
+			"SetLevel",
+			"CheckifDue",
+			"xkid",
+			"intialization",
+			"timer2",
+			"xkid",
+			"Xkid",
+			"addr",
+			"timer",
+			"fprintf",
+			"Find",
+			"semaphore",
+			"diskbitMap",
+			"disk",
+			"INitialize",
+			"timer2",
+			"RandomInit",
+			"timer",
+			"timer2",
+			"timer",
+			"~AddrSpace",
+			"currentThread",
+			"pageTableEntry",
+			"handle",
+			"handlePage",
+			"handleReadOnly",
+			"handleREadOnly2",
+			"handleReadOnly",
+			"handle",
+			"readOnly",
+			"ramEntry",
+			"diskREfcount",
+			"ramPage",
+			"diskRef",
+			"numSectors",
+			"diskRef",
+			"findReplacement",
+			"current",
+			"find\\(\\)",
+			"find()",
+			"disRefCount",
+			"FindReplacement",
+			"find",
+			"~Addr",
+			"head",
+			"currentThread",
+			"ReadOnly",
+			"ramPages",
+			"diskRefCount",
+			"fprintf",
+			"<",
+			"ADD",
+			"ADDR"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": true,
+		"replace_history":
+		[
+			"Find()",
+			"diskRefCount",
+			"findReplacement",
+			"Find",
+			"",
+			"ramPages[",
+			"",
+			"// fprintf",
+			"->getStatus()",
+			"// fprintf",
+			"",
+			"last.txt",
+			"last",
+			"'a'",
+			"HALT_{TM}",
+			"share",
+			"seq_child",
+			"parent_child",
+			"maxfork",
+			"kid",
+			"deepkid2",
+			"deepkid1",
+			"deepfork",
+			"argtest",
+			"bogus",
+			"arg_seq_child",
+			"argkid",
+			"newfork",
+			"ssh -x ",
+			"-x",
+			"ssh -x ",
+			"",
+			"synchConsole",
+			"&temp",
+			"L"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 2,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "/home/scratch/jlchen/adv/machine/timer.cc",
+					"settings":
+					{
+						"buffer_size": 3089,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3089,
+								3089
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 772.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "/home/scratch/jlchen/adv/test/stuffer",
+					"settings":
+					{
+						"buffer_size": 0,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "/home/scratch/atjones/OS/test1shell/funwoo",
+					"settings":
+					{
+						"buffer_size": 0,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "/home/scratch/jlchen/adv/threads/main.cc",
+					"settings":
+					{
+						"buffer_size": 14210,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								10168,
+								10168
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3748.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "/home/scratch/jlchen/adv/machine/translate.cc",
+					"settings":
+					{
+						"buffer_size": 8236,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 2623.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "/home/scratch/jlchen/adv/test/vmtorture.c",
+					"settings":
+					{
+						"buffer_size": 0,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 504.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "/home/scratch/jlchen/adv/machine/stats.h",
+					"settings":
+					{
+						"buffer_size": 2483,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2483,
+								2483
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 168.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "/home/scratch/jlchen/adv/machine/mipssim.cc",
+					"settings":
+					{
+						"buffer_size": 18126,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								7330,
+								7330
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 2984.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "/home/scratch/jlchen/adv/threads/system.h",
+					"settings":
+					{
+						"buffer_size": 7567,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3640.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "/home/scratch/jlchen/adv/userprog/progtest.cc",
+					"settings":
+					{
+						"buffer_size": 3153,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 210.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 10,
+					"file": "/home/scratch/jlchen/adv/userprog/exception.cc",
+					"settings":
+					{
+						"buffer_size": 32886,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 10626.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 0.0
+	},
+	"input":
+	{
+		"height": 31.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.unsaved_changes":
+	{
+		"height": 25.0
+	},
+	"replace":
+	{
+		"height": 62.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"selected_items":
+		[
+		],
+		"width": 380.0
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 223.0,
+	"status_bar_visible": true
+}
