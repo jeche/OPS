@@ -35,7 +35,7 @@ Machine *machine;	// user program memory and registers
 
 #ifdef NETWORK
 char diskname[50];
-
+int netname;        // UNIX socket name
 PostOffice *postOffice;
 #endif
 
@@ -84,7 +84,7 @@ Initialize(int argc, char **argv)
     int argCount;
     char *debugArgs = (char *)""; 
     bool randomYield = false;
-
+    netname = 0
 
 #ifdef USER_PROGRAM
     bool debugUserProg = false;	// single step user program
@@ -94,7 +94,7 @@ Initialize(int argc, char **argv)
 #endif
 #ifdef NETWORK
     double rely = 1;		// network reliability
-    int netname = 0;		// UNIX socket name
+
 #endif
     
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
@@ -277,6 +277,9 @@ BitMap *mailboxes;
 Semaphore *msgCTR;
 Timer *timeoutTimer;
 Thread *timeout;
+int netname;
+int server = -1;
+int clients[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 #endif
 
 
@@ -339,7 +342,7 @@ TimerInterruptHandler2(int )
     TIMEOUTKILLER =  100000000;
     if ( stats->totalTicks > timeoutctr + TIMEOUTKILLER){
         timeoutctr = stats->totalTicks;
-        postOffice->KaputTime();
+        // postOffice->KaputTime();
         // fprintf(stderr, "Setting Ready to Run\n");
         // fprintf(stderr, "running time out at %ld\n", timeoutctr);
         // scheduler->ReadyToRun(timeout);
@@ -363,6 +366,79 @@ TimeoutHandler() {
         }
     }
 }
+
+void Pager(int clientMachNum){
+    for(;;){
+        PacketHeader outPktHdr;
+        MailHeader outMailHdr;
+        AckHeader outAckHdr;
+        MessageNode* message = postOffice->GrabMessage(clientMachNum);
+        // ASSERT(false);
+        MailNode* curNode = message->head;
+        Mail* curMail = curNode->cur;
+        Mail* mail;
+        char pageBuf[128];
+        int pageNum;
+        int msgID;
+
+
+        if(curMail->mailHdr.length == 1){
+            pageNum = curMail->ackHdr.pageID;
+            synchDisk->ReadSector(pageNum + curMail->pktHdr.from * 1000, pageBuf);
+
+            msgCTR->P();
+            msgctr++;
+            msgID=msgctr;
+            msgCTR->V(); 
+
+            outPktHdr.to = clientMachNum;   
+            outMailHdr.to = 0;
+            //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+            outMailHdr.from = clientMachNum;//1; 
+            // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+            outMailHdr.length = 128; // had a plus 1 here before?????????
+            outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+            outAckHdr.curPack = 0;
+            outAckHdr.messageID = msgID;
+            outAckHdr.pageID = pageNum;
+            
+
+            mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            postOffice->SendThings(mail, clientMachNum);
+
+        } else if(curMail->mailHdr.length == 128){
+            pageNum = curMail->ackHdr.pageID;
+            msgCTR->P();
+            msgctr++;
+            msgID=msgctr;
+            msgCTR->V(); 
+            synchDisk->WriteSector(pageNum + curMail->pktHdr.from * 1000, curMail->data);
+            outPktHdr.to = clientMachNum;   
+            outMailHdr.to = 0;
+            //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+            outMailHdr.from = clientMachNum;//1; 
+            // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+            outMailHdr.length = 128; // had a plus 1 here before?????????
+            outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+            outAckHdr.curPack = 0;
+            outAckHdr.messageID = msgID;
+            outAckHdr.pageID = pageNum;
+
+            curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, curMail->data);
+            postOffice->SendThings(curMail, clientMachNum);
+
+        } else{
+            ASSERT(false);
+        }
+    }
+}
+
+static void
+PageStuffHandler(int a)
+{
+    Pager(a);
+}
+
 
 static void TimeoutHandlerHelper(int arg)
 { TimeoutHandler(); }
@@ -393,9 +469,7 @@ Initialize(int argc, char **argv)
 #endif
 #ifdef NETWORK
     double rely = 1;        // network reliability
-    int netname = 0;        // UNIX socket name
-    int server = -1;
-    int clients[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+    netname = 0;        // UNIX socket name
 #endif
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
     argCount = 1;
@@ -510,7 +584,7 @@ Initialize(int argc, char **argv)
 #endif
 
 #ifdef NETWORK
-    postOffice = new(std::nothrow) PostOffice(netname, rely, 1);
+    postOffice = new(std::nothrow) PostOffice(netname, rely, 10);
     mailboxes = new(std::nothrow) BitMap(10);
     msgCTR = new(std::nothrow) Semaphore("msgCTR", 1);
     msgctr = 0;
@@ -527,7 +601,14 @@ Initialize(int argc, char **argv)
     synchDisk = new(std::nothrow) SynchDisk(diskname);
 
 #endif
-
+    if(server == -1){
+        
+        for(int u = 0; clients[u] != -1; u++){
+            Thread *pagingThread = new (std::nothrow) Thread("server paging Thread");
+            pagingThread->Fork(PageStuffHandler, clients[u]);
+        }
+        
+    }
 
 }
 

@@ -853,7 +853,8 @@ ExceptionHandler(ExceptionType which)
                 }
                 else{
                   DEBUG('j', "Creating a CowAddrSpace\n");
-                  newSpacer = currentThread->space->cowSpace(size);
+                  newSpacer = currentThread->space->newSpace(size);
+                  // newSpacer = currentThread->space->cowSpace(size);
                 }
                 //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
