@@ -162,6 +162,15 @@ GetMailbox:
 	j $31
 	.end GetMailbox
 
+	.globl Migration
+	.ent 	Migration
+Migration:
+	addiu $2,$0,SC_Migration
+	syscall
+	j $31
+	.end Migration
+
+
 /* dummy function to keep gcc happy */
         .globl  __main
         .ent    __main

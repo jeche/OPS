@@ -1330,6 +1330,14 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);    
                 break;
+        case SC_Migration:
+                DEBUG('a', "Migration");
+                location = machine->ReadRegister(4);
+
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);    
+                break;
         default:
                 printf("Undefined SYSCALL %d\n", type);
                 ASSERT(false); //****************************************************
@@ -1494,6 +1502,7 @@ ExceptionHandler(ExceptionType which)
 #define SC_Send 12
 #define SC_Recv 13
 #define SC_GetMailbox 14
+#define SC_Migration 15
 #endif
 
 #define SC_Exit   1
