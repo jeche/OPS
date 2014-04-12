@@ -255,9 +255,9 @@ main(int argc, char **argv)
     int argCount;	// the number of arguments
 // for a particular command
 
-    char* intCheck1;  // checking arguments to make sure they are integers
-    char* intCheck2;
-    char* intCheck3;
+//*    char* intCheck1;  // checking arguments to make sure they are integers
+//*    char* intCheck2;
+//*    char* intCheck3;
     DEBUG('t', "Entering main");
     (void) Initialize(argc, argv);
     

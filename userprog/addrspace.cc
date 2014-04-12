@@ -290,7 +290,7 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
 {    NoffHeader noffH;
     unsigned int size;
     unsigned int i;
-    int j;
+//*    int j;
 
     pid=PID;
     enoughSpace = 1;
@@ -377,7 +377,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     if(enoughSpace == 1){
         char strbuf[128];
         memset(strbuf, '\0', sizeof(strbuf));
-        int count = 0;
+        unsigned int count = 0;
         int page = 0;
         int m;
         bool lastToWrite = false;
@@ -403,8 +403,8 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         }
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
             noffH.initData.virtualAddr, noffH.initData.size);
-        int poo;
-        poo = count;
+//*        unsigned int poo;
+//*        poo = count;
         
         for(m = 0; m < noffH.initData.size; m++){
             executable->ReadAt(&strbuf[count], sizeof(char), noffH.initData.inFileAddr+ m * sizeof(char));
@@ -419,7 +419,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                 count = 0;
                 memset(strbuf, '\0', sizeof(strbuf));
                 lastToWrite = true;
-                poo = 0;
+//*                poo = 0;
             }
             else{            
                 lastToWrite = false;
@@ -443,7 +443,8 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 }
 
 AddrSpace::AddrSpace(OpenFile *chkpt, int numpages, int PID){
-    int i, j, found, readnum;
+    unsigned int i, readnum;
+    int found;
     char sectorBuf[128];
     pid=PID;
     enoughSpace=1;
@@ -534,7 +535,7 @@ AddrSpace::~AddrSpace()
     AddrSpace *other;
     //fprintf(stderr, "dying, my pid was: %d\n", pid);
     
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         if(pageTable[i].readOnly){
             other = diskPages[revPageTable[i].physicalPage]->otherAddr(this);
             if(other != NULL){
@@ -576,7 +577,7 @@ void AddrSpace::Clean()
 {
     fprintf(stderr, "Warning: Use of Depricated Method: AddrSpace::Clean\n");
     clean = true;
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         bitMap->Clear(pageTable[i].physicalPage);
     }
 }
@@ -666,12 +667,12 @@ bool
 AddrSpace::ReadMem(int addr, int size, int *value)
 {
     int data;
-    ExceptionType Exception;
+//    ExceptionType Exception;
     int physicalAddress;
     
     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
     
-    Exception = Translate(addr, &physicalAddress, size, false);
+    /*Exception = */Translate(addr, &physicalAddress, size, false);
 
     switch (size) {
       case 1:
@@ -714,12 +715,12 @@ AddrSpace::ReadMem(int addr, int size, int *value)
 bool
 AddrSpace::WriteMem(int addr, int size, int value)
 {
-    ExceptionType Exception;
+//*    ExceptionType Exception;
     int physicalAddress;
      
     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
-    Exception = Translate(addr, &physicalAddress, size, true);
+    /*Exception = */Translate(addr, &physicalAddress, size, true);
 
     switch (size) {
       case 1:
@@ -763,7 +764,7 @@ ExceptionType
 AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing) 
 {
 
-    int i;
+    //int i;
     unsigned int vpn, offset;
     TranslationEntry *entry;
     unsigned int pageFrame;
@@ -993,9 +994,10 @@ AddrSpace* AddrSpace::newSpace(int PID){
     FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
     AddrSpace* NewSpace;
     int found = 0;
-    int i;
-    int j;
-    if (diskBitMap->NumClear() < numPages) {
+    unsigned int i;
+    unsigned int j;
+
+    if (diskBitMap->NumClear() < (signed)numPages) {//if issues then we have a lot of numPages
         // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
         return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0, false, PID);
     }
@@ -1065,7 +1067,7 @@ AddrSpace* AddrSpace::newSpace(int PID){
         DEBUG('r', "NumPages is %d\n", numPages);
     }
     NewSpace = new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace, false, PID);
-    for(int i = 0; i < numPages; i++){
+    for(i = 0; i < numPages; i++){
         //diskPages[revPageTable2[i].physicalPage]->setStatus(InUse);
         diskPages[revPageTable2[i].physicalPage]->addAddr(NewSpace);
     }
@@ -1096,7 +1098,7 @@ AddrSpace* AddrSpace::cowSpace(int PID){
     //     return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0, false);
     // }
     //Copy the pageTable, revPageTable, and fileDescriptors
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         revPageTable2[i].virtualPage = revPageTable[i].virtualPage;        
         revPageTable2[i].physicalPage = revPageTable[i].physicalPage;
         revPageTable2[i].valid = revPageTable[i].valid;
@@ -1154,7 +1156,7 @@ AddrSpace* AddrSpace::cowSpace(int PID){
     
     CowAddrSpace = new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace, true, PID);
     //Adding the CowAddrSpace to the addrs associatied with diskPages
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         //fprintf(stderr, "DiskPageCow: %d\n", revPageTable[i].physicalPage);
         //diskPages[revPageTable[i].physicalPage]->setStatus(CowPage);
         diskPages[revPageTable[i].physicalPage]->addAddr(CowAddrSpace);
@@ -1170,8 +1172,7 @@ void AddrSpace::remDiskPages(){
 }
 
 bool AddrSpace::writeBackDirty(){
-    int i, j, rc;
-    Status pstat;
+    unsigned int i;
     char pageBuf[128];
     
     for(i=0;i<NumPhysPages;i++){
@@ -1194,7 +1195,7 @@ bool AddrSpace::writeBackDirty(){
 }
 
 void AddrSpace::printAllPages(){
-    int i;
+    unsigned int i;
     char pageBuf[128];
 
     for(i=0;i<numPages;i++){
@@ -1271,7 +1272,7 @@ int AddrSpace::copyCowPage(int rOPage){
 
 }
 bool AddrSpace::isCowAddr(){
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         if(diskPages[revPageTable[i].physicalPage]->getStatus() == CowPage || pageTable[i].readOnly){return true;}
     }
     return false;

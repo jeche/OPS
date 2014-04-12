@@ -204,13 +204,13 @@ void MailBox::SendPackets(){
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
         m = (Mail *) ackList->Remove(); // timeout will add an invalid ack packet
-        while(m->mailHdr.length == -1 || m->pktHdr.from != pktHdr.to || m->mailHdr.from != mailHdr.to){
+        while(m->mailHdr.length == (unsigned)-1 || m->pktHdr.from != pktHdr.to || m->mailHdr.from != mailHdr.to){
             // keep trying to send same packet until it goes through
             // ASSERT(false);
             // ASSERT(ackHdr.curPack == m->ackHdr.curPack);
             // sending Ack
             ASSERT(m->ackHdr.totalSize == -1);
-            ASSERT(mailHdr.length != -1 && ackHdr.totalSize != -1);
+            ASSERT(mailHdr.length != (unsigned)-1 && ackHdr.totalSize != -1);
             ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
             m = (Mail *) ackList->Remove();
             if(m->pktHdr.from != pktHdr.to && m->mailHdr.from != mailHdr.to &&m->mailHdr.from != -1 &&m->pktHdr.from != -1){
@@ -226,16 +226,16 @@ void MailBox::CompleteMessages(){
     Mail *m;
     //MessageNode* temp;
     Mail *temp;
-    int tempInt;
+//*    int tempInt;
     int msgComplete;
     MailHeader mailHdr;
     int flag = 0;
     PacketHeader pktHdr;
     AckHeader ackHdr;
-    Mail *ackMail;
+//*    Mail *ackMail;
     HistoryNode *kemper;
     HistoryNode *temper;
-    char* data;
+//*    char* data;
     for(;;){
         m = (Mail *) messages->Remove();
         // flip information for Ack sending
@@ -532,7 +532,7 @@ MailBox::PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char 
     // hasAck->Broadcast(ackLock);
     // ackLock->Release();
 }
-
+/*
 int
 
 MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
@@ -560,7 +560,7 @@ MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox,
     // return 0;
 
 }
-
+*/
 
 
 //----------------------------------------------------------------------
@@ -905,12 +905,12 @@ PostOffice::RestoreUnwanted(int box)
         mail = (Mail *) boxes[box].unwantedMessages->Peek();
     }
 }
-
+/*
 int
 PostOffice::CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
     return boxes[box].CheckAckMB(msgID, fromMach, toMach, fromBox, toBox, cPack);
 }
-
+*/
 void
 PostOffice::hasAckWait(int box){
     boxes[box].hasAck->Wait(boxes[box].ackLock);

@@ -416,6 +416,7 @@ public:
 //    be used as the method for a forked off thread so as to 
 //    not hang the system
 //------------------------------
+/*
 void sendPacket(int mailMessage){
     //fprintf(stderr, "in send packet!!!\n");
     pwrap* p = (pwrap *) mailMessage;
@@ -433,16 +434,16 @@ void sendPacket(int mailMessage){
     unsigned long long systime = stats->totalTicks;
     // fprintf(stderr, "sent pack %d %d\n", msgID, cPack);
     postOffice->Send(pktHdr, mailHdr, ackHdr, data);
-    /*Grab the Lock*/
+    
     postOffice->ackLockAcquire(fromBox);
     unsigned long long TIMEOUT;
     TIMEOUT =  10000000;
     fprintf(stderr, "systime %llu, stats time %llu \n", systime, stats->totalTicks);
     while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
-      /*Timeout situation goes here, not below hasAckWait*/
+
       if(stats->totalTicks > (systime + TIMEOUT)){//This will need to be modified to account for how often the timeoutctr is incremented
         //fprintf(stderr, "resend %d %d\n", msgID,cPack);
-        fprintf(stderr, "current time %d\n", stats->totalTicks);
+        fprintf(stderr, "current time %llu\n", stats->totalTicks);
         postOffice->ackLockRelease(fromBox);
         postOffice->Send(pktHdr, mailHdr, ackHdr, data);
         postOffice->ackLockAcquire(fromBox);
@@ -455,17 +456,17 @@ void sendPacket(int mailMessage){
     postOffice->ackLockRelease(fromBox);
     delete mail;
     p->t->Finish();
-    /*Release the Lock*/
+    
     //fprintf(stderr, "end of function %d %d\n", msgID,cPack);
 }
-
+*/
 
 
 
 void
 ExceptionHandler(ExceptionType which)
 {
-    BitMap *msgMap;
+    //BitMap *msgMap;
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -482,7 +483,7 @@ ExceptionHandler(ExceptionType which)
     int packetNums;
 
     char whee;
-    char *whee2;
+//*     char *whee2;
     int i, j;
     int numPages;
     int flag = 0;
@@ -494,27 +495,29 @@ ExceptionHandler(ExceptionType which)
     //Exec w/ args variables
     int sp, len, argcount, herece;
     int argvAddr[16];
-    Status stuffing;
+//*    Status stuffing;
     AddrSpace *oldSpacer;
 
     MessageNode* recved;
-    Mail* curMail;
+//*     Mail* curMail;
     MailNode* curNode;
     
-    pwrap* rap;
-    int pos=0, divisor=1000000000, d, zflag=1;
+//*     pwrap* rap;
+    int pos=0/*, divisor=1000000000*/;
     char c;
     char buffer[20];
 
-    PacketHeader outPktHdr, inPktHdr;
-    MailHeader outMailHdr, inMailHdr;
-    AckHeader outAckHdr, inAckHdr;
+    PacketHeader outPktHdr;
+    MailHeader outMailHdr;
+    AckHeader outAckHdr;
     char* mailBuffer;
-    int machineNum, location, remain, msgID, bitTemp, myMB;
-    char* bufferList;
+    int machineNum, location, remain, msgID, myMB;
+//*    char* bufferList;
     Mail *mail;
-    NetworkAddress origMachine;
-    int origID;
+//*    NetworkAddress origMachine;
+//*    int origID;
+
+    unsigned int ui, uj;
 
   switch (which) {
       case SyscallException:
@@ -853,7 +856,8 @@ ExceptionHandler(ExceptionType which)
                 }
                 else{
                   DEBUG('j', "Creating a CowAddrSpace\n");
-                  newSpacer = currentThread->space->cowSpace(size);
+                  fprintf(stderr, "WTF we be doin Cow lolol\n");
+                  newSpacer = currentThread->space->newSpace(size);
                 }
                 //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
@@ -862,7 +866,7 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, -1);
                   pid--;
                   chillBrother->P();
-                  oldSpacer->remDiskPages();
+                  newSpacer->remDiskPages();
                   chillBrother->V();
                   delete newSpacer;
                   forking->V();
@@ -977,15 +981,15 @@ ExceptionHandler(ExceptionType which)
                       DEBUG('a', "Not enough room to create new Address Space.\n");
                       diskBitMap->Print();
                       // fprintf(stderr, "Thingies %d\n", newSpacer->numPages);
-                      curr = root;
+                      /*curr = root;
                       while(curr->next !=NULL){
-                  curr = curr->next;  // Iterate to find the correct semphore to V
-                  if(curr->kiddo != NULL){
-                    fprintf(stderr, "numPages: %d", curr->kiddo->numPages);
-                  }
-                  //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                        curr = curr->next;  // Iterate to find the correct semphore to V
+                        if(curr->kiddo != NULL){
+                          fprintf(stderr, "numPages: %d", curr->kiddo->numPages);
+                        }
+                        //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
 
-                }
+                      }*/
                 //fprintf(stderr, "%d", diskBitMap->NumClear());
                       machine->WriteRegister(2, -1);
                       chillBrother->P();
@@ -1058,7 +1062,7 @@ ExceptionHandler(ExceptionType which)
                       delete oldSpacer;
                       
                       currentThread->space = newSpacer;
-                      curr->kiddo = newSpacer;
+/****/                //     curr->kiddo = newSpacer;
                       newSpacer->RestoreState();
                       forking->V();
                       (void) interrupt->SetLevel(oldLevel);
@@ -1185,9 +1189,9 @@ ExceptionHandler(ExceptionType which)
                 msgID=msgctr;
                 msgCTR->V();
                 // fprintf(stderr, "%d\n", MaxMailSize);
-                for(i = 0; i < size/MaxMailSize; i++){
-                  for (j = 0; j < MaxMailSize; j++) {
-                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[j]);
+                for(ui = 0; ui < size/MaxMailSize; ui++){
+                  for (uj = 0; uj < MaxMailSize; uj++) {
+                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[uj]);
                     //fprintf(stderr, "%c\n", mailBuffer[j]);
                   }
                   outPktHdr.to = machineNum;   
@@ -1197,7 +1201,7 @@ ExceptionHandler(ExceptionType which)
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = MaxMailSize; // had a plus 1 here before?????????
                   outAckHdr.totalSize = packetNums;// size/MaxMailSize ; 
-                  outAckHdr.curPack = i;
+                  outAckHdr.curPack = ui;
                   outAckHdr.messageID = msgID;
 
                   //fprintf(stderr, "sending!\n");
@@ -1222,7 +1226,7 @@ ExceptionHandler(ExceptionType which)
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = remain; // had a plus 1 here before?????????
                   outAckHdr.totalSize = packetNums;// size;
-                  outAckHdr.curPack = i;
+                  outAckHdr.curPack = ui;
                   outAckHdr.messageID = msgID;
                   mail = new (std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
                   postOffice->SendThings(mail, myMB);
@@ -1292,14 +1296,14 @@ ExceptionHandler(ExceptionType which)
                 // //fprintf(stderr, "%s\n", bufferList);
                // fprintf(stderr, "RECEIVE");
                 curNode = recved->head;
-                curMail = curNode->cur;
-                i = 0;
+//                curMail = curNode->cur;
+                ui = 0;
                 incrementPC = 0;
                 for (j = 0; j < size; j++) {
-                  currentThread->space->WriteMem(whence++, sizeof(char), curNode->cur->data[i]);
-                  i++;
-                  if(i == curNode->cur->mailHdr.length){
-                    i = 0;
+                  currentThread->space->WriteMem(whence++, sizeof(char), curNode->cur->data[ui]);
+                  ui++;
+                  if(ui == curNode->cur->mailHdr.length){
+                    ui = 0;
                     incrementPC++;
                     curNode = curNode->next;
                     // if(curNode != NULL){

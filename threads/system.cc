@@ -301,7 +301,7 @@ extern void Cleanup();
 //  "dummy" is because every interrupt handler takes one argument,
 //      whether it needs it or not.
 //----------------------------------------------------------------------
-static void
+/*static void                        **************
 TimerInterruptHandler(int )
 {
     fprintf(stderr, "Interrupt\n");
@@ -312,7 +312,7 @@ TimerInterruptHandler(int )
     // }
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
-}
+}*/
 
 //----------------------------------------------------------------------
 // TimerInterruptHandler
@@ -410,7 +410,7 @@ Initialize(int argc, char **argv)
         ASSERT(argc > 1);
         RandomInit(atoi(*(argv + 1)));  // initialize pseudo-random
                         // number generator
-        randomYield = true;
+        randomYield = false;
         argCount = 2;
     }
 #ifdef USER_PROGRAM
@@ -517,7 +517,7 @@ Initialize(int argc, char **argv)
     timeoutctr = 0;
     timeout = new(std::nothrow) Thread("timeout");
     timeout->Fork(TimeoutHandlerHelper, 0);
-    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, false);
+    timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
 #endif
 
 #ifndef NETWORK
