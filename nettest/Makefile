@@ -34,7 +34,7 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: server tictactoe
+all: server tictactoe migrateTest
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -52,3 +52,9 @@ tictactoe.o: tictactoe.c
 tictactoe: tictactoe.o start.o
 	$(LD) $(LDFLAGS) start.o tictactoe.o -o tictactoe.coff
 	../bin/coff2noff tictactoe.coff tictactoe
+
+migrateTest.o: migrateTest.c
+	$(CC) $(CFLAGS) -c migrateTest.c
+migrateTest: migrateTest.o start.o
+	$(LD) $(LDFLAGS) start.o migrateTest.o -o migrateTest.coff
+	../bin/coff2noff migrateTest.coff migrateTest

@@ -499,7 +499,7 @@ ExceptionHandler(ExceptionType which)
     AddrSpace *oldSpacer;
 
     MessageNode* recved;
-//*     Mail* curMail;
+    Mail* recMail;
     MailNode* curNode;
     
 //*     pwrap* rap;
@@ -1331,9 +1331,90 @@ ExceptionHandler(ExceptionType which)
                 machine->WriteRegister(NextPCReg, incrementPC);    
                 break;
         case SC_Migration:
-                DEBUG('a', "Migration");
-                location = machine->ReadRegister(4);
 
+                //So basically this functionality will move into a thread that is constantly asking the clients what
+                //their process load is and it can then make a decision on whether or not it needs to move some
+                //processes. When this occurs, the messages sent to poll a machine should be a variation of a number in
+                //the migrateID(d, which ever capitalization it is).
+
+                //For now, this sys call, which will become the base functionality of the above, simply when called
+                //messages one client that it wants a process, receives a reply with a filename in it of a chkpt file. 
+                //It then forwards this message to the target client for that client to startup, from which it should 
+                //recieve a reply of success, at which point the migration syscall will end.
+                DEBUG('a', "Migration");
+                whence = machine->ReadRegister(4);//`victim`
+                location = machine->ReadRegister(5);//`chosen` one
+
+                //First send to `victim` saying that it has been chosen
+
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = whence;   
+                outMailHdr.to = 1;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = server;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                outAckHdr.migrateFlag = 0;
+
+                mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                postOffice->SendThings(mail, server);
+
+
+                //Next wait for its response...
+
+                recved = postOffice->GrabMessage(server);
+                curNode = recved->head;
+                recMail = curNode->cur;
+
+                //Validate its respones? YES, change this later AKA no ASSERT(false)
+
+                if(recMail->ackHdr.migrateFlag!=1){ASSERT(false);}
+
+                //Forward the `victim` clients response AKA the data to the `chosen` client
+
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = location;   
+                outMailHdr.to = 1;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = server;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                outAckHdr.migrateFlag = 1;
+
+
+
+                //Right now I am just passing in the buffer from one message to another, this might
+                //need to change to deep copying it over to a new buffer due to bad things happening...
+
+                mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, recMail->data);
+                postOffice->SendThings(mail, server);
+
+                //Wait for a response from the `chosen` client 
+                recved = postOffice->GrabMessage(server);
+                curNode = recved->head;
+                recMail = curNode->cur;
+                //If it is a success, doge is on your side
+                //    much happy                          
+                //                          very nachos
+                //             such network               
+                //     many migration             
+                //                         wow            
+                if(recMail->ackHdr.migrateFlag!=2){ASSERT(false);}
+                //Otherwise.... you have brought great shame upon your family
+
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
                 machine->WriteRegister(NextPCReg, incrementPC);    

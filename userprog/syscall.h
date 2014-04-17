@@ -268,7 +268,7 @@ OpenFileId Dup(OpenFileId id);
 int Send(char *msg, int length, int frmMailBox, int machine, int location);
 int Recv(char *msg, int length, int location);
 int GetMailbox();
-void Migration(int machine);
+void Migration(int from, int to);
 #endif /* IN_ASM */
 
 #endif /* SYSCALL_H */

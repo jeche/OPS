@@ -154,18 +154,26 @@ Recv:
 	j $31
 	.end Recv
 
-/* dummy function to keep gcc happy */
-        .globl GetMailbox
-	.ent GetMailbox
-
+	.globl GetMailbox
+	.ent 	GetMailbox
 GetMailbox:
-	addiu $2, $0, SC_GetMailbox
+	addiu $2,$0,SC_GetMailbox
 	syscall
 	j $31
 	.end GetMailbox
 
-	.globl  __main
-	.ent    __main
+	.globl Migration
+	.ent 	Migration
+Migration:
+	addiu $2,$0,SC_Migration
+	syscall
+	j $31
+	.end Migration
+
+
+/* dummy function to keep gcc happy */
+        .globl  __main
+        .ent    __main
 __main:
         j       $31
         .end    __main
