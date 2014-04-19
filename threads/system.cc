@@ -456,6 +456,7 @@ void migrationHandler(){
 
 
         MessageNode* message = postOffice->GrabMessage(1);
+
         oldLevel = interrupt->SetLevel(IntOff);//Turn off interupts since we don't want processes to wake up while we are doing this
         // ASSERT(false);
         
@@ -467,15 +468,20 @@ void migrationHandler(){
         memset(pageBuf, '\0', sizeof(pageBuf));
         if(curMail->ackHdr.migrateFlag == 0){//Server is requesting a process
 
+
             //First Checkpoint the Process
             //Thread *t = currentThread;
-            currentThread->Sleep();
+
+            Thread* removeThread = scheduler->StealUserThread();
+            
+            ASSERT(false);
+            ASSERT(removeThread->space != NULL);
             char* filename = "migckpt";
             if(!fileSystem->Create(filename, 16)){
                 ASSERT(false);
             }
             open = fileSystem->Open(filename);
-            currentThread->space->writeBackDirty();
+            removeThread->space->writeBackDirty();
             open->Write("#Checkpoint\n", 12);
             for(int i = 0; i < NumTotalRegs; i++){
                 reg = machine->ReadRegister(i);
@@ -483,12 +489,12 @@ void migrationHandler(){
                 open->Write(buffer,len);
                 memset(buffer, '\0', sizeof(buffer));//could cause issues if I am not using sizeof correctly
             }
-            numPages = currentThread->space->getNumPages();
+            numPages = removeThread->space->getNumPages();
             len = sprintf(buffer, "%d\n", numPages);
             open->Write(buffer,len);
 
             for(int i=0;i<numPages;i++){//Should write the contents of all the pages
-                synchDisk->ReadSector(currentThread->space->revPageTable[i].physicalPage, pageBuf);
+                synchDisk->ReadSector(removeThread->space->revPageTable[i].physicalPage, pageBuf);
                 open->Write(pageBuf, 128);
             }
             //Now we kill it, making sure to V on its parent so when it joins it doesn't get stuck
@@ -496,10 +502,10 @@ void migrationHandler(){
             //Might not need to P on the forking semaphore
             forking->P();
             curr = root;
-            while(curr->child != currentThread->space->pid && curr->next !=NULL){
+            while(curr->child != removeThread->space->pid && curr->next !=NULL){
                 curr = curr->next;  // Iterate to find the correct semphore to V
             }
-            if(curr->child != currentThread->space->pid){
+            if(curr->child != removeThread->space->pid){
                 ASSERT(false);
             }
             else{
@@ -507,11 +513,13 @@ void migrationHandler(){
                 forking->V();
                 curr->death->V();
                 chillBrother->P();
-                currentThread->space->remDiskPages();
+                removeThread->space->remDiskPages();
                 chillBrother->V();  
-                delete currentThread->space;
-                currentThread->Finish();
+                ASSERT(false);
+                delete removeThread->space;
+                removeThread->Finish();
             }
+            ASSERT(false);
             //Now it is time to send back to the server what the file name is so it can pass it on to the target client
             msgCTR->P();
             msgctr++;
@@ -548,6 +556,7 @@ void migrationHandler(){
             //Create new addrspace with the ckpt constructor
             //Don't forget to run a migspace->RestoreState();
             //We are going to make this a context switch as well since there is presumably another thread running
+            ASSERT(false);
             open = fileSystem->Open(curMail->data);
             AddrSpace *migspace;
             int PID, i, j;
@@ -620,6 +629,7 @@ void migrationHandler(){
 
         }
         else{//Error case, should send a message back to the server since it is currently waiting on a message of some kind...?
+            ASSERT(false);
             msgCTR->P();
             msgctr++;
             msgID=msgctr;

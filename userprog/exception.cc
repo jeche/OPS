@@ -1354,21 +1354,22 @@ ExceptionHandler(ExceptionType which)
                 outPktHdr.to = whence;   
                 outMailHdr.to = 1;
                 //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
-                outMailHdr.from = server;//1; 
+                outMailHdr.from = netname;//1; 
                 // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                 outMailHdr.length = 128; // had a plus 1 here before?????????
                 outAckHdr.totalSize = 1;// size/MaxMailSize ; 
                 outAckHdr.curPack = 0;
                 outAckHdr.messageID = msgID;
                 outAckHdr.migrateFlag = 0;
-
+                fprintf(stderr, "Starting call\n");
                 mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-                postOffice->SendThings(mail, server);
-
+                postOffice->SendThings(mail, 1);
+                fprintf(stderr, "Sent first message\n");
 
                 //Next wait for its response...
 
-                recved = postOffice->GrabMessage(server);
+                recved = postOffice->GrabMessage(netname);
+                fprintf(stderr, "Received Response\n");
                 curNode = recved->head;
                 recMail = curNode->cur;
 
@@ -1385,7 +1386,7 @@ ExceptionHandler(ExceptionType which)
                 outPktHdr.to = location;   
                 outMailHdr.to = 1;
                 //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
-                outMailHdr.from = server;//1; 
+                outMailHdr.from = netname;//1; 
                 // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                 outMailHdr.length = 128; // had a plus 1 here before?????????
                 outAckHdr.totalSize = 1;// size/MaxMailSize ; 
@@ -1399,10 +1400,12 @@ ExceptionHandler(ExceptionType which)
                 //need to change to deep copying it over to a new buffer due to bad things happening...
 
                 mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, recMail->data);
-                postOffice->SendThings(mail, server);
-
+                postOffice->SendThings(mail, netname);
+                fprintf(stderr, "Waiting on the chosen one\n");
                 //Wait for a response from the `chosen` client 
-                recved = postOffice->GrabMessage(server);
+                recved = postOffice->GrabMessage(netname);
+
+                fprintf(stderr, "Responded\n");
                 curNode = recved->head;
                 recMail = curNode->cur;
                 //If it is a success, doge is on your side

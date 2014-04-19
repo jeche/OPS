@@ -314,4 +314,11 @@ Scheduler::Print()
     printf("Ready list contents:\n");
     readyList->Mapcar((VoidFunctionPtr) ThreadPrint);
 }
+
+Thread*
+Scheduler::StealUserThread()
+{
+    Thread* threadThing;
+    return threadThing;
+}
 #endif // CHANGED

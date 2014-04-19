@@ -39,6 +39,7 @@ Thread::Thread(const char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    space = NULL;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
