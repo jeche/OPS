@@ -198,7 +198,6 @@ Scheduler::Print()
 Scheduler::Scheduler()
 { 
     readyList = new List;
-    schedSem = new(std::nothrow) Semaphore("schedSem", 1); 
 } 
 
 //----------------------------------------------------------------------
@@ -226,9 +225,7 @@ Scheduler::ReadyToRun (Thread *thread)
     if(!thread->migrate){
     thread->setStatus(READY);
     // readyList->SortedInsert((void *)thread, thread->getPriority());
-    schedSem->P();
     readyList->Append((void *)thread);
-    schedSem->V();
     }
 }
 
@@ -246,19 +243,19 @@ Scheduler::FindNextToRun ()
     Thread *t, *temp;
     List *migt = new List;
     while(true){
-        schedSem->P();
         t = (Thread *)readyList->Remove();
-        schedSem->V();
         if(t == NULL){break;}
-        else if(!t->migrate){break;}
-        else{migt->Append(t);}
+        else if(!t->migrate)
+            {
+                break;}
+        // else{migt->Append(t);}
 
     }
-    temp = (Thread *)migt->Remove();
-    while(temp != NULL){
-        readyList->Append(temp);
-        temp = (Thread *)migt->Remove();
-    }
+    // temp = (Thread *)migt->Remove();
+    // while(temp != NULL){
+    //     readyList->Append(temp);
+    //     temp = (Thread *)migt->Remove();
+    // }
     
     
     return t;
@@ -367,7 +364,7 @@ Scheduler::StealUserThread()
     fprintf(stderr, "I am P StealUserThread\n");
     ((Semaphore *)possibleUserThread->inKernel)->P();
     possibleUserThread->migrate=true;
-    ASSERT(false);
+    // ASSERT(false);
     return possibleUserThread;
 
 

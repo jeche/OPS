@@ -33,7 +33,6 @@ class Scheduler {
     
   // private:
     List *readyList;  		// queue of threads that are ready to run,
-    Semaphore *schedSem;
 				// but not running
 };
 

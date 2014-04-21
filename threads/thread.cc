@@ -155,6 +155,8 @@ Thread::Finish ()
     // not reached
 }
 
+
+
 //----------------------------------------------------------------------
 // Thread::Yield
 // 	Relinquish the CPU if any other thread is ready to run.
@@ -696,7 +698,19 @@ Thread* Thread::copyThread(){
     Thread* t = new(std::nothrow) Thread("copy thread", stackTop, stack);
     return t;
 }
-
+void
+Thread::Murder ()
+{
+    (void) interrupt->SetLevel(IntOff);     
+    // ASSERT(this == currentThread);
+    
+    DEBUG('t', "Finishing thread \"%s\"\n", getName());
+    
+    threadToBeDestroyed = this;
+    status = BLOCKED;
+    // Sleep();                    // invokes SWITCH
+    // not reached
+}
 //----------------------------------------------------------------------
 // Thread::RestoreUserState
 //  Restore the CPU state of a user program on a context switch.

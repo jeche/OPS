@@ -385,6 +385,10 @@ void Pager(int clientMachNum){
         PacketHeader outPktHdr;
         MailHeader outMailHdr;
         AckHeader outAckHdr;
+        ASSERT(clientMachNum != 0);
+        if(clientMachNum == 1){
+            fprintf(stderr, "ready to grab\n");
+        }
         MessageNode* message = postOffice->GrabMessage(clientMachNum);
         // ASSERT(false);
         MailNode* curNode = message->head;
@@ -417,8 +421,8 @@ void Pager(int clientMachNum){
             
 
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            postOffice->SendThings(mail, clientMachNum);
-            fprintf(stderr, "Read Serviced %d %d\n", curMail->mailHdr.from ,curMail->ackHdr.messageID);
+            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+            fprintf(stderr, "Read Serviced %d %d %d %d\n", curMail->mailHdr.from ,curMail->ackHdr.messageID, msgID, clientMachNum);
 
         } else if(curMail->mailHdr.length == 128){
             pageNum = curMail->ackHdr.pageID;
@@ -439,7 +443,8 @@ void Pager(int clientMachNum){
             outAckHdr.pageID = pageNum;
 
             curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, curMail->data);
-            postOffice->SendThings(curMail, clientMachNum);
+            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, curMail->data);
+            // postOffice->SendThings(curMail, clientMachNum);
             fprintf(stderr, "Write Serviced\n");
 
         } else{
@@ -464,7 +469,6 @@ void migrationHandler(){
         FamilyNode* curr;
         int len, reg, numPages;
         char buffer[20];
-
 
 
         MessageNode* message = postOffice->GrabMessage(1);
@@ -532,11 +536,11 @@ void migrationHandler(){
                 chillBrother->P();
                 removeThread->space->remDiskPages();
                 chillBrother->V();  
-                ASSERT(false);
+                // ASSERT(false);
                 delete removeThread->space;
-                removeThread->Finish();
+                removeThread->Murder();
             }
-            ASSERT(false);
+            // ASSERT(false);
             //Now it is time to send back to the server what the file name is so it can pass it on to the target client
             msgCTR->P();
             msgctr++;
@@ -573,7 +577,7 @@ void migrationHandler(){
             //Create new addrspace with the ckpt constructor
             //Don't forget to run a migspace->RestoreState();
             //We are going to make this a context switch as well since there is presumably another thread running
-            ASSERT(false);
+            // ASSERT(false);
             open = fileSystem->Open(curMail->data);
             AddrSpace *migspace;
             int PID, i, j;
@@ -584,10 +588,12 @@ void migrationHandler(){
             }
             Thread *mig = new(std::nothrow) Thread("migthread");
             //Grab the registers and set them in the new thread
+            
             forking->P();//Dubious ********************
             pid++;
             PID = pid;
-            
+            open->Read(pageBuf, 12);
+            if(strncmp(pageBuf, "#Checkpoint\n", 12)){ASSERT(false);}
             for(i=0;i<NumTotalRegs;i++){
                 j=0;
                 while(open->Read(&c, 1)){
@@ -602,18 +608,20 @@ void migrationHandler(){
                 mig->userRegisters[i] = j;
             }
             // Grab the numpages form the file
+            j = 0; 
             while(open->Read(&c, 1)){
                 if(c=='\n'){break;}
                 buffer[j]=c;
                 j++;
-                if(j>19){ASSERT(false);}
+                if(j>19){fprintf(stderr, "numpages: %s", buffer);ASSERT(false);}
             }
             numPages = atoi(buffer);
             memset(buffer, '\0', sizeof(buffer));
             //Create the AddrSpace and assign it to the thread
+
             migspace = new(std::nothrow) AddrSpace(open, numPages, PID);
             mig->space = migspace;
-
+            
             //lololol we should handle parent child relation somehow, lololol
             curr = root;
             while(curr->next !=NULL){
@@ -642,7 +650,8 @@ void migrationHandler(){
             outAckHdr.messageID = msgID;
             outAckHdr.migrateFlag = 2;
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            postOffice->SendThings(mail, 1);
+            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+            // postOffice->SendThings(mail, 1);
 
         }
         else{//Error case, should send a message back to the server since it is currently waiting on a message of some kind...?
@@ -668,7 +677,7 @@ void migrationHandler(){
 
             ASSERT(false);
         }
-
+        oldLevel = interrupt->SetLevel(IntOff);
 
         interrupt->SetLevel(oldLevel);
 
@@ -853,6 +862,7 @@ Initialize(int argc, char **argv)
         for(int u = 0; clients[u] != -1; u++){
             Thread *pagingThread = new (std::nothrow) Thread("server paging Thread");
             mailboxes->Mark(clients[u]);
+            ASSERT(clients[u] != 0);
             pagingThread->Fork(PageStuffHandler, clients[u]);
         }
         

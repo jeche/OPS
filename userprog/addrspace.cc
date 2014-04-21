@@ -495,8 +495,9 @@ AddrSpace::AddrSpace(OpenFile *chkpt, int numpages, int PID){
     }
     /*Sector Replacement Start*/
     for(i=0; i<numPages;i++){
+        fprintf(stderr, "count %d\n", i);
         readnum = chkpt->Read(sectorBuf, 128);
-        if(readnum!=128){fprintf(stderr, "Incomplete Read\n");enoughSpace=0;break;}
+        if(readnum!=128){fprintf(stderr, "Incomplete Read count %d numPages %d\n", i, numPages);ASSERT(false);enoughSpace=0;break;}
         synchDisk->WriteSector(revPageTable[i].physicalPage, sectorBuf);
     }
     /*Sector Replacement End*/

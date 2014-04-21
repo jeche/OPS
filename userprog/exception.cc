@@ -1376,8 +1376,8 @@ ExceptionHandler(ExceptionType which)
                 fprintf(stderr, "Sent first message\n");
 
                 //Next wait for its response...
-
-                recved = postOffice->GrabMessage(netname);
+                
+                recved = postOffice->GrabMessage(0);
                 fprintf(stderr, "Received Response\n");
                 curNode = recved->head;
                 recMail = curNode->cur;

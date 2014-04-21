@@ -201,6 +201,7 @@ void MailBox::SendPackets(){
         ackHdr = m->ackHdr;
         char *data = m->data;
         // GO LITTLE MESSAGE!  BE FREE!
+        fprintf(stderr, "SENDING MESSAGE %d\n", ackHdr.messageID);
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
         m = (Mail *) ackList->Remove(); // timeout will add an invalid ack packet
@@ -694,7 +695,7 @@ PostOffice::PostalDelivery()
         if (DebugIsEnabled('n')) {
     	    printf("Putting mail into mailbox: ");
     	    PrintHeader(pktHdr, mailHdr);
-            fprintf(stderr, "\ncurpack %d\n", ackHdr.curPack);
+            fprintf(stderr, "\ncurpack %d totalSize: %d\n", ackHdr.curPack, ackHdr.totalSize);
         }
 
 	// check that arriving message is legal!
@@ -839,6 +840,7 @@ void PostOffice::SendThings(Mail *mail, int box){
 //	"data" -- address to put: payload message data
 //----------------------------------------------------------------------
 MessageNode* PostOffice::GrabMessage(int box){
+    fprintf(stderr, "Grabbing Message from %d\n", box);
     return (MessageNode*) boxes[box].completeList->Remove();
 }
 
