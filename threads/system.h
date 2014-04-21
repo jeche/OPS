@@ -379,7 +379,8 @@ extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
 extern int server;
 extern int clients[10];
-
+extern List *allThreads;
+extern List *migThreads;
 
 class FamilyNode{
 public:
@@ -450,6 +451,7 @@ extern unsigned long long timeoutctr;
 extern Timer *timeoutTimer;    
 extern Thread *timeout;
 extern int netname;
+
 #endif
 
 #endif // SYSTEM_H

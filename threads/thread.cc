@@ -380,6 +380,9 @@ Thread::Thread(const char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    allThreads->Append(this);
+    migrate = false;
+    inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -401,6 +404,9 @@ Thread::Thread(const char* threadName, int prio)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    allThreads->Append(this);
+    migrate = false;
+    inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -421,6 +427,9 @@ Thread::Thread(const char* threadName, int* stackTopi, int* stacki)
     stackTop = stackTopi;
     stack = stack;
     status = JUST_CREATED;
+    allThreads->Append(this);
+    migrate = false;
+    inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -564,7 +573,7 @@ Thread::Yield ()
     DEBUG('t', "Yielding thread \"%s\"\n", getName());
     
     nextThread = scheduler->FindNextToRun();
-    if (nextThread != NULL) {
+    if (nextThread != NULL && !nextThread->migrate) {
     scheduler->ReadyToRun(this);
     scheduler->Run(nextThread);
     }
@@ -603,7 +612,6 @@ Thread::Sleep ()
     status = BLOCKED;
     while ((nextThread = scheduler->FindNextToRun()) == NULL)
     interrupt->Idle();  // no one to run, wait for an interrupt
-        
     scheduler->Run(nextThread); // returns when we've been signalled
 }
 

@@ -269,8 +269,10 @@ class Thread {
     void setStatus(ThreadStatus st) { status = st; }
     const char* getName() { return (name); }
     int getPriority() {return (priority); }
-    void Print() { printf("%s, ", name); }
+    void Print() { fprintf(stderr, "%s, ", name); }
     Thread* copyThread();
+    bool migrate;
+    void *inKernel;
 
   private:
     // some of the private data for this class is listed above

@@ -518,7 +518,8 @@ ExceptionHandler(ExceptionType which)
 //*    int origID;
 
     unsigned int ui, uj;
-
+    fprintf(stderr, "I am P Exception Which %d Case %d\n", which, type);
+    ((Semaphore *)currentThread->inKernel)->P();
   switch (which) {
       case SyscallException:
       switch (type) {
@@ -530,7 +531,8 @@ ExceptionHandler(ExceptionType which)
                 //   curr = curr->next;  // Iterate to find the correct semphore to V
                 //   //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
                 // }
-
+                fprintf(stderr, "I am V\n");
+                ((Semaphore *)currentThread->inKernel)->V();
                 interrupt->Halt();
                 break;
         case SC_Exit:
@@ -558,6 +560,8 @@ ExceptionHandler(ExceptionType which)
                 chillBrother->V();  
                 delete currentThread->space;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
+                fprintf(stderr, "I am V\n");
+                  ((Semaphore *)currentThread->inKernel)->V();
                   currentThread->Finish();
 
                   DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
@@ -966,6 +970,8 @@ ExceptionHandler(ExceptionType which)
                       newSpacer->RestoreState();
                       forking->V();
                       (void) interrupt->SetLevel(oldLevel);
+                      fprintf(stderr, "I am V\n");
+                      ((Semaphore *)currentThread->inKernel)->V();
                       machine->Run();
                     }
                   }/* Checkpoint End ***************/
@@ -1071,6 +1077,8 @@ ExceptionHandler(ExceptionType which)
 
                       machine->WriteRegister(StackReg, sp - (8 * 4));
                       DEBUG('j', "Finished Normal Exec\n");
+                      fprintf(stderr, "I am V\n");
+                      ((Semaphore *)currentThread->inKernel)->V();
                       machine->Run();
                     
                     }
@@ -1342,6 +1350,7 @@ ExceptionHandler(ExceptionType which)
                 //It then forwards this message to the target client for that client to startup, from which it should 
                 //recieve a reply of success, at which point the migration syscall will end.
                 DEBUG('a', "Migration");
+                scheduler->Print();
                 whence = machine->ReadRegister(4);//`victim`
                 location = machine->ReadRegister(5);//`chosen` one
 
@@ -1579,6 +1588,8 @@ ExceptionHandler(ExceptionType which)
          break;
       default: ;
     }
+    fprintf(stderr, "I am V\n");
+    ((Semaphore *)currentThread->inKernel)->V();
 }
 
 #define SC_Dup    10

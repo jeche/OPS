@@ -197,7 +197,8 @@ Scheduler::Print()
 
 Scheduler::Scheduler()
 { 
-    readyList = new List; 
+    readyList = new List;
+    schedSem = new(std::nothrow) Semaphore("schedSem", 1); 
 } 
 
 //----------------------------------------------------------------------
@@ -222,10 +223,13 @@ void
 Scheduler::ReadyToRun (Thread *thread)
 {
     DEBUG('t', (char *) "Putting thread %s on ready list.\n", thread->getName());
-
+    if(!thread->migrate){
     thread->setStatus(READY);
     // readyList->SortedInsert((void *)thread, thread->getPriority());
+    schedSem->P();
     readyList->Append((void *)thread);
+    schedSem->V();
+    }
 }
 
 //----------------------------------------------------------------------
@@ -239,7 +243,26 @@ Scheduler::ReadyToRun (Thread *thread)
 Thread *
 Scheduler::FindNextToRun ()
 {
-    return (Thread *)readyList->Remove();
+    Thread *t, *temp;
+    List *migt = new List;
+    while(true){
+        schedSem->P();
+        t = (Thread *)readyList->Remove();
+        schedSem->V();
+        if(t == NULL){break;}
+        else if(!t->migrate){break;}
+        else{migt->Append(t);}
+
+    }
+    temp = (Thread *)migt->Remove();
+    while(temp != NULL){
+        readyList->Append(temp);
+        temp = (Thread *)migt->Remove();
+    }
+    
+    
+    return t;
+
 }
 
 //----------------------------------------------------------------------
@@ -259,6 +282,7 @@ Scheduler::FindNextToRun ()
 void
 Scheduler::Run (Thread *nextThread)
 {
+    ASSERT(nextThread->migrate == false);
     Thread *oldThread = currentThread;
     
 #ifdef USER_PROGRAM         // ignore until running user programs 
@@ -318,7 +342,57 @@ Scheduler::Print()
 Thread*
 Scheduler::StealUserThread()
 {
-    Thread* threadThing;
-    return threadThing;
+    //We have two ish main cases, either the userthread is the one being currently run, or it is on the readyList
+    //Hopefully, if I read the code in synch correctly, we should not end up with threads in semaphore/lock/cond lists
+    //Also so long as we turn interupts off before entering into here, then the case of currentThread should not crop up
+    //If issues then likely the above is not true
+
+    Thread *possibleUserThread;
+    
+    
+    possibleUserThread = (Thread *)allThreads->Remove();
+    while(possibleUserThread!=NULL && possibleUserThread->space == NULL){
+        allThreads->Append(possibleUserThread);
+
+        //possibleUserThread->Print();
+        //if(possibleUserThread->space != NULL){fprintf(stderr, "*");}
+        //fprintf(stderr, "\n");
+        possibleUserThread = (Thread *)allThreads->Remove();
+    }
+    ASSERT(possibleUserThread->space != NULL);
+    if(possibleUserThread == NULL){
+        ASSERT(false);
+    }
+    fprintf(stderr, "possibleUserThreadPID %d\n", possibleUserThread->space->pid);
+    fprintf(stderr, "I am P StealUserThread\n");
+    ((Semaphore *)possibleUserThread->inKernel)->P();
+    possibleUserThread->migrate=true;
+    ASSERT(false);
+    return possibleUserThread;
+
+
+    /*List *notUserThread = new List; 
+    readyList->Mapcar((VoidFunctionPtr) ThreadPrint);
+    //for(int i = 0; i < 10000000000; i++){}
+    if(currentThread->space !=NULL){ASSERT(false);}
+    fprintf(stderr, "currentThread: %s\n", currentThread->getName());
+    schedSem->P();
+    Thread* possibleUserThread;
+    possibleUserThread = (Thread *)readyList->Remove();
+    int count = 0;
+    while(possibleUserThread->space == NULL){
+        //possibleUserThread->setStatus(READY);
+    // readyList->SortedInsert((void *)thread, thread->getPriority());
+        notUserThread->Append((void *)possibleUserThread);
+        possibleUserThread = (Thread *)readyList->Remove();
+        if(possibleUserThread == NULL){ASSERT(false);}
+        count ++;
+        fprintf(stderr, "count: %d\n", count);
+    }
+    
+    //if(possibleUserThread==NULL){ASSERT(false);}
+    schedSem->V();
+    return possibleUserThread;*/
+
 }
 #endif // CHANGED

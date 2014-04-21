@@ -251,6 +251,8 @@ FamilyNode* root;
 unsigned int pid;
 unsigned long long timeoutctr;
 unsigned int msgctr;
+List *allThreads;
+List *migThreads;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -277,6 +279,7 @@ BitMap *mailboxes;
 Semaphore *msgCTR;
 Timer *timeoutTimer;
 Thread *timeout;
+
 int netname;
 int server = -1;
 int clients[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
@@ -415,6 +418,7 @@ void Pager(int clientMachNum){
 
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             postOffice->SendThings(mail, clientMachNum);
+            fprintf(stderr, "Read Serviced %d %d\n", curMail->mailHdr.from ,curMail->ackHdr.messageID);
 
         } else if(curMail->mailHdr.length == 128){
             pageNum = curMail->ackHdr.pageID;
@@ -436,6 +440,7 @@ void Pager(int clientMachNum){
 
             curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, curMail->data);
             postOffice->SendThings(curMail, clientMachNum);
+            fprintf(stderr, "Write Serviced\n");
 
         } else{
             ASSERT(false);
@@ -443,6 +448,13 @@ void Pager(int clientMachNum){
     }
 }
 void migrationHandler(){
+    //*********************************************************
+    //*******************Important Note************************
+    //***********Interrupts cannot be turned off***************
+    //************when any networking stuff is*****************
+    //*************going on otherwise we hang******************
+    //*********************************************************
+
     IntStatus oldLevel;
     for(;;){
         PacketHeader outPktHdr;
@@ -456,8 +468,9 @@ void migrationHandler(){
 
 
         MessageNode* message = postOffice->GrabMessage(1);
-
-        oldLevel = interrupt->SetLevel(IntOff);//Turn off interupts since we don't want processes to wake up while we are doing this
+        //scheduler->Print();
+        fprintf(stderr, "\n\n");
+        //oldLevel = interrupt->SetLevel(IntOff);//Turn off interupts since we don't want processes to wake up while we are doing this
         // ASSERT(false);
         
         MailNode* curNode = message->head;
@@ -471,17 +484,19 @@ void migrationHandler(){
 
             //First Checkpoint the Process
             //Thread *t = currentThread;
-
+            //ASSERT(false);
+            //interrupt->SetLevel(oldLevel);
             Thread* removeThread = scheduler->StealUserThread();
             
-            ASSERT(false);
             ASSERT(removeThread->space != NULL);
             char* filename = "migckpt";
             if(!fileSystem->Create(filename, 16)){
                 ASSERT(false);
             }
             open = fileSystem->Open(filename);
+            
             removeThread->space->writeBackDirty();
+            oldLevel = interrupt->SetLevel(IntOff);
             open->Write("#Checkpoint\n", 12);
             for(int i = 0; i < NumTotalRegs; i++){
                 reg = machine->ReadRegister(i);
@@ -489,6 +504,7 @@ void migrationHandler(){
                 open->Write(buffer,len);
                 memset(buffer, '\0', sizeof(buffer));//could cause issues if I am not using sizeof correctly
             }
+            interrupt->SetLevel(oldLevel);
             numPages = removeThread->space->getNumPages();
             len = sprintf(buffer, "%d\n", numPages);
             open->Write(buffer,len);
@@ -500,6 +516,7 @@ void migrationHandler(){
             //Now we kill it, making sure to V on its parent so when it joins it doesn't get stuck
             //There may be concurrency issues here, logically it should be fine since we turned interupts off, and slept the only running proc.
             //Might not need to P on the forking semaphore
+
             forking->P();
             curr = root;
             while(curr->child != removeThread->space->pid && curr->next !=NULL){
@@ -768,6 +785,8 @@ Initialize(int argc, char **argv)
     // We didn't explicitly allocate the current thread we are running in.
     // But if it ever tries to give up the CPU, we better have a Thread
     // object to save its state. 
+    allThreads = new List;
+    migThreads = new List;
     currentThread = new(std::nothrow) Thread("main");       
     currentThread->setStatus(RUNNING);
 
@@ -826,6 +845,7 @@ Initialize(int argc, char **argv)
 #ifndef NETWORK
     synchDisk = new(std::nothrow) SynchDisk("DISK");
 #else
+
     sprintf(diskname,"DISK_%d",netname);
     synchDisk = new(std::nothrow) SynchDisk(diskname);
     if(server == -1){//You are the server

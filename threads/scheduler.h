@@ -12,6 +12,7 @@
 #include "copyright.h"
 #include "list.h"
 #include "thread.h"
+#include "synch.h"
 #include <new>
 
 // The following class defines the scheduler/dispatcher abstraction -- 
@@ -32,6 +33,7 @@ class Scheduler {
     
   // private:
     List *readyList;  		// queue of threads that are ready to run,
+    Semaphore *schedSem;
 				// but not running
 };
 

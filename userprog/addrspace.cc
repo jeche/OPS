@@ -291,7 +291,6 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
     unsigned int size;
     unsigned int i;
 //*    int j;
-
     pid=PID;
     enoughSpace = 1;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
@@ -1177,22 +1176,27 @@ bool AddrSpace::writeBackDirty(){
     
     for(i=0;i<NumPhysPages;i++){
         if(pageTable[ramPages[i]->vPage].valid == true && pageTable[ramPages[i]->vPage].dirty == true){
-            if(ramPages[i]->pid == currentThread->space->pid ){
+            if(ramPages[i]->pid == /*currentThread->space->pid*/this->pid ){
                 ramPages[i]->setStatus(MarkedForReplacement);
                 ramPages[i]->head->pageTable[ramPages[i]->vPage].dirty = false;
                 for(int q = 0; q < PageSize; q++){
                    pageBuf[q] = machine->mainMemory[i * PageSize + q];
 
                 }
+                allThreads->Mapcar((VoidFunctionPtr) ThreadPrint);
+                //ASSERT(false);
+
                 synchDisk->WriteSector(ramPages[i]->head->revPageTable[ramPages[i]->vPage].physicalPage, pageBuf);
                 ramPages[i]->setStatus(InUse);
 
             }
         }
+        fprintf(stderr, "page: %d\n", i);
     }
     
     return true;
 }
+
 
 void AddrSpace::printAllPages(){
     unsigned int i;

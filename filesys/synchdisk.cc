@@ -235,7 +235,9 @@ SynchDisk::ReadSector(int sectorNumber, char* data)
         outAckHdr.pageID = sectorNumber;
         mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
         postOffice->SendThings(mail, 0);
+        fprintf(stderr, "Read Before %d\n", msgID);
         MessageNode* message = postOffice->GrabMessage(0);
+        fprintf(stderr, "Read After\n");
         MailNode* curNode = message->head;
         Mail* curMail = curNode->cur;
         for(int i = 0; i < 128; i++){
@@ -287,7 +289,9 @@ SynchDisk::WriteSector(int sectorNumber, char* data)
         outAckHdr.pageID = sectorNumber;
         mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
         postOffice->SendThings(mail, 0);
+        fprintf(stderr, "Write Before\n");
         MessageNode* message = postOffice->GrabMessage(0);
+        fprintf(stderr, "Write After\n");
     }
     else{
         
