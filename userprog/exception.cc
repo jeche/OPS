@@ -1173,6 +1173,7 @@ ExceptionHandler(ExceptionType which)
                 machineNum = machine->ReadRegister(7); // machine
                 location = machine->ReadRegister(8); // where to send the message
                 //fprintf(stderr, "location %d\n", location);
+                fprintf(stderr, "\nSENDING\n");
                 location = 0;
                 remain = size % MaxMailSize;
                 if(remain > 0){
@@ -1233,10 +1234,10 @@ ExceptionHandler(ExceptionType which)
                   // t->Fork(sendPacket, (int) rap);
                 }
                 if (remain > 0) {
-                  // fprintf(stderr, "sent %d packets\n", (size/MaxMailSize) + 1);
+                  fprintf(stderr, "sent %d packets %d\n", (size/MaxMailSize) + 1, msgID);
                 }
                 else {
-                  // fprintf(stderr, "sent %d packets\n", (size/MaxMailSize));
+                  fprintf(stderr, "sent %d packets %d\n", (size/MaxMailSize), msgID);
                 }
                 delete [] mailBuffer;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
@@ -1307,6 +1308,7 @@ ExceptionHandler(ExceptionType which)
                     // }
                   }
                 }
+                fprintf(stderr, "\nRECV SUCCESS\n");
                // fprintf(stderr, "\n****************************************RECEIVE SUCCESS******************************************************\n");
                 // postOffice->RestoreUnwanted(location);
                 // delete [] mailBuffer;

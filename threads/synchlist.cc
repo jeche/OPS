@@ -112,3 +112,13 @@ SynchList::Mapcar(VoidFunctionPtr func)
     list->Mapcar(func);
     lock->Release(); 
 }
+
+bool SynchList::IsEmpty()
+{
+    bool ans;
+    lock->Acquire();
+    ans = list->IsEmpty();
+    lock->Release();
+    return ans;
+
+}

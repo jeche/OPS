@@ -181,7 +181,9 @@ void MailBox::ackAttackSend(){
         mailHdr = m->mailHdr;
         pktHdr = m->pktHdr;
         ackHdr = m->ackHdr;
+        ASSERT(ackHdr.totalSize == -1);
         char *data = m->data;
+        fprintf(stderr, "Sending ACK %d %d\n", ackHdr.messageID, ackHdr.curPack);
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
     }
 }
@@ -201,21 +203,24 @@ void MailBox::SendPackets(){
         ackHdr = m->ackHdr;
         char *data = m->data;
         // GO LITTLE MESSAGE!  BE FREE!
+        fprintf(stderr, "sending %d, %d\n", ackHdr.curPack, ackHdr.messageID);
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
+        
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
         m = (Mail *) ackList->Remove(); // timeout will add an invalid ack packet
-        while(m->mailHdr.length == -1 || m->pktHdr.from != pktHdr.to || m->mailHdr.from != mailHdr.to){
+        while(m->mailHdr.length == -1 || m->pktHdr.from != pktHdr.to || m->mailHdr.from != mailHdr.to || m->ackHdr.messageID != ackHdr.messageID || m->ackHdr.curPack != ackHdr.curPack){
             // keep trying to send same packet until it goes through
             // ASSERT(false);
             // ASSERT(ackHdr.curPack == m->ackHdr.curPack);
             // sending Ack
+            fprintf(stderr, "sending fail %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             ASSERT(m->ackHdr.totalSize == -1);
             ASSERT(mailHdr.length != -1 && ackHdr.totalSize != -1);
             ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
             m = (Mail *) ackList->Remove();
-            if(m->pktHdr.from != pktHdr.to && m->mailHdr.from != mailHdr.to &&m->mailHdr.from != -1 &&m->pktHdr.from != -1){
-                ackList->Append((void*)m);
-            }
+            // if(m->pktHdr.from != pktHdr.to && m->mailHdr.from != mailHdr.to &&m->mailHdr.from != -1 &&m->pktHdr.from != -1){
+            //     ackList->Append((void*)m);
+            // }
         }
         ASSERT(m->pktHdr.from == pktHdr.to && m->mailHdr.from == mailHdr.to);
     }
@@ -245,6 +250,9 @@ void MailBox::CompleteMessages(){
         MailNode * mn = new (std::nothrow) MailNode(m);
         temper = head;
         flag = 0;
+        if(curmsg != NULL){
+            fprintf(stderr, "Curmsg %d, %d\n", curmsg->finished, curmsg->totalSize);
+        }
         while(temper != NULL){
             if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID && curmsg == NULL){
                 flag = 1;
@@ -302,7 +310,12 @@ void MailBox::CompleteMessages(){
                 mn = new (std::nothrow) MailNode(m);
                 curmsg->head->Append(mn);
                 // add one to the amount we have finished receiving
-                curmsg->finished = curmsg->finished + 1;
+                if (m->ackHdr.curPack != curmsg->finished){
+                    MessageNode * thingthing = NULL;
+                    thingthing->head->cur->data[0];
+                    ASSERT(false);
+                }
+                curmsg->finished = m->ackHdr.curPack + 1;
             } else if (m->pktHdr.from != curmsg->fromMachine && m->mailHdr.from != curmsg->fromBox && m->ackHdr.messageID != curmsg->msgID &&curmsg->head->Find(mn) != 1) {
                 temper = head;
                 flag = 0;
@@ -322,6 +335,7 @@ void MailBox::CompleteMessages(){
             }
 
             if(curmsg != NULL && curmsg->finished >= curmsg->totalSize){
+                fprintf(stderr, "\nYAY!!!!\n");
                 // temper = head;
                 // flag = 0;
                 // while(temper != NULL){
@@ -333,7 +347,7 @@ void MailBox::CompleteMessages(){
                 //     temper = temper->next;
                 // }
                 // if(flag == 0){
-                    completeList->Append((void*) curmsg);
+                completeList->Append((void*) curmsg);
                 // }
                 
                 kemper = head;
@@ -703,6 +717,7 @@ PostOffice::PostalDelivery()
 
     	// put into mailbox
         if(ackHdr.totalSize != -1){
+            fprintf(stderr, "RECEIVING: %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             // /*Need to Ack-Back*/
             muckingWithWit.totalSize = ackHdr.totalSize;
             muckingWithWit.curPack = ackHdr.curPack;
@@ -746,11 +761,11 @@ PostOffice::PostalDelivery()
         // tempInt = mailHdr.to;
         // mailHdr.to = mailHdr.from;
         // mailHdr.from = tempInt;
-        muckingWithWit.totalSize = -1;
+            muckingWithWit.totalSize = -1;
         // data = m->data;
         // set up ackMail
-        ackMail = new(std::nothrow) Mail(pucking, ducking, muckingWithWit, buffer + sizeof(MailHeader) + sizeof(AckHeader));
-        boxes[mailHdr.to].retAck->Append((void*)ackMail);
+            ackMail = new(std::nothrow) Mail(pucking, ducking, muckingWithWit, buffer + sizeof(MailHeader) + sizeof(AckHeader));
+            boxes[mailHdr.to].retAck->Append((void*)ackMail);
             // //This should be done in a separate thread....
 
             // /*Signal the appropriate condition variable
@@ -760,6 +775,7 @@ PostOffice::PostalDelivery()
 
         }
         else{
+            fprintf(stderr, "Acknoweldging: %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             boxes[mailHdr.to].PutAck(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
 
         }
@@ -949,9 +965,12 @@ void PostOffice::KaputTime(){
 
     char data;
     for(int i = 0; i < numBoxes; i++){
-            mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, &data); 
+        mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, &data); 
         mail->mailHdr.length = -1;
-        boxes[i].ackList->Append((void *) mail);
+        if(boxes[i].ackList->IsEmpty()){
+            boxes[i].ackList->Append((void *) mail);
+        }
+
     }
 
 }

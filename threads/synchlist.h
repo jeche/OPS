@@ -34,6 +34,7 @@ class SynchList {
 				// apply function to every item in the list
     void *Peek();
     void Mapcar(VoidFunctionPtr func);
+    bool IsEmpty();
 
   private:
     List *list;			// the unsynchronized list
