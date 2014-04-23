@@ -387,7 +387,7 @@ void Pager(int clientMachNum){
         AckHeader outAckHdr;
         ASSERT(clientMachNum != 0);
         if(clientMachNum == 1){
-            fprintf(stderr, "ready to grab\n");
+            // fprintf(stderr, "ready to grab\n");
         }
         MessageNode* message = postOffice->GrabMessage(clientMachNum);
         // ASSERT(false);
@@ -422,7 +422,8 @@ void Pager(int clientMachNum){
 
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-            fprintf(stderr, "Read Serviced %d %d %d %d\n", curMail->mailHdr.from ,curMail->ackHdr.messageID, msgID, clientMachNum);
+            delete mail;
+            // fprintf(stderr, "Read Serviced %d %d %d %d\n", curMail->mailHdr.from ,curMail->ackHdr.messageID, msgID, clientMachNum);
 
         } else if(curMail->mailHdr.length == 128){
             pageNum = curMail->ackHdr.pageID;
@@ -444,8 +445,9 @@ void Pager(int clientMachNum){
 
             curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, curMail->data);
             postOffice->Send(outPktHdr, outMailHdr, outAckHdr, curMail->data);
+            delete curMail;
             // postOffice->SendThings(curMail, clientMachNum);
-            fprintf(stderr, "Write Serviced\n");
+            // fprintf(stderr, "Write Serviced\n");
 
         } else{
             ASSERT(false);
@@ -566,7 +568,9 @@ void migrationHandler(){
                 pageBuf[k]='\0';
             }
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            postOffice->SendThings(mail, 1);
+            //postOffice->SendThings(mail, 1);
+            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+            delete mail;
             forking->V();
 
 
@@ -651,6 +655,7 @@ void migrationHandler(){
             outAckHdr.migrateFlag = 2;
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+            delete mail;
             // postOffice->SendThings(mail, 1);
 
         }
@@ -672,14 +677,15 @@ void migrationHandler(){
             outAckHdr.migrateFlag = -1;
 
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            postOffice->SendThings(mail, 1);
+            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+            delete mail;
 
 
             ASSERT(false);
-        }
+        }/*
         oldLevel = interrupt->SetLevel(IntOff);
 
-        interrupt->SetLevel(oldLevel);
+        interrupt->SetLevel(oldLevel);*/
 
     }
 }

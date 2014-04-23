@@ -451,8 +451,10 @@ Thread::Thread(const char* threadName, int* stackTopi, int* stacki)
 
 Thread::~Thread()
 {
+
     DEBUG('t', "Deleting thread \"%s\"\n", name);
     ASSERT(this != currentThread);
+    delete ((Semaphore *)inKernel);
     if (stack != NULL)
     DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
 }

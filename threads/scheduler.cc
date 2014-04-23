@@ -241,7 +241,7 @@ Thread *
 Scheduler::FindNextToRun ()
 {
     Thread *t, *temp;
-    List *migt = new List;
+    //List *migt = new List;
     while(true){
         t = (Thread *)readyList->Remove();
         if(t == NULL){break;}
