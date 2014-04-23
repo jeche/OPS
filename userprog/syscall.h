@@ -175,6 +175,7 @@ void Close(OpenFileId id);
 #define SC_Send 12
 #define SC_Recv 13
 #define SC_GetMailbox 14
+#define SC_Migration 15
 
 #ifndef IN_ASM
 
@@ -267,7 +268,7 @@ OpenFileId Dup(OpenFileId id);
 int Send(char *msg, int length, int frmMailBox, int machine, int location);
 int Recv(char *msg, int length, int location);
 int GetMailbox();
-
+void Migration(int from, int to);
 #endif /* IN_ASM */
 
 #endif /* SYSCALL_H */

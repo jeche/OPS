@@ -203,7 +203,6 @@ void MailBox::SendPackets(){
         ackHdr = m->ackHdr;
         char *data = m->data;
         // GO LITTLE MESSAGE!  BE FREE!
-        fprintf(stderr, "sending %d, %d\n", ackHdr.curPack, ackHdr.messageID);
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
         
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
@@ -215,7 +214,7 @@ void MailBox::SendPackets(){
             // sending Ack
             fprintf(stderr, "sending fail %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             ASSERT(m->ackHdr.totalSize == -1);
-            ASSERT(mailHdr.length != -1 && ackHdr.totalSize != -1);
+            ASSERT(mailHdr.length != (unsigned)-1 && ackHdr.totalSize != -1);
             ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
             m = (Mail *) ackList->Remove();
             // if(m->pktHdr.from != pktHdr.to && m->mailHdr.from != mailHdr.to &&m->mailHdr.from != -1 &&m->pktHdr.from != -1){
@@ -231,16 +230,16 @@ void MailBox::CompleteMessages(){
     Mail *m;
     //MessageNode* temp;
     Mail *temp;
-    int tempInt;
+//*    int tempInt;
     int msgComplete;
     MailHeader mailHdr;
     int flag = 0;
     PacketHeader pktHdr;
     AckHeader ackHdr;
-    Mail *ackMail;
+//*    Mail *ackMail;
     HistoryNode *kemper;
     HistoryNode *temper;
-    char* data;
+//*    char* data;
     for(;;){
         m = (Mail *) messages->Remove();
         // flip information for Ack sending
@@ -546,7 +545,7 @@ MailBox::PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char 
     // hasAck->Broadcast(ackLock);
     // ackLock->Release();
 }
-
+/*
 int
 
 MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
@@ -574,7 +573,7 @@ MailBox::CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox,
     // return 0;
 
 }
-
+*/
 
 
 //----------------------------------------------------------------------
@@ -708,7 +707,7 @@ PostOffice::PostalDelivery()
         if (DebugIsEnabled('n')) {
     	    printf("Putting mail into mailbox: ");
     	    PrintHeader(pktHdr, mailHdr);
-            fprintf(stderr, "\ncurpack %d\n", ackHdr.curPack);
+            fprintf(stderr, "\ncurpack %d totalSize: %d\n", ackHdr.curPack, ackHdr.totalSize);
         }
 
 	// check that arriving message is legal!
@@ -855,6 +854,7 @@ void PostOffice::SendThings(Mail *mail, int box){
 //	"data" -- address to put: payload message data
 //----------------------------------------------------------------------
 MessageNode* PostOffice::GrabMessage(int box){
+    // fprintf(stderr, "Grabbing Message from %d\n", box);
     return (MessageNode*) boxes[box].completeList->Remove();
 }
 
@@ -921,12 +921,12 @@ PostOffice::RestoreUnwanted(int box)
         mail = (Mail *) boxes[box].unwantedMessages->Peek();
     }
 }
-
+/*
 int
 PostOffice::CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack){
     return boxes[box].CheckAckMB(msgID, fromMach, toMach, fromBox, toBox, cPack);
 }
-
+*/
 void
 PostOffice::hasAckWait(int box){
     boxes[box].hasAck->Wait(boxes[box].ackLock);

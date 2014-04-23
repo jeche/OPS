@@ -54,9 +54,9 @@ main.o: ../threads/main.cc ../threads/copyright.h ../threads/utility.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -108,9 +108,9 @@ scheduler.o: ../threads/scheduler.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/os_defines.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
- /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/system.h \
- ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
- ../machine/timer.h ../machine/console.h ../threads/synch.h \
+ /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/synch.h \
+ ../threads/system.h ../machine/interrupt.h ../threads/list.h \
+ ../machine/stats.h ../machine/timer.h ../machine/console.h \
  ../userprog/bitmap.h ../filesys/openfile.h ../threads/synch.h \
  ../filesys/synchdisk.h ../machine/disk.h ../network/post.h \
  ../machine/network.h ../threads/synchlist.h
@@ -204,9 +204,9 @@ system.o: ../threads/system.cc ../threads/copyright.h ../threads/system.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -292,9 +292,9 @@ threadtest.o: ../threads/threadtest.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -327,9 +327,9 @@ interrupt.o: ../machine/interrupt.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../machine/stats.h ../machine/timer.h ../machine/console.h \
- ../threads/synch.h ../userprog/bitmap.h ../filesys/openfile.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../machine/stats.h ../machine/timer.h \
+ ../machine/console.h ../userprog/bitmap.h ../filesys/openfile.h \
  ../threads/synch.h ../filesys/synchdisk.h ../machine/disk.h \
  ../network/post.h ../machine/network.h ../threads/synchlist.h
 sysdep.o: ../machine/sysdep.cc ../threads/copyright.h \
@@ -379,8 +379,8 @@ sysdep.o: ../machine/sysdep.cc ../threads/copyright.h \
  ../threads/thread.h ../machine/machine.h ../threads/utility.h \
  ../machine/translate.h ../machine/disk.h ../userprog/addrspace.h \
  ../filesys/filesys.h ../filesys/openfile.h ../threads/scheduler.h \
- ../threads/list.h ../machine/interrupt.h ../machine/stats.h \
- ../machine/timer.h ../machine/console.h ../threads/synch.h \
+ ../threads/list.h ../threads/synch.h ../machine/interrupt.h \
+ ../machine/stats.h ../machine/timer.h ../machine/console.h \
  ../userprog/bitmap.h ../filesys/openfile.h ../threads/synch.h \
  ../filesys/synchdisk.h ../machine/disk.h ../network/post.h \
  ../machine/network.h ../threads/synchlist.h
@@ -432,9 +432,9 @@ timer.o: ../machine/timer.cc ../threads/copyright.h ../machine/timer.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -467,9 +467,9 @@ addrspace.o: ../userprog/addrspace.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h ../userprog/addrspace.h ../bin/noff.h
@@ -502,9 +502,9 @@ bitmap.o: ../userprog/bitmap.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/list.h \
- ../threads/system.h ../threads/scheduler.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/system.h ../threads/scheduler.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/synchdisk.h ../machine/disk.h ../network/post.h \
  ../machine/network.h ../threads/synchlist.h
 exception.o: ../userprog/exception.cc ../threads/copyright.h \
@@ -536,9 +536,9 @@ exception.o: ../userprog/exception.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h ../userprog/syscall.h ../userprog/addrspace.h
@@ -571,9 +571,9 @@ progtest.o: ../userprog/progtest.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h ../userprog/addrspace.h
@@ -606,9 +606,9 @@ console.o: ../machine/console.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -641,9 +641,9 @@ machine.o: ../machine/machine.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -676,9 +676,9 @@ mipssim.o: ../machine/mipssim.cc ../threads/copyright.h \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/system.h \
  ../threads/utility.h ../threads/thread.h ../machine/machine.h \
  ../userprog/addrspace.h ../filesys/filesys.h ../filesys/openfile.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -711,9 +711,9 @@ translate.o: ../machine/translate.cc ../threads/copyright.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/system.h \
  ../threads/utility.h ../threads/thread.h ../machine/machine.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -745,7 +745,12 @@ synchdisk.o: ../filesys/synchdisk.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/os_defines.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
- /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/list.h
+ /usr/include/c++/4.7/bits/atomic_lockfree_defines.h ../threads/list.h \
+ ../threads/system.h ../threads/scheduler.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
+ ../filesys/openfile.h ../filesys/synchdisk.h ../network/post.h \
+ ../machine/network.h ../threads/synchlist.h
 disk.o: ../machine/disk.cc ../threads/copyright.h ../machine/disk.h \
  ../threads/utility.h ../threads/copyright.h ../machine/sysdep.h \
  /usr/include/stdlib.h /usr/include/features.h /usr/include/stdc-predef.h \
@@ -774,9 +779,9 @@ disk.o: ../machine/disk.cc ../threads/copyright.h ../machine/disk.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h
@@ -809,9 +814,9 @@ nettest.o: ../network/nettest.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h ../network/post.h
@@ -874,9 +879,9 @@ network.o: ../machine/network.cc ../threads/copyright.h \
  /usr/include/c++/4.7/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.7/exception \
  /usr/include/c++/4.7/bits/atomic_lockfree_defines.h \
- ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
- ../threads/list.h ../machine/stats.h ../machine/timer.h \
- ../machine/console.h ../threads/synch.h ../userprog/bitmap.h \
+ ../threads/scheduler.h ../threads/list.h ../threads/synch.h \
+ ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
+ ../machine/timer.h ../machine/console.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../threads/synch.h ../filesys/synchdisk.h \
  ../machine/disk.h ../network/post.h ../machine/network.h \
  ../threads/synchlist.h

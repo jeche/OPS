@@ -83,6 +83,7 @@ class AddrSpace {
 #include "copyright.h"
 #include "filesys.h"
 
+
 #define UserStackSize   4096  // increase this as necessary!
 
 // Class used as a barrier for files to keep track of the number of times that the file is referenced

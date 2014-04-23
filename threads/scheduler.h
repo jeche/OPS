@@ -12,6 +12,7 @@
 #include "copyright.h"
 #include "list.h"
 #include "thread.h"
+#include "synch.h"
 #include <new>
 
 // The following class defines the scheduler/dispatcher abstraction -- 
@@ -28,8 +29,9 @@ class Scheduler {
 					// list, if any, and return thread.
     void Run(Thread* nextThread);	// Cause nextThread to start running
     void Print();			// Print contents of ready list
+    Thread* StealUserThread();
     
-  private:
+  // private:
     List *readyList;  		// queue of threads that are ready to run,
 				// but not running
 };

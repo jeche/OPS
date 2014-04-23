@@ -54,6 +54,9 @@ class AckHeader {
     int totalSize; //if -1 then it is an Ack
     int curPack; 
     int messageID;
+    int pageID;
+    int migrateFlag;
+
 };
 
 // Maximum "payload" -- real data -- that can included in a single message
@@ -143,7 +146,7 @@ class MailBox {
 				// mailbox (and wait if there is no message 
 				// to get!)
     void PutAck(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHeader, char *data);
-    int CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
+    //int CheckAckMB(int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
 
     void SendPackets();
     void CompleteMessages();
@@ -212,7 +215,7 @@ class PostOffice {
 				// PostalDelivery)
     void PutUnwanted(int box, PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char *data);
     void RestoreUnwanted(int box);
-    int CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
+    //int CheckAckPO(int box, int msgID, int fromMach, int toMach, int fromBox, int toBox, int cPack);
 
 
     void hasAckWait(int box);

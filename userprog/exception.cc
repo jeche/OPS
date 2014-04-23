@@ -416,6 +416,7 @@ public:
 //    be used as the method for a forked off thread so as to 
 //    not hang the system
 //------------------------------
+/*
 void sendPacket(int mailMessage){
     //fprintf(stderr, "in send packet!!!\n");
     pwrap* p = (pwrap *) mailMessage;
@@ -433,16 +434,16 @@ void sendPacket(int mailMessage){
     unsigned long long systime = stats->totalTicks;
     // fprintf(stderr, "sent pack %d %d\n", msgID, cPack);
     postOffice->Send(pktHdr, mailHdr, ackHdr, data);
-    /*Grab the Lock*/
+    
     postOffice->ackLockAcquire(fromBox);
     unsigned long long TIMEOUT;
     TIMEOUT =  10000000;
     fprintf(stderr, "systime %llu, stats time %llu \n", systime, stats->totalTicks);
     while(!postOffice->CheckAckPO(fromBox, msgID, fromMach, toMach, fromBox, toBox, cPack)){
-      /*Timeout situation goes here, not below hasAckWait*/
+
       if(stats->totalTicks > (systime + TIMEOUT)){//This will need to be modified to account for how often the timeoutctr is incremented
         //fprintf(stderr, "resend %d %d\n", msgID,cPack);
-        fprintf(stderr, "current time %d\n", stats->totalTicks);
+        fprintf(stderr, "current time %llu\n", stats->totalTicks);
         postOffice->ackLockRelease(fromBox);
         postOffice->Send(pktHdr, mailHdr, ackHdr, data);
         postOffice->ackLockAcquire(fromBox);
@@ -455,17 +456,17 @@ void sendPacket(int mailMessage){
     postOffice->ackLockRelease(fromBox);
     delete mail;
     p->t->Finish();
-    /*Release the Lock*/
+    
     //fprintf(stderr, "end of function %d %d\n", msgID,cPack);
 }
-
+*/
 
 
 
 void
 ExceptionHandler(ExceptionType which)
 {
-    BitMap *msgMap;
+    //BitMap *msgMap;
     int type = machine->ReadRegister(2);
     int whence;
     int size;
@@ -482,7 +483,7 @@ ExceptionHandler(ExceptionType which)
     int packetNums;
 
     char whee;
-    char *whee2;
+//*     char *whee2;
     int i, j;
     int numPages;
     int flag = 0;
@@ -494,28 +495,31 @@ ExceptionHandler(ExceptionType which)
     //Exec w/ args variables
     int sp, len, argcount, herece;
     int argvAddr[16];
-    Status stuffing;
+//*    Status stuffing;
     AddrSpace *oldSpacer;
 
     MessageNode* recved;
-    Mail* curMail;
+    Mail* recMail;
     MailNode* curNode;
     
-    pwrap* rap;
-    int pos=0, divisor=1000000000, d, zflag=1;
+//*     pwrap* rap;
+    int pos=0/*, divisor=1000000000*/;
     char c;
     char buffer[20];
 
-    PacketHeader outPktHdr, inPktHdr;
-    MailHeader outMailHdr, inMailHdr;
-    AckHeader outAckHdr, inAckHdr;
+    PacketHeader outPktHdr;
+    MailHeader outMailHdr;
+    AckHeader outAckHdr;
     char* mailBuffer;
-    int machineNum, location, remain, msgID, bitTemp, myMB;
-    char* bufferList;
+    int machineNum, location, remain, msgID, myMB;
+//*    char* bufferList;
     Mail *mail;
-    NetworkAddress origMachine;
-    int origID;
+//*    NetworkAddress origMachine;
+//*    int origID;
 
+    unsigned int ui, uj;
+    // fprintf(stderr, "I am P Exception Which %d Case %d\n", which, type);
+    ((Semaphore *)currentThread->inKernel)->P();
   switch (which) {
       case SyscallException:
       switch (type) {
@@ -527,7 +531,8 @@ ExceptionHandler(ExceptionType which)
                 //   curr = curr->next;  // Iterate to find the correct semphore to V
                 //   //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
                 // }
-
+                // fprintf(stderr, "I am V\n");
+                ((Semaphore *)currentThread->inKernel)->V();
                 interrupt->Halt();
                 break;
         case SC_Exit:
@@ -555,6 +560,8 @@ ExceptionHandler(ExceptionType which)
                 chillBrother->V();  
                 delete currentThread->space;
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
+                // fprintf(stderr, "I am V\n");
+                  ((Semaphore *)currentThread->inKernel)->V();
                   currentThread->Finish();
 
                   DEBUG('a', "Failed to exit.  Machine will now terminate.\n");
@@ -853,7 +860,8 @@ ExceptionHandler(ExceptionType which)
                 }
                 else{
                   DEBUG('j', "Creating a CowAddrSpace\n");
-                  newSpacer = currentThread->space->cowSpace(size);
+                  newSpacer = currentThread->space->newSpace(size);
+                  // newSpacer = currentThread->space->cowSpace(size);
                 }
                 //newSpacer->pid = size; // give child's space a pid.
                 if (newSpacer->enoughSpace == 0) {
@@ -862,7 +870,7 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, -1);
                   pid--;
                   chillBrother->P();
-                  oldSpacer->remDiskPages();
+                  newSpacer->remDiskPages();
                   chillBrother->V();
                   delete newSpacer;
                   forking->V();
@@ -882,7 +890,7 @@ ExceptionHandler(ExceptionType which)
 
                   //Move back maybe
                   
-                  currentThread->SaveUserState(); // Save again in case of weirdness.
+                  // currentThread->SaveUserState(); // Save again in case of weirdness.
                   DEBUG('j', "ForkEnd\n");
                   
                 }
@@ -962,6 +970,8 @@ ExceptionHandler(ExceptionType which)
                       newSpacer->RestoreState();
                       forking->V();
                       (void) interrupt->SetLevel(oldLevel);
+                      // fprintf(stderr, "I am V\n");
+                      ((Semaphore *)currentThread->inKernel)->V();
                       machine->Run();
                     }
                   }/* Checkpoint End ***************/
@@ -977,15 +987,15 @@ ExceptionHandler(ExceptionType which)
                       DEBUG('a', "Not enough room to create new Address Space.\n");
                       diskBitMap->Print();
                       // fprintf(stderr, "Thingies %d\n", newSpacer->numPages);
-                      curr = root;
+                      /*curr = root;
                       while(curr->next !=NULL){
-                  curr = curr->next;  // Iterate to find the correct semphore to V
-                  if(curr->kiddo != NULL){
-                    fprintf(stderr, "numPages: %d", curr->kiddo->numPages);
-                  }
-                  //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                        curr = curr->next;  // Iterate to find the correct semphore to V
+                        if(curr->kiddo != NULL){
+                          fprintf(stderr, "numPages: %d", curr->kiddo->numPages);
+                        }
+                        //fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
 
-                }
+                      }*/
                 //fprintf(stderr, "%d", diskBitMap->NumClear());
                       machine->WriteRegister(2, -1);
                       chillBrother->P();
@@ -1058,7 +1068,7 @@ ExceptionHandler(ExceptionType which)
                       delete oldSpacer;
                       
                       currentThread->space = newSpacer;
-                      curr->kiddo = newSpacer;
+/****/                //     curr->kiddo = newSpacer;
                       newSpacer->RestoreState();
                       forking->V();
                       (void) interrupt->SetLevel(oldLevel);
@@ -1067,6 +1077,8 @@ ExceptionHandler(ExceptionType which)
 
                       machine->WriteRegister(StackReg, sp - (8 * 4));
                       DEBUG('j', "Finished Normal Exec\n");
+                      // fprintf(stderr, "I am V\n");
+                      ((Semaphore *)currentThread->inKernel)->V();
                       machine->Run();
                     
                     }
@@ -1186,9 +1198,9 @@ ExceptionHandler(ExceptionType which)
                 msgID=msgctr;
                 msgCTR->V();
                 // fprintf(stderr, "%d\n", MaxMailSize);
-                for(i = 0; i < size/MaxMailSize; i++){
-                  for (j = 0; j < MaxMailSize; j++) {
-                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[j]);
+                for(ui = 0; ui < size/MaxMailSize; ui++){
+                  for (uj = 0; uj < MaxMailSize; uj++) {
+                    currentThread->space->ReadMem(whence++, sizeof(char), (int *)&mailBuffer[uj]);
                     //fprintf(stderr, "%c\n", mailBuffer[j]);
                   }
                   outPktHdr.to = machineNum;   
@@ -1198,7 +1210,7 @@ ExceptionHandler(ExceptionType which)
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = MaxMailSize; // had a plus 1 here before?????????
                   outAckHdr.totalSize = packetNums;// size/MaxMailSize ; 
-                  outAckHdr.curPack = i;
+                  outAckHdr.curPack = ui;
                   outAckHdr.messageID = msgID;
 
                   //fprintf(stderr, "sending!\n");
@@ -1223,7 +1235,7 @@ ExceptionHandler(ExceptionType which)
                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
                   outMailHdr.length = remain; // had a plus 1 here before?????????
                   outAckHdr.totalSize = packetNums;// size;
-                  outAckHdr.curPack = i;
+                  outAckHdr.curPack = ui;
                   outAckHdr.messageID = msgID;
                   mail = new (std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, mailBuffer);
                   postOffice->SendThings(mail, myMB);
@@ -1293,14 +1305,14 @@ ExceptionHandler(ExceptionType which)
                 // //fprintf(stderr, "%s\n", bufferList);
                // fprintf(stderr, "RECEIVE");
                 curNode = recved->head;
-                curMail = curNode->cur;
-                i = 0;
+//                curMail = curNode->cur;
+                ui = 0;
                 incrementPC = 0;
                 for (j = 0; j < size; j++) {
-                  currentThread->space->WriteMem(whence++, sizeof(char), curNode->cur->data[i]);
-                  i++;
-                  if(i == curNode->cur->mailHdr.length){
-                    i = 0;
+                  currentThread->space->WriteMem(whence++, sizeof(char), curNode->cur->data[ui]);
+                  ui++;
+                  if(ui == curNode->cur->mailHdr.length){
+                    ui = 0;
                     incrementPC++;
                     curNode = curNode->next;
                     // if(curNode != NULL){
@@ -1323,6 +1335,99 @@ ExceptionHandler(ExceptionType which)
                 //fprintf(stderr, "why am i here???\n");
                 whence = mailboxes->Find();
                 machine->WriteRegister(2, whence);
+                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+                machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+                machine->WriteRegister(NextPCReg, incrementPC);    
+                break;
+        case SC_Migration:
+
+                //So basically this functionality will move into a thread that is constantly asking the clients what
+                //their process load is and it can then make a decision on whether or not it needs to move some
+                //processes. When this occurs, the messages sent to poll a machine should be a variation of a number in
+                //the migrateID(d, which ever capitalization it is).
+
+                //For now, this sys call, which will become the base functionality of the above, simply when called
+                //messages one client that it wants a process, receives a reply with a filename in it of a chkpt file. 
+                //It then forwards this message to the target client for that client to startup, from which it should 
+                //recieve a reply of success, at which point the migration syscall will end.
+                DEBUG('a', "Migration");
+                scheduler->Print();
+                whence = machine->ReadRegister(4);//`victim`
+                location = machine->ReadRegister(5);//`chosen` one
+
+                //First send to `victim` saying that it has been chosen
+
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = whence;   
+                outMailHdr.to = 1;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = netname;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                outAckHdr.migrateFlag = 0;
+                fprintf(stderr, "Starting call\n");
+                mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                postOffice->SendThings(mail, 1);
+                fprintf(stderr, "Sent first message\n");
+
+                //Next wait for its response...
+                
+                recved = postOffice->GrabMessage(0);
+                fprintf(stderr, "Received Response\n");
+                curNode = recved->head;
+                recMail = curNode->cur;
+
+                //Validate its respones? YES, change this later AKA no ASSERT(false)
+
+                if(recMail->ackHdr.migrateFlag!=1){ASSERT(false);}
+
+                //Forward the `victim` clients response AKA the data to the `chosen` client
+
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = location;   
+                outMailHdr.to = 1;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = netname;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                outAckHdr.migrateFlag = 1;
+
+
+
+                //Right now I am just passing in the buffer from one message to another, this might
+                //need to change to deep copying it over to a new buffer due to bad things happening...
+
+                mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, recMail->data);
+                postOffice->SendThings(mail, netname);
+                fprintf(stderr, "Waiting on the chosen one\n");
+                //Wait for a response from the `chosen` client 
+                recved = postOffice->GrabMessage(netname);
+
+                fprintf(stderr, "Responded\n");
+                curNode = recved->head;
+                recMail = curNode->cur;
+                //If it is a success, doge is on your side
+                //    much happy                          
+                //                          very nachos
+                //             such network               
+                //     many migration             
+                //                         wow            
+                if(recMail->ackHdr.migrateFlag!=2){ASSERT(false);}
+                //Otherwise.... you have brought great shame upon your family
+
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -1485,6 +1590,8 @@ ExceptionHandler(ExceptionType which)
          break;
       default: ;
     }
+    // fprintf(stderr, "I am V\n");
+    ((Semaphore *)currentThread->inKernel)->V();
 }
 
 #define SC_Dup    10
@@ -1492,6 +1599,7 @@ ExceptionHandler(ExceptionType which)
 #define SC_Send 12
 #define SC_Recv 13
 #define SC_GetMailbox 14
+#define SC_Migration 15
 #endif
 
 #define SC_Exit   1

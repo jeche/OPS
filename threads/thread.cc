@@ -39,6 +39,7 @@ Thread::Thread(const char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    space = NULL;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -153,6 +154,8 @@ Thread::Finish ()
     Sleep();					// invokes SWITCH
     // not reached
 }
+
+
 
 //----------------------------------------------------------------------
 // Thread::Yield
@@ -379,6 +382,9 @@ Thread::Thread(const char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    allThreads->Append(this);
+    migrate = false;
+    inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -400,6 +406,9 @@ Thread::Thread(const char* threadName, int prio)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    allThreads->Append(this);
+    migrate = false;
+    inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -420,6 +429,9 @@ Thread::Thread(const char* threadName, int* stackTopi, int* stacki)
     stackTop = stackTopi;
     stack = stack;
     status = JUST_CREATED;
+    allThreads->Append(this);
+    migrate = false;
+    inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -439,8 +451,10 @@ Thread::Thread(const char* threadName, int* stackTopi, int* stacki)
 
 Thread::~Thread()
 {
+
     DEBUG('t', "Deleting thread \"%s\"\n", name);
     ASSERT(this != currentThread);
+    delete ((Semaphore *)inKernel);
     if (stack != NULL)
     DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
 }
@@ -563,7 +577,7 @@ Thread::Yield ()
     DEBUG('t', "Yielding thread \"%s\"\n", getName());
     
     nextThread = scheduler->FindNextToRun();
-    if (nextThread != NULL) {
+    if (nextThread != NULL && !nextThread->migrate) {
     scheduler->ReadyToRun(this);
     scheduler->Run(nextThread);
     }
@@ -602,7 +616,6 @@ Thread::Sleep ()
     status = BLOCKED;
     while ((nextThread = scheduler->FindNextToRun()) == NULL)
     interrupt->Idle();  // no one to run, wait for an interrupt
-        
     scheduler->Run(nextThread); // returns when we've been signalled
 }
 
@@ -687,7 +700,19 @@ Thread* Thread::copyThread(){
     Thread* t = new(std::nothrow) Thread("copy thread", stackTop, stack);
     return t;
 }
-
+void
+Thread::Murder ()
+{
+    (void) interrupt->SetLevel(IntOff);     
+    // ASSERT(this == currentThread);
+    
+    DEBUG('t', "Finishing thread \"%s\"\n", getName());
+    
+    threadToBeDestroyed = this;
+    status = BLOCKED;
+    // Sleep();                    // invokes SWITCH
+    // not reached
+}
 //----------------------------------------------------------------------
 // Thread::RestoreUserState
 //  Restore the CPU state of a user program on a context switch.

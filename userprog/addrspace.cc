@@ -290,8 +290,7 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
 {    NoffHeader noffH;
     unsigned int size;
     unsigned int i;
-    int j;
-
+//*    int j;
     pid=PID;
     enoughSpace = 1;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
@@ -319,9 +318,40 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     revPageTable = new(std::nothrow) TranslationEntry[numPages];
     int found = 0;
-
     for (i = 0; i < numPages; i++) {
-        found = diskBitMap->Find();
+        PacketHeader outPktHdr;
+        MailHeader outMailHdr;
+        AckHeader outAckHdr;
+        Mail* mail;
+        int msgID;
+        char data[2];
+        if(server != -1){
+           msgCTR->P();
+           msgctr++;
+           msgID=msgctr;
+           msgCTR->V(); 
+           outPktHdr.to = server;   
+           outMailHdr.to = netname;
+           //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+           outMailHdr.from = 0;//1; 
+           // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+           outMailHdr.length = 2; // had a plus 1 here before?????????
+           outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+           outAckHdr.curPack = 0;
+           outAckHdr.messageID = msgID;
+           outAckHdr.pageID = 0;
+           mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+           // postOffice->SendThings(mail, 0);
+           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           delete mail;
+           // fprintf(stderr, "Write Before\n");
+           MessageNode* message = postOffice->GrabMessage(0);
+           MailNode* curNode = message->head;
+           Mail* curMail = curNode->cur;
+           found = curMail->ackHdr.pageID;
+        } else{
+           found = diskBitMap->Find(); 
+        }
         if(found == -1){
             numPages = i + 1;
             i = numPages + 1;
@@ -377,7 +407,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
     if(enoughSpace == 1){
         char strbuf[128];
         memset(strbuf, '\0', sizeof(strbuf));
-        int count = 0;
+        unsigned int count = 0;
         int page = 0;
         int m;
         bool lastToWrite = false;
@@ -403,8 +433,8 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
         }
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
             noffH.initData.virtualAddr, noffH.initData.size);
-        int poo;
-        poo = count;
+//*        unsigned int poo;
+//*        poo = count;
         
         for(m = 0; m < noffH.initData.size; m++){
             executable->ReadAt(&strbuf[count], sizeof(char), noffH.initData.inFileAddr+ m * sizeof(char));
@@ -419,7 +449,7 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
                 count = 0;
                 memset(strbuf, '\0', sizeof(strbuf));
                 lastToWrite = true;
-                poo = 0;
+//*                poo = 0;
             }
             else{            
                 lastToWrite = false;
@@ -443,7 +473,8 @@ DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d, 
 }
 
 AddrSpace::AddrSpace(OpenFile *chkpt, int numpages, int PID){
-    int i, j, found, readnum;
+    unsigned int i, readnum;
+    int found;
     char sectorBuf[128];
     pid=PID;
     enoughSpace=1;
@@ -451,7 +482,39 @@ AddrSpace::AddrSpace(OpenFile *chkpt, int numpages, int PID){
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     revPageTable = new(std::nothrow) TranslationEntry[numPages];
     for(i = 0; i<numPages; i++){
-        found = diskBitMap->Find();
+        PacketHeader outPktHdr;
+        MailHeader outMailHdr;
+        AckHeader outAckHdr;
+        Mail* mail;
+        char data[2];
+        int msgID;
+        if(server != -1){
+           msgCTR->P();
+           msgctr++;
+           msgID=msgctr;
+           msgCTR->V(); 
+           outPktHdr.to = server;   
+           outMailHdr.to = netname;
+           //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+           outMailHdr.from = 0;//1; 
+           // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+           outMailHdr.length = 2; // had a plus 1 here before?????????
+           outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+           outAckHdr.curPack = 0;
+           outAckHdr.messageID = msgID;
+           outAckHdr.pageID = 0;
+           mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+           // postOffice->SendThings(mail, 0);
+           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           delete mail;
+           // fprintf(stderr, "Write Before\n");
+           MessageNode* message = postOffice->GrabMessage(0);
+           MailNode* curNode = message->head;
+           Mail* curMail = curNode->cur;
+           found = curMail->ackHdr.pageID;
+        } else{
+           found = diskBitMap->Find(); 
+        }
         if(found == -1){
             numPages = i+1;
             i=numPages+1;
@@ -495,8 +558,9 @@ AddrSpace::AddrSpace(OpenFile *chkpt, int numpages, int PID){
     }
     /*Sector Replacement Start*/
     for(i=0; i<numPages;i++){
+        fprintf(stderr, "count %d\n", i);
         readnum = chkpt->Read(sectorBuf, 128);
-        if(readnum!=128){fprintf(stderr, "Incomplete Read\n");enoughSpace=0;break;}
+        if(readnum!=128){fprintf(stderr, "Incomplete Read count %d numPages %d\n", i, numPages);ASSERT(false);enoughSpace=0;break;}
         synchDisk->WriteSector(revPageTable[i].physicalPage, sectorBuf);
     }
     /*Sector Replacement End*/
@@ -534,7 +598,7 @@ AddrSpace::~AddrSpace()
     AddrSpace *other;
     //fprintf(stderr, "dying, my pid was: %d\n", pid);
     
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         if(pageTable[i].readOnly){
             other = diskPages[revPageTable[i].physicalPage]->otherAddr(this);
             if(other != NULL){
@@ -552,7 +616,39 @@ AddrSpace::~AddrSpace()
                 ramPages[pageTable[i].physicalPage]->head = NULL;
                 ramPages[pageTable[i].physicalPage]->pid = -1;
             }
-            diskBitMap->Clear(revPageTable[i].physicalPage);
+            if (server != -1){
+                PacketHeader outPktHdr;
+                MailHeader outMailHdr;
+                AckHeader outAckHdr;
+                Mail* mail;
+                char data[3];
+                int msgID;
+                if(server != -1){
+                   msgCTR->P();
+                   msgctr++;
+                   msgID=msgctr;
+                   msgCTR->V(); 
+                   outPktHdr.to = server;   
+                   outMailHdr.to = netname;
+                   //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                   outMailHdr.from = 0;//1; 
+                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                   outMailHdr.length = 3; // had a plus 1 here before?????????
+                   outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                   outAckHdr.curPack = 0;
+                   outAckHdr.messageID = msgID;
+                   outAckHdr.pageID = revPageTable[i].physicalPage;
+                   mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+                   // postOffice->SendThings(mail, 0);
+                   postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+                   delete mail;
+                   // fprintf(stderr, "Write Before\n");
+                   MessageNode* message = postOffice->GrabMessage(0);
+                   delete message;
+                } 
+            } else{
+                diskBitMap->Clear(revPageTable[i].physicalPage);
+            }
         }
         diskPages[revPageTable[i].physicalPage]->removeAddr(this);
     }
@@ -576,7 +672,7 @@ void AddrSpace::Clean()
 {
     fprintf(stderr, "Warning: Use of Depricated Method: AddrSpace::Clean\n");
     clean = true;
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         bitMap->Clear(pageTable[i].physicalPage);
     }
 }
@@ -666,12 +762,12 @@ bool
 AddrSpace::ReadMem(int addr, int size, int *value)
 {
     int data;
-    ExceptionType Exception;
+//    ExceptionType Exception;
     int physicalAddress;
     
     DEBUG('a', "Reading VA 0x%x, size %d\n", addr, size);
     
-    Exception = Translate(addr, &physicalAddress, size, false);
+    /*Exception = */Translate(addr, &physicalAddress, size, false);
 
     switch (size) {
       case 1:
@@ -714,12 +810,12 @@ AddrSpace::ReadMem(int addr, int size, int *value)
 bool
 AddrSpace::WriteMem(int addr, int size, int value)
 {
-    ExceptionType Exception;
+//*    ExceptionType Exception;
     int physicalAddress;
      
     DEBUG('a', "Writing VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
-    Exception = Translate(addr, &physicalAddress, size, true);
+    /*Exception = */Translate(addr, &physicalAddress, size, true);
 
     switch (size) {
       case 1:
@@ -763,7 +859,7 @@ ExceptionType
 AddrSpace::Translate(int virtAddr, int* physAddr, int size, bool writing) 
 {
 
-    int i;
+    //int i;
     unsigned int vpn, offset;
     TranslationEntry *entry;
     unsigned int pageFrame;
@@ -993,15 +1089,48 @@ AddrSpace* AddrSpace::newSpace(int PID){
     FileShield** fileDescriptors2 = new (std::nothrow) FileShield*[16];
     AddrSpace* NewSpace;
     int found = 0;
-    int i;
-    int j;
-    if (diskBitMap->NumClear() < numPages) {
+    unsigned int i;
+    unsigned int j;
+
+    if (diskBitMap->NumClear() < (signed)numPages) {//if issues then we have a lot of numPages
         // We don't have enough pages to make a new address space, return and address space with a -1 for numPages
         return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0, false, PID);
     }
 
     for (i = 0; i < numPages; i++) {
-        found = diskBitMap->Find();
+        PacketHeader outPktHdr;
+        MailHeader outMailHdr;
+        AckHeader outAckHdr;
+        Mail* mail;
+        int msgID;
+        char data[2];
+        if(server != -1){
+           msgCTR->P();
+           msgctr++;
+           msgID=msgctr;
+           msgCTR->V(); 
+           outPktHdr.to = server;   
+           outMailHdr.to = netname;
+           //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+           outMailHdr.from = 0;//1; 
+           // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+           outMailHdr.length = 2; // had a plus 1 here before?????????
+           outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+           outAckHdr.curPack = 0;
+           outAckHdr.messageID = msgID;
+           outAckHdr.pageID = 0;
+           mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+           // postOffice->SendThings(mail, 0);
+           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           delete mail;
+           // fprintf(stderr, "Write Before\n");
+           MessageNode* message = postOffice->GrabMessage(0);
+           MailNode* curNode = message->head;
+           Mail* curMail = curNode->cur;
+           found = curMail->ackHdr.pageID;
+        } else{
+           found = diskBitMap->Find(); 
+        }
 
         if(found == -1){
             i = numPages + 1;
@@ -1065,7 +1194,7 @@ AddrSpace* AddrSpace::newSpace(int PID){
         DEBUG('r', "NumPages is %d\n", numPages);
     }
     NewSpace = new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace, false, PID);
-    for(int i = 0; i < numPages; i++){
+    for(i = 0; i < numPages; i++){
         //diskPages[revPageTable2[i].physicalPage]->setStatus(InUse);
         diskPages[revPageTable2[i].physicalPage]->addAddr(NewSpace);
     }
@@ -1096,7 +1225,7 @@ AddrSpace* AddrSpace::cowSpace(int PID){
     //     return new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, 0, false);
     // }
     //Copy the pageTable, revPageTable, and fileDescriptors
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         revPageTable2[i].virtualPage = revPageTable[i].virtualPage;        
         revPageTable2[i].physicalPage = revPageTable[i].physicalPage;
         revPageTable2[i].valid = revPageTable[i].valid;
@@ -1154,7 +1283,7 @@ AddrSpace* AddrSpace::cowSpace(int PID){
     
     CowAddrSpace = new(std::nothrow) AddrSpace(pageTable2, revPageTable2, fileDescriptors2, numPages, enoughSpace, true, PID);
     //Adding the CowAddrSpace to the addrs associatied with diskPages
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         //fprintf(stderr, "DiskPageCow: %d\n", revPageTable[i].physicalPage);
         //diskPages[revPageTable[i].physicalPage]->setStatus(CowPage);
         diskPages[revPageTable[i].physicalPage]->addAddr(CowAddrSpace);
@@ -1170,31 +1299,35 @@ void AddrSpace::remDiskPages(){
 }
 
 bool AddrSpace::writeBackDirty(){
-    int i, j, rc;
-    Status pstat;
+    unsigned int i;
     char pageBuf[128];
     
     for(i=0;i<NumPhysPages;i++){
         if(pageTable[ramPages[i]->vPage].valid == true && pageTable[ramPages[i]->vPage].dirty == true){
-            if(ramPages[i]->pid == currentThread->space->pid ){
+            if(ramPages[i]->pid == /*currentThread->space->pid*/this->pid ){
                 ramPages[i]->setStatus(MarkedForReplacement);
                 ramPages[i]->head->pageTable[ramPages[i]->vPage].dirty = false;
                 for(int q = 0; q < PageSize; q++){
                    pageBuf[q] = machine->mainMemory[i * PageSize + q];
 
                 }
+                allThreads->Mapcar((VoidFunctionPtr) ThreadPrint);
+                //ASSERT(false);
+
                 synchDisk->WriteSector(ramPages[i]->head->revPageTable[ramPages[i]->vPage].physicalPage, pageBuf);
                 ramPages[i]->setStatus(InUse);
 
             }
         }
+        fprintf(stderr, "page: %d\n", i);
     }
     
     return true;
 }
 
+
 void AddrSpace::printAllPages(){
-    int i;
+    unsigned int i;
     char pageBuf[128];
 
     for(i=0;i<numPages;i++){
@@ -1217,7 +1350,40 @@ int AddrSpace::copyCowPage(int rOPage){
        // printAllDiskPages();
     //fprintf(stdout, "Am i the only one? pid: %d\n", this->pid);
     int vpn = rOPage / PageSize;
-    int found = diskBitMap->Find();
+    int found = 0;
+     PacketHeader outPktHdr;
+     MailHeader outMailHdr;
+     AckHeader outAckHdr;
+     Mail* mail;
+     int msgID;
+     char data[2];
+     if(server != -1){
+        msgCTR->P();
+        msgctr++;
+        msgID=msgctr;
+        msgCTR->V(); 
+        outPktHdr.to = server;   
+        outMailHdr.to = netname;
+        //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+        outMailHdr.from = 0;//1; 
+        // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+        outMailHdr.length = 2; // had a plus 1 here before?????????
+        outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+        outAckHdr.curPack = 0;
+        outAckHdr.messageID = msgID;
+        outAckHdr.pageID = 0;
+        mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+        // postOffice->SendThings(mail, 0);
+        postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+        delete mail;
+        // fprintf(stderr, "Write Before\n");
+        MessageNode* message = postOffice->GrabMessage(0);
+        MailNode* curNode = message->head;
+        Mail* curMail = curNode->cur;
+        found = curMail->ackHdr.pageID;
+     } else{
+        found = diskBitMap->Find(); 
+     }
     //fprintf(stdout, "vpn: %d\n", vpn);
     ASSERT(pageTable[vpn].readOnly);
     if(found == -1){
@@ -1271,7 +1437,7 @@ int AddrSpace::copyCowPage(int rOPage){
 
 }
 bool AddrSpace::isCowAddr(){
-    for(int i = 0; i < numPages; i++){
+    for(unsigned int i = 0; i < numPages; i++){
         if(diskPages[revPageTable[i].physicalPage]->getStatus() == CowPage || pageTable[i].readOnly){return true;}
     }
     return false;

@@ -255,15 +255,15 @@ main(int argc, char **argv)
     int argCount;	// the number of arguments
 // for a particular command
 
-    char* intCheck1;  // checking arguments to make sure they are integers
-    char* intCheck2;
-    char* intCheck3;
+//*    char* intCheck1;  // checking arguments to make sure they are integers
+//*    char* intCheck2;
+//*    char* intCheck3;
     DEBUG('t', "Entering main");
     (void) Initialize(argc, argv);
     
 #ifdef THREADS
     if (argc == 1 || strcmp(argv[1], "-P") != 0){
-	ThreadTest();
+	   ThreadTest();
     }
     else {
         ASSERT(argc > 1);
@@ -306,21 +306,21 @@ main(int argc, char **argv)
         	ProdConsTest(numProducers, numConsumers, bufsize, vflag);
         }
         else if (strcmp(argv[2], "5") == 0) {
-         if(argc<3){fprintf(stderr, "Incorrect Arguments given for Problem #5\n");exit(1);}
-         // Checks to make sure the number of people getting on the elevator
-         // will be more than 0.
-         int people = strtol(argv[3], &intCheck1, 10);
-         if (*intCheck1 != '\0' || people <= 0){
+            if(argc<3){fprintf(stderr, "Incorrect Arguments given for Problem #5\n");exit(1);}
+            // Checks to make sure the number of people getting on the elevator
+            // will be more than 0.
+            int people = strtol(argv[3], &intCheck1, 10);
+            if (*intCheck1 != '\0' || people <= 0){
                printf("ERROR: Incorrect input\n");
                 exit(1);
-         }
-         // Must use a positive seed.
-         int seed = strtol(argv[4], &intCheck2, 10);
-         if (*intCheck2 != '\0' || seed < 0){
+            }
+            // Must use a positive seed.
+            int seed = strtol(argv[4], &intCheck2, 10);
+            if (*intCheck2 != '\0' || seed < 0){
                 printf("ERROR: Incorrect input\n");
                 exit(1);
-         }
-         ElevatorTest(people, seed);
+            }
+            ElevatorTest(people, seed);
         }
         else if (strcmp(argv[2], "8") == 0) {
             ASSERT(argc > 1);
@@ -335,58 +335,65 @@ main(int argc, char **argv)
     }
 #endif
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
-argCount = 1;
+        argCount = 1;
         if (!strcmp(*argv, "-z")) // print copyright
             printf (copyright);
 
 #ifdef USER_PROGRAM
         if (!strcmp(*argv, "-x")) { // run a user program
-ASSERT(argc > 1);
+            ASSERT(argc > 1);
             StartProcess(*(argv + 1));
             argCount = 2;
-        } else if (!strcmp(*argv, "-c")) { // test the console
-if (argc == 1)
-ConsoleTest(NULL, NULL);
-else {
-ASSERT(argc > 2);
-ConsoleTest(*(argv + 1), *(argv + 2));
-argCount = 3;
-}
-interrupt->Halt();	// once we start the console, then
-// Nachos will loop forever waiting
-// for console input
-}
+        } 
+        else if (!strcmp(*argv, "-c")) { // test the console
+            if (argc == 1)
+                ConsoleTest(NULL, NULL);
+            else {
+                ASSERT(argc > 2);
+                ConsoleTest(*(argv + 1), *(argv + 2));
+                argCount = 3;
+            }
+            interrupt->Halt();	// once we start the console, then
+            // Nachos will loop forever waiting
+            // for console input
+        }
 #endif // USER_PROGRAM
 #ifdef FILESYS
-if (!strcmp(*argv, "-cp")) { // copy from UNIX to Nachos
-ASSERT(argc > 2);
-Copy(*(argv + 1), *(argv + 2));
-argCount = 3;
-} else if (!strcmp(*argv, "-p")) {	// print a Nachos file
-ASSERT(argc > 1);
-Print(*(argv + 1));
-argCount = 2;
-} else if (!strcmp(*argv, "-r")) {	// remove Nachos file
-ASSERT(argc > 1);
-fileSystem->Remove(*(argv + 1));
-argCount = 2;
-} else if (!strcmp(*argv, "-l")) {	// list Nachos directory
+        if (!strcmp(*argv, "-cp")) { // copy from UNIX to Nachos
+            ASSERT(argc > 2);
+            Copy(*(argv + 1), *(argv + 2));
+            argCount = 3;
+        } 
+        else if (!strcmp(*argv, "-p")) {	// print a Nachos file
+            ASSERT(argc > 1);
+            Print(*(argv + 1));
+            argCount = 2;
+        } 
+        else if (!strcmp(*argv, "-r")) {	// remove Nachos file
+            ASSERT(argc > 1);
+            fileSystem->Remove(*(argv + 1));
+            argCount = 2;
+        } 
+        else if (!strcmp(*argv, "-l")) {	// list Nachos directory
             fileSystem->List();
-} else if (!strcmp(*argv, "-D")) {	// print entire filesystem
+        } 
+        else if (!strcmp(*argv, "-D")) {	// print entire filesystem
             fileSystem->Print();
-} else if (!strcmp(*argv, "-t")) {	// performance test
+        } 
+        else if (!strcmp(*argv, "-t")) {	// performance test
             PerformanceTest();
 }
 #endif // FILESYS
 #ifdef NETWORK
         if (!strcmp(*argv, "-o")) {
-ASSERT(argc > 1);
+            ASSERT(argc > 1);
             Delay(2); // delay for 2 seconds
-// to give the user time to
-// start up another nachos
+            // to give the user time to
+            // start up another nachos
             MailTest(atoi(*(argv + 1)));
             argCount = 2;
         }
+        
 #endif // NETWORK
     }
 

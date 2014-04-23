@@ -120,8 +120,9 @@ class Thread {
 // A thread running a user program actually has *two* sets of CPU registers -- 
 // one for its state while executing user code, one for its state 
 // while executing kernel code.
-    int userRegisters[NumTotalRegs];	// user-level CPU register state
+    int userRegisters[NumTotalRegs];    // user-level CPU register state
   public:
+    
     void SaveUserState();		// save user-level register state
     void RestoreUserState();		// restore user-level register state
 
@@ -255,7 +256,7 @@ class Thread {
                     // is called
 
     // basic thread operations
-
+    void Murder();
     void Fork(VoidFunctionPtr func, int arg);   // Make thread run (*func)(arg)
     void Yield();               // Relinquish the CPU if any 
                         // other thread is runnable
@@ -268,8 +269,10 @@ class Thread {
     void setStatus(ThreadStatus st) { status = st; }
     const char* getName() { return (name); }
     int getPriority() {return (priority); }
-    void Print() { printf("%s, ", name); }
+    void Print() { fprintf(stderr, "%s, ", name); }
     Thread* copyThread();
+    bool migrate;
+    void *inKernel;
 
   private:
     // some of the private data for this class is listed above
@@ -289,8 +292,9 @@ class Thread {
 // A thread running a user program actually has *two* sets of CPU registers -- 
 // one for its state while executing user code, one for its state 
 // while executing kernel code.
-    int userRegisters[NumTotalRegs];    // user-level CPU register state
+    
   public:
+    int userRegisters[NumTotalRegs];    // user-level CPU register state
     void SaveUserState();       // save user-level register state
     void RestoreUserState();        // restore user-level register state
 

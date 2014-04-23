@@ -354,8 +354,8 @@ public:
     void displayPage(){
         
         fprintf(stdout, "\trefcount: %d\n", refcount);
-        fprintf(stdout, "\tAddrSpace1: %d\n", addr1);
-        fprintf(stdout, "\tAddrSpace2: %d\n", addr2);
+        fprintf(stdout, "\tAddrSpace1: %p\n", (void *)addr1);
+        fprintf(stdout, "\tAddrSpace2: %p\n", (void *)addr2);
         fprintf(stdout, "\tPid1: %d\n", pid1);
         fprintf(stdout, "\tPid2: %d\n", pid2);
         fprintf(stdout, "\tStatus: %d\n", status);
@@ -377,8 +377,10 @@ extern Scheduler *scheduler;			// the ready list
 extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
-
-
+extern int server;
+extern int clients[10];
+extern List *allThreads;
+extern List *migThreads;
 
 class FamilyNode{
 public:
@@ -448,6 +450,7 @@ extern unsigned int msgctr;
 extern unsigned long long timeoutctr;
 extern Timer *timeoutTimer;    
 extern Thread *timeout;
+extern int netname;
 
 #endif
 
