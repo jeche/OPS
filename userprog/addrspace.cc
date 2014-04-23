@@ -318,9 +318,40 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     revPageTable = new(std::nothrow) TranslationEntry[numPages];
     int found = 0;
-
     for (i = 0; i < numPages; i++) {
-        found = diskBitMap->Find();
+        PacketHeader outPktHdr;
+        MailHeader outMailHdr;
+        AckHeader outAckHdr;
+        Mail* mail;
+        int msgID;
+        char data[2];
+        if(server != -1){
+           msgCTR->P();
+           msgctr++;
+           msgID=msgctr;
+           msgCTR->V(); 
+           outPktHdr.to = server;   
+           outMailHdr.to = netname;
+           //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+           outMailHdr.from = 0;//1; 
+           // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+           outMailHdr.length = 2; // had a plus 1 here before?????????
+           outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+           outAckHdr.curPack = 0;
+           outAckHdr.messageID = msgID;
+           outAckHdr.pageID = 0;
+           mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+           // postOffice->SendThings(mail, 0);
+           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           delete mail;
+           // fprintf(stderr, "Write Before\n");
+           MessageNode* message = postOffice->GrabMessage(0);
+           MailNode* curNode = message->head;
+           Mail* curMail = curNode->cur;
+           found = curMail->ackHdr.pageID;
+        } else{
+           found = diskBitMap->Find(); 
+        }
         if(found == -1){
             numPages = i + 1;
             i = numPages + 1;
@@ -451,7 +482,39 @@ AddrSpace::AddrSpace(OpenFile *chkpt, int numpages, int PID){
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     revPageTable = new(std::nothrow) TranslationEntry[numPages];
     for(i = 0; i<numPages; i++){
-        found = diskBitMap->Find();
+        PacketHeader outPktHdr;
+        MailHeader outMailHdr;
+        AckHeader outAckHdr;
+        Mail* mail;
+        char data[2];
+        int msgID;
+        if(server != -1){
+           msgCTR->P();
+           msgctr++;
+           msgID=msgctr;
+           msgCTR->V(); 
+           outPktHdr.to = server;   
+           outMailHdr.to = netname;
+           //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+           outMailHdr.from = 0;//1; 
+           // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+           outMailHdr.length = 2; // had a plus 1 here before?????????
+           outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+           outAckHdr.curPack = 0;
+           outAckHdr.messageID = msgID;
+           outAckHdr.pageID = 0;
+           mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+           // postOffice->SendThings(mail, 0);
+           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           delete mail;
+           // fprintf(stderr, "Write Before\n");
+           MessageNode* message = postOffice->GrabMessage(0);
+           MailNode* curNode = message->head;
+           Mail* curMail = curNode->cur;
+           found = curMail->ackHdr.pageID;
+        } else{
+           found = diskBitMap->Find(); 
+        }
         if(found == -1){
             numPages = i+1;
             i=numPages+1;
@@ -553,7 +616,39 @@ AddrSpace::~AddrSpace()
                 ramPages[pageTable[i].physicalPage]->head = NULL;
                 ramPages[pageTable[i].physicalPage]->pid = -1;
             }
-            diskBitMap->Clear(revPageTable[i].physicalPage);
+            if (server != -1){
+                PacketHeader outPktHdr;
+                MailHeader outMailHdr;
+                AckHeader outAckHdr;
+                Mail* mail;
+                char data[3];
+                int msgID;
+                if(server != -1){
+                   msgCTR->P();
+                   msgctr++;
+                   msgID=msgctr;
+                   msgCTR->V(); 
+                   outPktHdr.to = server;   
+                   outMailHdr.to = netname;
+                   //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                   outMailHdr.from = 0;//1; 
+                   // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                   outMailHdr.length = 3; // had a plus 1 here before?????????
+                   outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                   outAckHdr.curPack = 0;
+                   outAckHdr.messageID = msgID;
+                   outAckHdr.pageID = revPageTable[i].physicalPage;
+                   mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+                   // postOffice->SendThings(mail, 0);
+                   postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+                   delete mail;
+                   // fprintf(stderr, "Write Before\n");
+                   MessageNode* message = postOffice->GrabMessage(0);
+                   delete message;
+                } 
+            } else{
+                diskBitMap->Clear(revPageTable[i].physicalPage);
+            }
         }
         diskPages[revPageTable[i].physicalPage]->removeAddr(this);
     }
@@ -1003,7 +1098,39 @@ AddrSpace* AddrSpace::newSpace(int PID){
     }
 
     for (i = 0; i < numPages; i++) {
-        found = diskBitMap->Find();
+        PacketHeader outPktHdr;
+        MailHeader outMailHdr;
+        AckHeader outAckHdr;
+        Mail* mail;
+        int msgID;
+        char data[2];
+        if(server != -1){
+           msgCTR->P();
+           msgctr++;
+           msgID=msgctr;
+           msgCTR->V(); 
+           outPktHdr.to = server;   
+           outMailHdr.to = netname;
+           //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+           outMailHdr.from = 0;//1; 
+           // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+           outMailHdr.length = 2; // had a plus 1 here before?????????
+           outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+           outAckHdr.curPack = 0;
+           outAckHdr.messageID = msgID;
+           outAckHdr.pageID = 0;
+           mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+           // postOffice->SendThings(mail, 0);
+           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           delete mail;
+           // fprintf(stderr, "Write Before\n");
+           MessageNode* message = postOffice->GrabMessage(0);
+           MailNode* curNode = message->head;
+           Mail* curMail = curNode->cur;
+           found = curMail->ackHdr.pageID;
+        } else{
+           found = diskBitMap->Find(); 
+        }
 
         if(found == -1){
             i = numPages + 1;
@@ -1223,7 +1350,40 @@ int AddrSpace::copyCowPage(int rOPage){
        // printAllDiskPages();
     //fprintf(stdout, "Am i the only one? pid: %d\n", this->pid);
     int vpn = rOPage / PageSize;
-    int found = diskBitMap->Find();
+    int found = 0;
+     PacketHeader outPktHdr;
+     MailHeader outMailHdr;
+     AckHeader outAckHdr;
+     Mail* mail;
+     int msgID;
+     char data[2];
+     if(server != -1){
+        msgCTR->P();
+        msgctr++;
+        msgID=msgctr;
+        msgCTR->V(); 
+        outPktHdr.to = server;   
+        outMailHdr.to = netname;
+        //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+        outMailHdr.from = 0;//1; 
+        // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+        outMailHdr.length = 2; // had a plus 1 here before?????????
+        outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+        outAckHdr.curPack = 0;
+        outAckHdr.messageID = msgID;
+        outAckHdr.pageID = 0;
+        mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+        // postOffice->SendThings(mail, 0);
+        postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+        delete mail;
+        // fprintf(stderr, "Write Before\n");
+        MessageNode* message = postOffice->GrabMessage(0);
+        MailNode* curNode = message->head;
+        Mail* curMail = curNode->cur;
+        found = curMail->ackHdr.pageID;
+     } else{
+        found = diskBitMap->Find(); 
+     }
     //fprintf(stdout, "vpn: %d\n", vpn);
     ASSERT(pageTable[vpn].readOnly);
     if(found == -1){

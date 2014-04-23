@@ -401,7 +401,7 @@ void Pager(int clientMachNum){
 
         if(curMail->mailHdr.length == 1){
             pageNum = curMail->ackHdr.pageID;
-            synchDisk->ReadSector(pageNum + curMail->pktHdr.from * 1000, pageBuf);
+            synchDisk->ReadSector(pageNum, pageBuf);
 
             msgCTR->P();
             msgctr++;
@@ -431,7 +431,7 @@ void Pager(int clientMachNum){
             msgctr++;
             msgID=msgctr;
             msgCTR->V(); 
-            synchDisk->WriteSector(pageNum + curMail->pktHdr.from * 1000, curMail->data);
+            synchDisk->WriteSector(pageNum, curMail->data);
             outPktHdr.to = clientMachNum;   
             outMailHdr.to = 0;
             //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
@@ -449,7 +449,49 @@ void Pager(int clientMachNum){
             // postOffice->SendThings(curMail, clientMachNum);
             // fprintf(stderr, "Write Serviced\n");
 
-        } else{
+        } else if(curMail->mailHdr.length == 2){
+            int found = diskBitMap->Find();
+            msgCTR->P();
+            msgctr++;
+            msgID=msgctr;
+            msgCTR->V(); 
+            outPktHdr.to = clientMachNum;   
+            outMailHdr.to = 0;
+            //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+            outMailHdr.from = clientMachNum;//1; 
+            // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+            outMailHdr.length = 128; // had a plus 1 here before?????????
+            outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+            outAckHdr.curPack = 0;
+            outAckHdr.messageID = msgID;
+            outAckHdr.pageID = found;
+
+            curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            delete curMail;
+        
+        } else if(curMail->mailHdr.length == 3) {
+            diskBitMap->Clear(curMail->ackHdr.pageID);
+            msgCTR->P();
+            msgctr++;
+            msgID=msgctr;
+            msgCTR->V(); 
+            outPktHdr.to = clientMachNum;   
+            outMailHdr.to = 0;
+            //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+            outMailHdr.from = clientMachNum;//1; 
+            // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+            outMailHdr.length = 128; // had a plus 1 here before?????????
+            outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+            outAckHdr.curPack = 0;
+            outAckHdr.messageID = msgID;
+            outAckHdr.pageID = 0;
+
+            curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            delete curMail;
+            
+        }else{
             ASSERT(false);
         }
     }
@@ -821,7 +863,7 @@ Initialize(int argc, char **argv)
     // bitMap->Print();
 #endif
 
-    synchDisk = new(std::nothrow) SynchDisk("DISK");
+    // synchDisk = new(std::nothrow) SynchDisk("DISK");
     diskBitMap = new(std::nothrow) BitMap(NumSectors);
     diskPages = new(std::nothrow) diskEntry*[NumSectors];
     ramPages = new(std::nothrow) ramEntry*[NumPhysPages];
