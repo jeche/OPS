@@ -539,7 +539,7 @@ ExceptionHandler(ExceptionType which)
                 //fprintf(stderr, "EXIT\n");
                 DEBUG('j', "Exit addr: %d\n", currentThread->space);
                 forking->P();
-                oldLevel = interrupt->SetLevel(IntOff);
+                //oldLevel = interrupt->SetLevel(IntOff);
                 curr = root;
                 DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
                 
@@ -570,36 +570,42 @@ ExceptionHandler(ExceptionType which)
         case SC_Join:
                 DEBUG('j', "Join\n");
                 whence = machine->ReadRegister(4);
-                curr = root;
-                forking->P();
-                oldLevel = interrupt->SetLevel(IntOff);
-                                DEBUG('j', "Join\n");
-                while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
-                  curr = curr->next;  // Iterate to find the correct semapohre to P on
-                }
-                
-                
-                if(curr->parent != currentThread->space->pid && curr->child != whence){
-                  forking->V();
-                  DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
+                if(currentThread->migrate == -1){
                   curr = root;
-                // while(curr->next !=NULL){
-                //   curr = curr->next;  // Iterate to find the correct semphore to V
-                //   fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
-                // }
-                //fprintf(stderr, "whence: %d, pid: %d\n", whence, currentThread->space->pid);
-                  machine->WriteRegister(2, -1);  // If you cannot find the child return false.
-                }
+                  forking->P();
+                  //oldLevel = interrupt->SetLevel(IntOff);
+                                  DEBUG('j', "Join\n");
+                  while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
+                    curr = curr->next;  // Iterate to find the correct semapohre to P on
+                  }
+                  
+                  
+                  if(curr->parent != currentThread->space->pid && curr->child != whence){
+                    forking->V();
+                    DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
+                    curr = root;
+                  // while(curr->next !=NULL){
+                  //   curr = curr->next;  // Iterate to find the correct semphore to V
+                  //   fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                  // }
+                  //fprintf(stderr, "whence: %d, pid: %d\n", whence, currentThread->space->pid);
+                    machine->WriteRegister(2, -1);  // If you cannot find the child return false.
+                  }
 
-                else{
-                  curr->touched = true;
-                  forking->V();
-                  DEBUG('j', "Parent %d, joining for %d.\n", currentThread->space->pid, curr->child);
-                  //fprintf(stderr, "addr %d out of join\n", currentThread->space);
-                  curr->death->P(); // Wait for child to die.
-                  machine->WriteRegister(2, curr->exit); // Return the exit value.
+                  else{
+                    curr->touched = true;
+                    forking->V();
+                    DEBUG('j', "Parent %d, joining for %d.\n", currentThread->space->pid, curr->child);
+                    //fprintf(stderr, "addr %d out of join\n", currentThread->space);
+                    curr->death->P(); // Wait for child to die.
+                    machine->WriteRegister(2, curr->exit); // Return the exit value.
+                  }
                 }
-                (void) interrupt->SetLevel(oldLevel);
+                else{
+                  //Case where the process has been migrated
+                  DEBUG('j', "Join(Migrated Thread)");
+                }
+                //(void) interrupt->SetLevel(oldLevel);
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));

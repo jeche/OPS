@@ -40,6 +40,7 @@ Thread::Thread(const char* threadName)
     stack = NULL;
     status = JUST_CREATED;
     space = NULL;
+    migrate = -1;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif

@@ -348,7 +348,7 @@ Scheduler::StealUserThread()
     
     
     possibleUserThread = (Thread *)allThreads->Remove();
-    while(possibleUserThread!=NULL && possibleUserThread->space == NULL){
+    while(possibleUserThread!=NULL && possibleUserThread->space == NULL && possibleUserThread->migrate != -1){
         allThreads->Append(possibleUserThread);
 
         //possibleUserThread->Print();

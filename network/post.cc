@@ -207,7 +207,7 @@ void MailBox::SendPackets(){
         
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
         m = (Mail *) ackList->Remove(); // timeout will add an invalid ack packet
-        while(m->mailHdr.length == -1 || m->pktHdr.from != pktHdr.to || m->mailHdr.from != mailHdr.to || m->ackHdr.messageID != ackHdr.messageID || m->ackHdr.curPack != ackHdr.curPack){
+        while((signed)m->mailHdr.length == -1 || m->pktHdr.from != pktHdr.to || m->mailHdr.from != mailHdr.to || m->ackHdr.messageID != ackHdr.messageID || m->ackHdr.curPack != ackHdr.curPack){
             // keep trying to send same packet until it goes through
             // ASSERT(false);
             // ASSERT(ackHdr.curPack == m->ackHdr.curPack);
@@ -250,7 +250,7 @@ void MailBox::CompleteMessages(){
         temper = head;
         flag = 0;
         if(curmsg != NULL){
-            fprintf(stderr, "Curmsg %d, %d\n", curmsg->finished, curmsg->totalSize);
+            //fprintf(stderr, "Curmsg %d, %d\n", curmsg->finished, curmsg->totalSize);
         }
         while(temper != NULL){
             if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID && curmsg == NULL){
@@ -310,8 +310,8 @@ void MailBox::CompleteMessages(){
                 curmsg->head->Append(mn);
                 // add one to the amount we have finished receiving
                 if (m->ackHdr.curPack != curmsg->finished){
-                    MessageNode * thingthing = NULL;
-                    thingthing->head->cur->data[0];
+/*** WHAT IS THIS JESHKA                    MessageNode * thingthing = NULL;     <------ I expect thingthing from Aslyn
+                    thingthing->head->cur->data[0];*/
                     ASSERT(false);
                 }
                 curmsg->finished = m->ackHdr.curPack + 1;
@@ -334,7 +334,7 @@ void MailBox::CompleteMessages(){
             }
 
             if(curmsg != NULL && curmsg->finished >= curmsg->totalSize){
-                fprintf(stderr, "\nYAY!!!!\n");
+                // ****fprintf(stderr, "\nYAY!!!!\n");
                 // temper = head;
                 // flag = 0;
                 // while(temper != NULL){
@@ -644,7 +644,7 @@ PostOffice::PostOffice(NetworkAddress addr, double reliability, int nBoxes)
     t = new(std::nothrow) Thread("postal worker");
 
     t->Fork(PostalHelper, (int) this);
-}
+} 
 
 //----------------------------------------------------------------------
 // PostOffice::~PostOffice

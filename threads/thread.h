@@ -256,7 +256,7 @@ class Thread {
                     // is called
 
     // basic thread operations
-    void Murder();
+    void Murder(); // of Crows?
     void Fork(VoidFunctionPtr func, int arg);   // Make thread run (*func)(arg)
     void Yield();               // Relinquish the CPU if any 
                         // other thread is runnable
@@ -271,7 +271,7 @@ class Thread {
     int getPriority() {return (priority); }
     void Print() { fprintf(stderr, "%s, ", name); }
     Thread* copyThread();
-    bool migrate;
+    int migrate;
     void *inKernel;
 
   private:

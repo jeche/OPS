@@ -381,6 +381,7 @@ extern int server;
 extern int clients[10];
 extern List *allThreads;
 extern List *migThreads;
+extern int activeClientList[10];
 
 class FamilyNode{
 public:
@@ -388,6 +389,7 @@ public:
     bool touched;
     int child;
     int exit;
+    int migrated;
     Semaphore* death;
     FamilyNode* next;
     AddrSpace *kiddo;
@@ -400,6 +402,7 @@ public:
         next=NULL;
         exit = -5;
         kiddo = gogo;
+        migrated = -1;
     };
 
     ~FamilyNode(){
@@ -408,6 +411,19 @@ public:
             delete next;
         }
     };
+};
+
+class ForeignThreadNode{
+public:
+    int origPID;
+    int curPID;
+    ForeignThreadNode* next;
+    ForeignThreadNode(int orig, int cur){
+        origPID = orig;
+        curPID = cur;
+        next = NULL;
+    };
+    ~ForeignThreadNode(){};
 };
 
 
@@ -420,6 +436,8 @@ extern SynchConsole *synchConsole;
 extern Semaphore *forking;
 extern BitMap *bitMap;
 extern FamilyNode* root;
+extern ForeignThreadNode *foreignRoot;
+
 extern unsigned int pid;
 
 #endif
@@ -451,6 +469,8 @@ extern unsigned long long timeoutctr;
 extern Timer *timeoutTimer;    
 extern Thread *timeout;
 extern int netname;
+extern Semaphore *activeClientListSem;
+extern Semaphore *migrationSem;
 
 #endif
 
