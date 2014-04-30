@@ -345,7 +345,7 @@ TimerInterruptHandler2(int )
     TIMEOUTKILLER =  100000000;
     if ( stats->totalTicks > timeoutctr + TIMEOUTKILLER){
         timeoutctr = stats->totalTicks;
-        // postOffice->KaputTime();
+        postOffice->KaputTime();
         // fprintf(stderr, "Setting Ready to Run\n");
         // fprintf(stderr, "running time out at %ld\n", timeoutctr);
         // scheduler->ReadyToRun(timeout);
@@ -421,8 +421,10 @@ void Pager(int clientMachNum){
             
 
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-            delete mail;
+            postOffice->SendThings(mail, clientMachNum);
+            // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+            // delete mail;
+
             // fprintf(stderr, "Read Serviced %d %d %d %d\n", curMail->mailHdr.from ,curMail->ackHdr.messageID, msgID, clientMachNum);
 
         } else if(curMail->mailHdr.length == 128){
@@ -444,9 +446,11 @@ void Pager(int clientMachNum){
             outAckHdr.pageID = pageNum;
 
             curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, curMail->data);
-            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, curMail->data);
-            delete curMail;
-            // postOffice->SendThings(curMail, clientMachNum);
+            
+            // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, curMail->data);
+            // delete curMail;
+
+            postOffice->SendThings(curMail, clientMachNum);
             // fprintf(stderr, "Write Serviced\n");
 
         } else if(curMail->mailHdr.length == 2){
@@ -467,8 +471,9 @@ void Pager(int clientMachNum){
             outAckHdr.pageID = found;
 
             curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            delete curMail;
+            postOffice->SendThings(curMail, clientMachNum);
+            // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            // delete curMail;
         
         } else if(curMail->mailHdr.length == 3) {
             diskBitMap->Clear(curMail->ackHdr.pageID);
@@ -488,12 +493,14 @@ void Pager(int clientMachNum){
             outAckHdr.pageID = 0;
 
             curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            delete curMail;
+            postOffice->SendThings(curMail, clientMachNum);
+            // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            // delete curMail;
             
         }else{
             ASSERT(false);
         }
+        
     }
 }
 void migrationHandler(){

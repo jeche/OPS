@@ -341,14 +341,17 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
            outAckHdr.messageID = msgID;
            outAckHdr.pageID = 0;
            mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
-           // postOffice->SendThings(mail, 0);
-           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-           delete mail;
+           postOffice->SendThings(mail, 0);
+           // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           // delete mail;
            // fprintf(stderr, "Write Before\n");
            MessageNode* message = postOffice->GrabMessage(0);
            MailNode* curNode = message->head;
            Mail* curMail = curNode->cur;
+
            found = curMail->ackHdr.pageID;
+           delete curNode;
+           delete message;
         } else{
            found = diskBitMap->Find(); 
         }
@@ -504,14 +507,16 @@ AddrSpace::AddrSpace(OpenFile *chkpt, int numpages, int PID){
            outAckHdr.messageID = msgID;
            outAckHdr.pageID = 0;
            mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
-           // postOffice->SendThings(mail, 0);
-           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-           delete mail;
+           postOffice->SendThings(mail, 0);
+           // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           // delete mail;
            // fprintf(stderr, "Write Before\n");
            MessageNode* message = postOffice->GrabMessage(0);
            MailNode* curNode = message->head;
            Mail* curMail = curNode->cur;
            found = curMail->ackHdr.pageID;
+           delete curNode;
+           delete message;
         } else{
            found = diskBitMap->Find(); 
         }
@@ -640,8 +645,8 @@ AddrSpace::~AddrSpace()
                    outAckHdr.pageID = revPageTable[i].physicalPage;
                    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
                    // postOffice->SendThings(mail, 0);
-                   postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-                   delete mail;
+                   postOffice->SendThings(mail, 0);
+                   // delete mail;
                    // fprintf(stderr, "Write Before\n");
                    MessageNode* message = postOffice->GrabMessage(0);
                    delete message;
@@ -1120,14 +1125,16 @@ AddrSpace* AddrSpace::newSpace(int PID){
            outAckHdr.messageID = msgID;
            outAckHdr.pageID = 0;
            mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
-           // postOffice->SendThings(mail, 0);
-           postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-           delete mail;
+           postOffice->SendThings(mail, 0);
+           // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+           // delete mail;
            // fprintf(stderr, "Write Before\n");
            MessageNode* message = postOffice->GrabMessage(0);
            MailNode* curNode = message->head;
            Mail* curMail = curNode->cur;
            found = curMail->ackHdr.pageID;
+           delete curNode;
+           delete message;
         } else{
            found = diskBitMap->Find(); 
         }
@@ -1373,14 +1380,18 @@ int AddrSpace::copyCowPage(int rOPage){
         outAckHdr.messageID = msgID;
         outAckHdr.pageID = 0;
         mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
-        // postOffice->SendThings(mail, 0);
-        postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-        delete mail;
+        postOffice->SendThings(mail, 0);
+        // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+        // delete mail;
         // fprintf(stderr, "Write Before\n");
         MessageNode* message = postOffice->GrabMessage(0);
         MailNode* curNode = message->head;
         Mail* curMail = curNode->cur;
+
+
         found = curMail->ackHdr.pageID;
+        delete curNode;
+        delete message;
      } else{
         found = diskBitMap->Find(); 
      }

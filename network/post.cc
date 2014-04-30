@@ -183,7 +183,7 @@ void MailBox::ackAttackSend(){
         ackHdr = m->ackHdr;
         ASSERT(ackHdr.totalSize == -1);
         char *data = m->data;
-        fprintf(stderr, "Sending ACK %d %d\n", ackHdr.messageID, ackHdr.curPack);
+        // fprintf(stderr, "Sending ACK %d %d\n", ackHdr.messageID, ackHdr.curPack);
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
     }
 }
@@ -194,10 +194,12 @@ void MailBox::SendPackets(){
     PacketHeader pktHdr;
     AckHeader ackHdr;
     Mail* m;
+    Mail* cleaner;
     for(;;){
         // Remove a message ready for sendings
         m = (Mail *)sendList->Remove();
         // Prep to send it to the post office
+        cleaner = m;
         mailHdr = m->mailHdr;
         pktHdr = m->pktHdr;
         ackHdr = m->ackHdr;
@@ -212,16 +214,21 @@ void MailBox::SendPackets(){
             // ASSERT(false);
             // ASSERT(ackHdr.curPack == m->ackHdr.curPack);
             // sending Ack
-            fprintf(stderr, "sending fail %d, %d\n", ackHdr.curPack, ackHdr.messageID);
+            // fprintf(stderr, "sending fail %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             ASSERT(m->ackHdr.totalSize == -1);
             ASSERT(mailHdr.length != (unsigned)-1 && ackHdr.totalSize != -1);
+            delete m;
             ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
             m = (Mail *) ackList->Remove();
             // if(m->pktHdr.from != pktHdr.to && m->mailHdr.from != mailHdr.to &&m->mailHdr.from != -1 &&m->pktHdr.from != -1){
             //     ackList->Append((void*)m);
             // }
         }
+
+
         ASSERT(m->pktHdr.from == pktHdr.to && m->mailHdr.from == mailHdr.to);
+        delete m;
+        delete cleaner;
     }
 }
 
@@ -250,7 +257,7 @@ void MailBox::CompleteMessages(){
         temper = head;
         flag = 0;
         if(curmsg != NULL){
-            fprintf(stderr, "Curmsg %d, %d\n", curmsg->finished, curmsg->totalSize);
+            // fprintf(stderr, "Curmsg %d, %d\n", curmsg->finished, curmsg->totalSize);
         }
         while(temper != NULL){
             if(ackHdr.messageID == temper->msgID && pktHdr.from == temper->machineID && curmsg == NULL){
@@ -334,7 +341,7 @@ void MailBox::CompleteMessages(){
             }
 
             if(curmsg != NULL && curmsg->finished >= curmsg->totalSize){
-                fprintf(stderr, "\nYAY!!!!\n");
+                // fprintf(stderr, "\nYAY!!!!\n");
                 // temper = head;
                 // flag = 0;
                 // while(temper != NULL){
@@ -707,7 +714,7 @@ PostOffice::PostalDelivery()
         if (DebugIsEnabled('n')) {
     	    printf("Putting mail into mailbox: ");
     	    PrintHeader(pktHdr, mailHdr);
-            fprintf(stderr, "\ncurpack %d totalSize: %d\n", ackHdr.curPack, ackHdr.totalSize);
+            // fprintf(stderr, "\ncurpack %d totalSize: %d\n", ackHdr.curPack, ackHdr.totalSize);
         }
 
 	// check that arriving message is legal!
@@ -716,7 +723,7 @@ PostOffice::PostalDelivery()
 
     	// put into mailbox
         if(ackHdr.totalSize != -1){
-            fprintf(stderr, "RECEIVING: %d, %d\n", ackHdr.curPack, ackHdr.messageID);
+            // fprintf(stderr, "RECEIVING: %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             // /*Need to Ack-Back*/
             muckingWithWit.totalSize = ackHdr.totalSize;
             muckingWithWit.curPack = ackHdr.curPack;
@@ -746,7 +753,7 @@ PostOffice::PostalDelivery()
             // p->m = mail2;
             // p->t3 = t2;
             // t2->Fork(doStuff, (int) p);
-            // // fprintf(stderr, "sent magic message %d %d\n", ackHdr.messageID, ackHdr.curPack);
+            // // // fprintf(stderr, "sent magic message %d %d\n", ackHdr.messageID, ackHdr.curPack);
             // //this->Send(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
             // // Reset the variables for to put in the mailbox
             // // mailHdr.from = mailHdr.to;
@@ -774,7 +781,7 @@ PostOffice::PostalDelivery()
 
         }
         else{
-            fprintf(stderr, "Acknoweldging: %d, %d\n", ackHdr.curPack, ackHdr.messageID);
+            // // fprintf(stderr, "Acknoweldging: %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             boxes[mailHdr.to].PutAck(pktHdr, mailHdr, ackHdr, buffer + sizeof(MailHeader) + sizeof(AckHeader));
 
         }
@@ -820,7 +827,7 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, AckHeader ackHdr, char
     bcopy(data, buffer + sizeof(MailHeader) + sizeof(AckHeader), mailHdr.length);
     sendLock->Acquire();   		// only one message can be sent
 			// to the network at any one time
-    //fprintf(stderr, "here %s\n", data);
+    //// fprintf(stderr, "here %s\n", data);
 
     network->Send(pktHdr, buffer);
     messageSent->P();   
@@ -854,7 +861,7 @@ void PostOffice::SendThings(Mail *mail, int box){
 //	"data" -- address to put: payload message data
 //----------------------------------------------------------------------
 MessageNode* PostOffice::GrabMessage(int box){
-    // fprintf(stderr, "Grabbing Message from %d\n", box);
+    // // fprintf(stderr, "Grabbing Message from %d\n", box);
     return (MessageNode*) boxes[box].completeList->Remove();
 }
 
@@ -916,7 +923,7 @@ PostOffice::RestoreUnwanted(int box)
 {
     Mail *mail = (Mail *) boxes[box].unwantedMessages->Peek();
     while (mail != NULL) {
-        fprintf(stderr, "Putting mail back!!!\n");
+        // fprintf(stderr, "Putting mail back!!!\n");
         boxes[box].Put(mail->pktHdr, mail->mailHdr, mail->ackHdr, mail->data);
         mail = (Mail *) boxes[box].unwantedMessages->Peek();
     }
