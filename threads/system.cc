@@ -228,6 +228,9 @@ Cleanup()
 
 #include "copyright.h"
 #include "system.h"
+#include <stdlib.h>
+#include <string.h>
+
 
 // This defines *all* of the global data structures used by Nachos.
 // These are all initialized and de-allocated by this file.
@@ -253,6 +256,7 @@ unsigned long long timeoutctr;
 unsigned int msgctr;
 List *allThreads;
 List *migThreads;
+ForeignThreadNode *foreignRoot;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -279,10 +283,13 @@ BitMap *mailboxes;
 Semaphore *msgCTR;
 Timer *timeoutTimer;
 Thread *timeout;
+Semaphore *activeClientListSem;
+Semaphore *migrationSem;
 
 int netname;
 int server = -1;
 int clients[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+int activeClientList[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 #endif
 
 
@@ -371,6 +378,7 @@ TimeoutHandler() {
 }
 void
 migForkHandler(int k){
+    // ASSERT(false);
     // Please work, you can do it, yay, you are awesome nachos, woo, yay
     currentThread->RestoreUserState();
     currentThread->space->RestoreState();
@@ -399,7 +407,7 @@ void Pager(int clientMachNum){
         int msgID;
 
 
-        if(curMail->mailHdr.length == 1){
+        if(curMail->mailHdr.length == 1){ //Read
             pageNum = curMail->ackHdr.pageID;
             synchDisk->ReadSector(pageNum, pageBuf);
 
@@ -427,7 +435,7 @@ void Pager(int clientMachNum){
 
             // fprintf(stderr, "Read Serviced %d %d %d %d\n", curMail->mailHdr.from ,curMail->ackHdr.messageID, msgID, clientMachNum);
 
-        } else if(curMail->mailHdr.length == 128){
+        } else if(curMail->mailHdr.length == 128){ //Write
             pageNum = curMail->ackHdr.pageID;
             msgCTR->P();
             msgctr++;
@@ -454,6 +462,10 @@ void Pager(int clientMachNum){
             // fprintf(stderr, "Write Serviced\n");
 
         } else if(curMail->mailHdr.length == 2){
+/***            int from = curMail->pktHdr.from;
+            activeClientListSem->P();
+            activeClientList[from]++; 
+            activeClientListSem->V();*/
             int found = diskBitMap->Find();
             msgCTR->P();
             msgctr++;
@@ -474,9 +486,25 @@ void Pager(int clientMachNum){
             postOffice->SendThings(curMail, clientMachNum);
             // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             // delete curMail;
+            //Handle the case of load balancing here!!!!!!!!
+            //Fork off a thread if the condition is met.
+/***            activeClientListSem->P();
+            if(activeClientList[from] > 4){//MIGRATE!!!!!!!
+                activeClientList[from]--;
+                activeClientListSem->V();
+                Thread *t = new(std::nothrow) Thread("migrationThread");
+                t->fork(serverMigrationHelper, from);
+
+            }
+            else{activeClientListSem->V();}*/
         
         } else if(curMail->mailHdr.length == 3) {
+            // ASSERT(false);
             diskBitMap->Clear(curMail->ackHdr.pageID);
+/***            activeClientListSem->P();
+            activeClientList[curMail->pktHdr.from]--;
+            activeClientListSem->V();
+            diskBitMap->Clear(curMail->ackHdr.pageID);*/
             msgCTR->P();
             msgctr++;
             msgID=msgctr;
@@ -496,12 +524,72 @@ void Pager(int clientMachNum){
             postOffice->SendThings(curMail, clientMachNum);
             // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             // delete curMail;
+            //No load balancing necessary as we are removing a process!
             
-        }else{
+        } else if(curMail->mailHdr.length == 4){
+            // this is a signal to send out for a network exit
+            // ASSERT(false);
+            msgCTR->P();
+            msgctr++;
+            msgID=msgctr;
+            msgCTR->V(); 
+            ForeignThreadNode *curFTN = foreignRoot;
+            while(curFTN->next != NULL && (curFTN->curPID != curMail->ackHdr.pageID || curFTN->toMach != curMail->pktHdr.from)){
+                curFTN = curFTN->next; 
+            }
+            outPktHdr.to = curFTN->fromMach;
+            outMailHdr.to = 1;
+            outMailHdr.from = curFTN->fromMach;
+            outMailHdr.length = 128;
+            outAckHdr.totalSize = 1;
+            outAckHdr.curPack = 0;
+            outAckHdr.messageID = msgID;
+            outAckHdr.pageID = curFTN->origPID;
+            outAckHdr.migrateFlag = 2;
+            curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            postOffice->SendThings(curMail, curFTN->fromMach);
+        }
+        else{
             ASSERT(false);
         }
         
     }
+}
+void serverMigrationHandler(int from){
+    
+    //Idea for migration
+    //As we create new addrspaces for the clients we check to see if they have too many user procs > 3, if they do
+    //we run the migration handler in its own server thread to pull a process off, no semaphore should be needed as
+    //we only have one proc doing the page requests and therefore we don't need to worry about multiple people calling 
+    //migrates, we should only mess with the incremention and decremention of the activeClientList in the pager section,
+    //in the curMail->mailHdr.length == 2 case.
+
+    //We do need a separate thread for migration as if we hang on handling page requests then we will deadlock on migration
+
+/***    migrationSem->P();
+    //This way we only have at most one thread actively doing a migation, however we can have a bunch queued 
+    //up and ready to run once one finishes, also prevents the paging handler from hanging and causing deadlocks.
+
+    //need to find a target that we can send the thread to
+    int target = -1;
+    for(int i = 0; i < 10; i++){
+        activeClientListSem->P();
+        if(activeClientList[i]>0 && activeClientList[i]<4){
+            target = i;
+            break;
+        }
+        activeClientListSem->V();
+    }
+    if(target!=-1){
+        //Yay migration fun!!
+    }
+
+
+
+
+    migrationSem->V();
+    currentThread->Finish();*/
+
 }
 void migrationHandler(){
     //*********************************************************
@@ -518,11 +606,13 @@ void migrationHandler(){
         AckHeader outAckHdr;
         OpenFile* open;
         FamilyNode* curr;
+        ForeignThreadNode* curFTN;
         int len, reg, numPages;
         char buffer[20];
 
 
         MessageNode* message = postOffice->GrabMessage(1);
+        // ASSERT(false);
         //scheduler->Print();
         fprintf(stderr, "\n\n");
         //oldLevel = interrupt->SetLevel(IntOff);//Turn off interupts since we don't want processes to wake up while we are doing this
@@ -534,7 +624,19 @@ void migrationHandler(){
         char pageBuf[128];
         int msgID;
         memset(pageBuf, '\0', sizeof(pageBuf));
-        if(curMail->ackHdr.migrateFlag == 0){//Server is requesting a process
+        if (curMail->ackHdr.migrateFlag == 2){
+            // Network Exit
+            FamilyNode *curr;
+            forking->P();
+            curr = root;
+            while(curr->child != curMail->ackHdr.pageID && curr->next !=NULL){
+                  curr = curr->next;  // Iterate to find the correct semphore to V
+            }
+            curr->exit = atoi(curMail->data);
+            curr->death->V();
+            forking->V();
+        }
+        else if(curMail->ackHdr.migrateFlag == 0){//Server is requesting a process
 
 
             //First Checkpoint the Process
@@ -544,7 +646,7 @@ void migrationHandler(){
             Thread* removeThread = scheduler->StealUserThread();
             
             ASSERT(removeThread->space != NULL);
-            char* filename = "migckpt";
+            char* filename = "migckpt";//This should not be a fixed filename, should be "t[netname] [counter]"
             if(!fileSystem->Create(filename, 16)){
                 ASSERT(false);
             }
@@ -553,6 +655,9 @@ void migrationHandler(){
             removeThread->space->writeBackDirty();
             oldLevel = interrupt->SetLevel(IntOff);
             open->Write("#Checkpoint\n", 12);
+            //Write the pid to the file, for nExit!!
+            len = sprintf(buffer, "%d\n", removeThread->space->pid);
+            open->Write(buffer, len);
             for(int i = 0; i < NumTotalRegs; i++){
                 reg = machine->ReadRegister(i);
                 len = sprintf(buffer, "%d\n", reg);
@@ -572,25 +677,31 @@ void migrationHandler(){
             //There may be concurrency issues here, logically it should be fine since we turned interupts off, and slept the only running proc.
             //Might not need to P on the forking semaphore
 
-            forking->P();
+            // forking->P();
             curr = root;
-            while(curr->child != removeThread->space->pid && curr->next !=NULL){
-                curr = curr->next;  // Iterate to find the correct semphore to V
-            }
-            if(curr->child != removeThread->space->pid){
-                ASSERT(false);
-            }
-            else{
-                curr->exit = 42;
-                forking->V();
-                curr->death->V();
-                chillBrother->P();
-                removeThread->space->remDiskPages();
-                chillBrother->V();  
-                // ASSERT(false);
-                delete removeThread->space;
-                removeThread->Murder();
-            }
+            outAckHdr.pageID = removeThread->space->pid;
+            fprintf(stderr, "oldPID: %d\n", removeThread->space->pid);
+            // while(curr->child != removeThread->space->pid && curr->next !=NULL){
+            //     curr = curr->next;  // Iterate to find the correct semphore to V
+            // }
+            // if(curr->child != removeThread->space->pid){
+            //     ASSERT(false);
+            // }
+            // else{
+            //     curr->exit = 42;
+            //     forking->V();
+            //     curr->death->V();
+                
+                
+            //     // ASSERT(false);
+                
+            // }
+            chillBrother->P();
+
+            removeThread->space->remDiskPages();
+            chillBrother->V();  
+            delete removeThread->space;
+            removeThread->Murder();
             // ASSERT(false);
             //Now it is time to send back to the server what the file name is so it can pass it on to the target client
             msgCTR->P();
@@ -608,6 +719,7 @@ void migrationHandler(){
             outAckHdr.messageID = msgID;
             outAckHdr.migrateFlag = 1;
 
+
             memset(pageBuf, '\0', sizeof(pageBuf));
             int k;
             for(k = 0; filename[k] != '\0' && k < 128; k++){
@@ -624,16 +736,16 @@ void migrationHandler(){
 
 
         }
-        else if(curMail->ackHdr.migrateFlag == 1){//Server is sending a process
-            //First we should get the process name from the message
-            //Essentially do what is done in progtest, first must grab the registers from the checkpoint file though
-            //Create new addrspace with the ckpt constructor
-            //Don't forget to run a migspace->RestoreState();
-            //We are going to make this a context switch as well since there is presumably another thread running
+        else if(curMail->ackHdr.migrateFlag == 1){// Server is sending a process
+            // First we should get the process name from the message
+            // Essentially do what is done in progtest, first must grab the registers from the checkpoint file though
+            // Create new addrspace with the ckpt constructor
+            // Don't forget to run a migspace->RestoreState();
+            // We are going to make this a context switch as well since there is presumably another thread running
             // ASSERT(false);
             open = fileSystem->Open(curMail->data);
             AddrSpace *migspace;
-            int PID, i, j;
+            int PID, i, j, oldPID;
             char c;
 
             if(open == NULL){
@@ -642,11 +754,23 @@ void migrationHandler(){
             Thread *mig = new(std::nothrow) Thread("migthread");
             //Grab the registers and set them in the new thread
             
-            forking->P();//Dubious ********************
+            forking->P();// Dubious ********************
             pid++;
             PID = pid;
             open->Read(pageBuf, 12);
+            //#Checkpoint Check
             if(strncmp(pageBuf, "#Checkpoint\n", 12)){ASSERT(false);}
+            //OrigPid
+            j = 0; 
+            while(open->Read(&c, 1)){
+                if(c=='\n'){break;}
+                buffer[j]=c;
+                j++;
+                if(j>19){fprintf(stderr, "numpages: %s", buffer);ASSERT(false);}
+            }
+            oldPID = atoi(buffer);
+            memset(buffer, '\0', sizeof(buffer));
+            //Registers
             for(i=0;i<NumTotalRegs;i++){
                 j=0;
                 while(open->Read(&c, 1)){
@@ -670,24 +794,35 @@ void migrationHandler(){
             }
             numPages = atoi(buffer);
             memset(buffer, '\0', sizeof(buffer));
-            //Create the AddrSpace and assign it to the thread
+            // Create the AddrSpace and assign it to the thread
 
             migspace = new(std::nothrow) AddrSpace(open, numPages, PID);
             mig->space = migspace;
             
-            //lololol we should handle parent child relation somehow, lololol
+            // lololol we should handle parent child relation somehow, lololol
             curr = root;
             while(curr->next !=NULL){
                 curr = curr->next;  // Iterate to find the correct semphore to V
             }
             curr->next = new(std::nothrow) FamilyNode(migspace->pid, 0, migspace);
-            mig->Fork(migForkHandler, 42); //it is the meaning of life afterall :)
-            //fork off the thread and let it run, let it fly, let it be free, let it gallop accross the field of tortilla chips
-            //under the streams of melty cheese, past the great jalopeno outcropings, over the meadows of salsa
+            curFTN = foreignRoot;
+            while(curFTN->next != NULL){
+                curFTN = curFTN->next;
+            }
+            // curFTN->next = new(std::nothrow) ForeignThreadNode(oldPID, migspace->pid);
+            fprintf(stderr, "oldPID: %d\n", oldPID);
+            // mig->migrate = true;
+
+            mig->migrate = 1;
+            mig->Fork(migForkHandler, 42); // it is the meaning of life afterall :)
+
+             
+            // fork off the thread and let it run, let it fly, let it be free, let it gallop accross the field of tortilla chips
+            // under the streams of melty cheese, past the great jalopeno outcropings, over the meadows of salsa
             //
             forking->V();
-            //If I am re-understanding fork, only one thread should be getting back to this point.... 
-            //So now we should alert the server that we have just started up the process it sent over
+            // If I am re-understanding fork, only one thread should be getting back to this point.... 
+            // So now we should alert the server that we have just started up the process it sent over
             msgCTR->P();
             msgctr++;
             msgID=msgctr;
@@ -705,6 +840,7 @@ void migrationHandler(){
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
             delete mail;
+            // machine->Run();
             // postOffice->SendThings(mail, 1);
 
         }
@@ -739,6 +875,47 @@ void migrationHandler(){
     }
 }
 
+//----------------------------------------------------------------------
+// nExitHandler
+//  Used to handle the issue of network exit and joins, should go through
+//  ForeignThreadNode to find the old pid and match to the new, should then
+//  fork off a nExitJoinHandler.
+//----------------------------------------------------------------------
+void nExitHandler(){
+    for(;;){
+        //Herp Derp Derp
+    }
+}
+
+//----------------------------------------------------------------------
+// nExitJoinHandler
+//  Helper thread to nExitHandler, used to do all the waiting on the semaphors
+//  so the main exit handler doesn't hang and potentially cause the entire 
+//  system to hang. There will be many nExitJoinHandlers to only one nExitHandler.
+//  Its job is to do what an exit does normally, including the wait, then message
+//  the source machine back the exit value.
+//----------------------------------------------------------------------
+void nExitJoinHandler(int a){
+    //Her Der
+    //Format for the input param (PID * 100) + Client#
+
+    //Exit stuff
+    //Wait on the semaphore
+    //grab the exit value
+    //send it back to the orig process.
+}
+
+
+static void
+nExitJoinHelper(int a){
+    nExitJoinHandler(a);
+}
+
+static void
+nExitHelper(int a){
+    nExitHandler();
+}
+
 static void
 migrationHelper(int a){
     migrationHandler();
@@ -747,6 +924,10 @@ static void
 PageStuffHandler(int a)
 {
     Pager(a);
+}
+static void
+serverMigrationHelper(int a){
+    serverMigrationHandler(a);
 }
 
 
@@ -860,6 +1041,7 @@ Initialize(int argc, char **argv)
     msgctr = 0;
     timeoutctr = 0;
     root = new(std::nothrow) FamilyNode(pid, pid, NULL);
+    foreignRoot = new(std::nothrow) ForeignThreadNode(NULL, NULL, NULL, NULL);
 #ifdef USER_PROGRAM
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");
@@ -920,7 +1102,8 @@ Initialize(int argc, char **argv)
             ASSERT(clients[u] != 0);
             pagingThread->Fork(PageStuffHandler, clients[u]);
         }
-        
+        activeClientListSem = new(std::nothrow) Semaphore("activeClientListSem", 1);
+        migrationSem = new(std::nothrow) Semaphore("migrationSem", 1);
     }
     else{//You are a client
         mailboxes->Mark(0);

@@ -40,6 +40,7 @@ Thread::Thread(const char* threadName)
     stack = NULL;
     status = JUST_CREATED;
     space = NULL;
+    migrate = -1;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -383,7 +384,7 @@ Thread::Thread(const char* threadName)
     stack = NULL;
     status = JUST_CREATED;
     allThreads->Append(this);
-    migrate = false;
+    migrate = -1;
     inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
@@ -407,7 +408,7 @@ Thread::Thread(const char* threadName, int prio)
     stack = NULL;
     status = JUST_CREATED;
     allThreads->Append(this);
-    migrate = false;
+    migrate = -1;
     inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
@@ -430,7 +431,7 @@ Thread::Thread(const char* threadName, int* stackTopi, int* stacki)
     stack = stack;
     status = JUST_CREATED;
     allThreads->Append(this);
-    migrate = false;
+    migrate = -1;
     inKernel = (void *) new(std::nothrow)Semaphore("inKernel", 1);
 #ifdef USER_PROGRAM
     space = NULL;
@@ -577,7 +578,7 @@ Thread::Yield ()
     DEBUG('t', "Yielding thread \"%s\"\n", getName());
     
     nextThread = scheduler->FindNextToRun();
-    if (nextThread != NULL && !nextThread->migrate) {
+    if (nextThread != NULL && nextThread->migrate != 0) {
     scheduler->ReadyToRun(this);
     scheduler->Run(nextThread);
     }

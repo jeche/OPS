@@ -481,7 +481,9 @@ ExceptionHandler(ExceptionType which)
     int incrementPC;
     
     int packetNums;
-
+    int oldPID;
+    int fromMacher;
+    int toMacher;
     char whee;
 //*     char *whee2;
     int i, j;
@@ -516,7 +518,7 @@ ExceptionHandler(ExceptionType which)
     Mail *mail;
 //*    NetworkAddress origMachine;
 //*    int origID;
-
+    ForeignThreadNode *curFTN;
     unsigned int ui, uj;
     // fprintf(stderr, "I am P Exception Which %d Case %d\n", which, type);
     ((Semaphore *)currentThread->inKernel)->P();
@@ -539,7 +541,38 @@ ExceptionHandler(ExceptionType which)
                 //fprintf(stderr, "EXIT\n");
                 DEBUG('j', "Exit addr: %d\n", currentThread->space);
                 forking->P();
-                oldLevel = interrupt->SetLevel(IntOff);
+                //oldLevel = interrupt->SetLevel(IntOff);
+                if(currentThread->migrate == 1){
+                  curFTN = foreignRoot;
+                  while(curFTN->next != NULL && curFTN->curPID != currentThread->space->pid){
+                      curFTN = curFTN->next;
+                  }
+                  if(curFTN != NULL){
+                    msgCTR->P();
+                    msgctr++;
+                    msgID=msgctr;
+                    msgCTR->V(); 
+                    outPktHdr.to = server;   
+                    outMailHdr.to = netname;
+                    //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                    outMailHdr.from = 0;//1; 
+                    // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                    outMailHdr.length = 4; // had a plus 1 here before?????????
+                    outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                    outAckHdr.curPack = 0;
+                    outAckHdr.messageID = msgID;
+                    outAckHdr.migrateFlag = 1;
+                    outAckHdr.pageID = currentThread->space->pid;
+
+                    //Right now I am just passing in the buffer from one message to another, this might
+                    //need to change to deep copying it over to a new buffer due to bad things happening...
+
+                    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                    postOffice->SendThings(mail, 0);
+                    ((Semaphore *)currentThread->inKernel)->V();
+                    // currentThread->Finish();
+                  }
+                }
                 curr = root;
                 DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
                 
@@ -557,9 +590,9 @@ ExceptionHandler(ExceptionType which)
                   chillBrother->P();
                   //fprintf(stderr, "heeeeerrrrrreeeee\n" );
                   currentThread->space->remDiskPages();
-                chillBrother->V();  
-                delete currentThread->space;
-                incrementPC=machine->ReadRegister(NextPCReg)+4;
+                  chillBrother->V();  
+                  delete currentThread->space;
+                  incrementPC=machine->ReadRegister(NextPCReg)+4;
                 // fprintf(stderr, "I am V\n");
                   ((Semaphore *)currentThread->inKernel)->V();
                   currentThread->Finish();
@@ -570,36 +603,43 @@ ExceptionHandler(ExceptionType which)
         case SC_Join:
                 DEBUG('j', "Join\n");
                 whence = machine->ReadRegister(4);
-                curr = root;
-                forking->P();
-                oldLevel = interrupt->SetLevel(IntOff);
-                                DEBUG('j', "Join\n");
-                while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
-                  curr = curr->next;  // Iterate to find the correct semapohre to P on
-                }
-                
-                
-                if(curr->parent != currentThread->space->pid && curr->child != whence){
-                  forking->V();
-                  DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
+                if(currentThread->migrate == -1){
                   curr = root;
-                // while(curr->next !=NULL){
-                //   curr = curr->next;  // Iterate to find the correct semphore to V
-                //   fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
-                // }
-                //fprintf(stderr, "whence: %d, pid: %d\n", whence, currentThread->space->pid);
-                  machine->WriteRegister(2, -1);  // If you cannot find the child return false.
-                }
+                  forking->P();
+                  //oldLevel = interrupt->SetLevel(IntOff);
+                                  DEBUG('j', "Join\n");
+                  while(( curr->child != whence || curr->parent != currentThread->space->pid) && curr->next != NULL){
+                    curr = curr->next;  // Iterate to find the correct semapohre to P on
+                  }
+                  
+                  
+                  if(curr->parent != currentThread->space->pid && curr->child != whence){
+                    forking->V();
+                    DEBUG('j', "Cannot find appropriate thread ID to join on.\n");
+                    curr = root;
+                  // while(curr->next !=NULL){
+                  //   curr = curr->next;  // Iterate to find the correct semphore to V
+                  //   fprintf(stderr, "pid parent %d pid child %d exit %d\n", curr->parent, curr->child, curr->exit);
+                  // }
+                  //fprintf(stderr, "whence: %d, pid: %d\n", whence, currentThread->space->pid);
+                    machine->WriteRegister(2, -1);  // If you cannot find the child return false.
+                  }
 
-                else{
-                  curr->touched = true;
-                  forking->V();
-                  DEBUG('j', "Parent %d, joining for %d.\n", currentThread->space->pid, curr->child);
-                  //fprintf(stderr, "addr %d out of join\n", currentThread->space);
-                  curr->death->P(); // Wait for child to die.
-                  machine->WriteRegister(2, curr->exit); // Return the exit value.
+                  else{
+                    curr->touched = true;
+                    forking->V();
+                    DEBUG('j', "Parent %d, joining for %d.\n", currentThread->space->pid, curr->child);
+                    //fprintf(stderr, "addr %d out of join\n", currentThread->space);
+                    curr->death->P(); // Wait for child to die.
+                    machine->WriteRegister(2, curr->exit); // Return the exit value.
+                  }
                 }
-                (void) interrupt->SetLevel(oldLevel);
+                else{
+                  //Case where the process has been migrated
+                  DEBUG('j', "Join(Migrated Thread)");
+                  // GrabMessage from mailbox 2 to tell you when the child has joined
+                }
+                //(void) interrupt->SetLevel(oldLevel);
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -748,7 +788,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Write:
                 DEBUG('j', "Write\n");
-                forking->P();
+                // forking->P();
                 size = machine->ReadRegister(5);
                 // fprintf(stderr, "size: %d\n", size);
                 if (size > 0){
@@ -805,7 +845,7 @@ ExceptionHandler(ExceptionType which)
                   delete[] stringArg;
                 }
                 DEBUG('a', "WriteEnd\n");
-                forking->V();
+                // forking->V();
                 incrementPC=machine->ReadRegister(NextPCReg)+4;
                 machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
                 machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
@@ -1374,7 +1414,7 @@ ExceptionHandler(ExceptionType which)
                 outAckHdr.migrateFlag = 0;
                 fprintf(stderr, "Starting call\n");
                 mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-                postOffice->SendThings(mail, 1);
+                postOffice->SendThings(mail, 0);
                 fprintf(stderr, "Sent first message\n");
 
                 //Next wait for its response...
@@ -1404,8 +1444,11 @@ ExceptionHandler(ExceptionType which)
                 outAckHdr.curPack = 0;
                 outAckHdr.messageID = msgID;
                 outAckHdr.migrateFlag = 1;
+                outAckHdr.pageID = recMail->ackHdr.pageID;
 
-
+                oldPID = outAckHdr.pageID;
+                fromMacher = whence;
+                toMacher = location;
 
                 //Right now I am just passing in the buffer from one message to another, this might
                 //need to change to deep copying it over to a new buffer due to bad things happening...
@@ -1415,7 +1458,11 @@ ExceptionHandler(ExceptionType which)
                 fprintf(stderr, "Waiting on the chosen one\n");
                 //Wait for a response from the `chosen` client 
                 recved = postOffice->GrabMessage(netname);
-
+                curFTN = foreignRoot;
+                while(curFTN->next != NULL){
+                    curFTN = curFTN->next;
+                }
+                curFTN->next = new(std::nothrow) ForeignThreadNode(oldPID, recved->head->cur->ackHdr.pageID, fromMacher, toMacher);
                 fprintf(stderr, "Responded\n");
                 curNode = recved->head;
                 recMail = curNode->cur;

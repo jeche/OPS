@@ -93,6 +93,8 @@ extern PostOffice* postOffice;
 #include "synch.h"
 #include "bitmap.h"
 //#include "disk.h"
+#include <string.h>
+#include <stdlib.h>
 #include <new>
 // extern unsigned long long TIMEOUT;
 class SynchConsole {
@@ -101,64 +103,91 @@ class SynchConsole {
     bool used;
     Condition* notBusy;
     public:         // Raw console
-    Semaphore *readAvail;       // To synchronize requesting thread 
+    // Semaphore *readAvail;       // To synchronize requesting thread 
                     // with the interrupt handler
-    Semaphore *writeDone;
-    Lock *busy;
+    // Semaphore *writeDone;
+    // Lock *busy;
+    Lock *putLock;
+    Lock *getLock;
+    Semaphore *writeSemaphore;
+    Semaphore *readSemaphore;
 
   public:
     static void ReadAvail(int arg) { 
         SynchConsole* cons = (SynchConsole*)arg;
-        cons->readAvail->V(); 
+        // cons->readAvail->V(); 
+        cons->readSemaphore->V();
     };
     static void WriteDone(int arg) {
         SynchConsole* cons = (SynchConsole*)arg; 
-        cons->writeDone->V(); 
+        // cons->writeDone->V(); 
+        cons->writeSemaphore->V();
     };
 
     SynchConsole(char* name){
-        console = new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, (int) this);
-        readAvail = new(std::nothrow) Semaphore("read avail", 0);
-        writeDone = new(std::nothrow) Semaphore("write done", 0);
-        busy = new(std::nothrow) Lock("busyLock");
-        notBusy = new(std::nothrow) Condition("notBusy");
+        // console = new(std::nothrow) Console(NULL, NULL, ReadAvail, WriteDone, (int) this);
+        // readAvail = new(std::nothrow) Semaphore("read avail", 0);
+        // writeDone = new(std::nothrow) Semaphore("write done", 0);
+        // busy = new(std::nothrow) Lock("busyLock");
+        // notBusy = new(std::nothrow) Condition("notBusy");
 
-        used = false; 
+        // used = false; 
+
+        writeSemaphore = new Semaphore("Synch Console Write", 0);
+        readSemaphore = new Semaphore("Sync Console Avail", 0);
+        putLock = new Lock("Synch Console Put Lock");
+        getLock = new Lock("Synch Console Get Lock");
+        console = new Console(NULL, NULL, ReadAvail, WriteDone, (int)this);
 
     }; 
     ~SynchConsole(){
+        // delete console;
+        // delete readAvail;
+        // delete writeDone;
+        // delete busy;
+
         delete console;
-        delete readAvail;
-        delete writeDone;
-        delete busy;
+        delete getLock;
+        delete putLock;
+        delete readSemaphore;
+        delete writeSemaphore;
     };          
     
     void PutChar(char ch){
-        busy->Acquire();
-        while(used){
-            notBusy->Wait(busy);
-        }
-        used = true;
-        console->PutChar(ch);
-        writeDone->P();
-        used = false;
-        notBusy->Broadcast(busy);
+        // busy->Acquire();
+        // while(used){
+        //     notBusy->Wait(busy);
+        // }
+        // used = true;
+        // console->PutChar(ch);
+        // writeDone->P();
+        // used = false;
+        // notBusy->Broadcast(busy);
         
-        busy->Release();
+        // busy->Release();
+        putLock->Acquire();
+        console->PutChar(ch);
+        writeSemaphore->P();
+        putLock->Release();
     };
                         //output ch on console; delay if busy
     char GetChar(){
-        busy->Acquire();
-        while(used){
-            notBusy->Wait(busy);
-        }
-        used = true;
-        readAvail->P();
-        char c = console->GetChar();
-        used = false;
-        notBusy->Broadcast(busy);
-        busy->Release();
-        return c;
+        // busy->Acquire();
+        // while(used){
+        //     notBusy->Wait(busy);
+        // }
+        // used = true;
+        // readAvail->P();
+        // char c = console->GetChar();
+        // used = false;
+        // notBusy->Broadcast(busy);
+        // busy->Release();
+        // return c;
+        getLock->Acquire();
+        readSemaphore->P();
+        char ch = console->GetChar();
+        getLock->Release();
+        return ch;
     };
                         //return character input on console; if none avaliable, delay until it is input
     void CheckCharAvailable(){
@@ -381,6 +410,7 @@ extern int server;
 extern int clients[10];
 extern List *allThreads;
 extern List *migThreads;
+extern int activeClientList[10];
 
 class FamilyNode{
 public:
@@ -388,6 +418,7 @@ public:
     bool touched;
     int child;
     int exit;
+    int migrated;
     Semaphore* death;
     FamilyNode* next;
     AddrSpace *kiddo;
@@ -400,6 +431,7 @@ public:
         next=NULL;
         exit = -5;
         kiddo = gogo;
+        migrated = -1;
     };
 
     ~FamilyNode(){
@@ -408,6 +440,23 @@ public:
             delete next;
         }
     };
+};
+
+class ForeignThreadNode{
+public:
+    int origPID;
+    int curPID;
+    int fromMach;
+    int toMach;
+    ForeignThreadNode* next;
+    ForeignThreadNode(int orig, int cur, int fromMacher, int toMacher){
+        origPID = orig;
+        curPID = cur;
+        fromMach = fromMacher;
+        toMach = toMacher;
+        next = NULL;
+    };
+    ~ForeignThreadNode(){};
 };
 
 
@@ -420,6 +469,8 @@ extern SynchConsole *synchConsole;
 extern Semaphore *forking;
 extern BitMap *bitMap;
 extern FamilyNode* root;
+extern ForeignThreadNode *foreignRoot;
+
 extern unsigned int pid;
 
 #endif
@@ -451,6 +502,8 @@ extern unsigned long long timeoutctr;
 extern Timer *timeoutTimer;    
 extern Thread *timeout;
 extern int netname;
+extern Semaphore *activeClientListSem;
+extern Semaphore *migrationSem;
 
 #endif
 

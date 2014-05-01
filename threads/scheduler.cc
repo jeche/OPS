@@ -222,7 +222,7 @@ void
 Scheduler::ReadyToRun (Thread *thread)
 {
     DEBUG('t', (char *) "Putting thread %s on ready list.\n", thread->getName());
-    if(!thread->migrate){
+    if(thread->migrate != 0){
     thread->setStatus(READY);
     // readyList->SortedInsert((void *)thread, thread->getPriority());
     readyList->Append((void *)thread);
@@ -245,7 +245,7 @@ Scheduler::FindNextToRun ()
     while(true){
         t = (Thread *)readyList->Remove();
         if(t == NULL){break;}
-        else if(!t->migrate)
+        else if(t->migrate != 0)
             {
                 break;}
         // else{migt->Append(t);}
@@ -279,7 +279,7 @@ Scheduler::FindNextToRun ()
 void
 Scheduler::Run (Thread *nextThread)
 {
-    ASSERT(nextThread->migrate == false);
+    ASSERT(nextThread->migrate != 0);
     Thread *oldThread = currentThread;
     
 #ifdef USER_PROGRAM         // ignore until running user programs 
@@ -348,7 +348,7 @@ Scheduler::StealUserThread()
     
     
     possibleUserThread = (Thread *)allThreads->Remove();
-    while(possibleUserThread!=NULL && possibleUserThread->space == NULL){
+    while(possibleUserThread != NULL && possibleUserThread->space == NULL || possibleUserThread->migrate != -1 || (possibleUserThread->space != NULL && possibleUserThread->space->pid == 0)){
         allThreads->Append(possibleUserThread);
 
         //possibleUserThread->Print();
@@ -363,7 +363,7 @@ Scheduler::StealUserThread()
     fprintf(stderr, "possibleUserThreadPID %d\n", possibleUserThread->space->pid);
     fprintf(stderr, "I am P StealUserThread\n");
     ((Semaphore *)possibleUserThread->inKernel)->P();
-    possibleUserThread->migrate=true;
+    possibleUserThread->migrate = 0;
     // ASSERT(false);
     return possibleUserThread;
 
