@@ -480,6 +480,8 @@ ExceptionHandler(ExceptionType which)
     int descriptor = -1;
     int incrementPC;
     
+    int adult;
+
     int packetNums;
     int oldPID;
     int fromMacher;
@@ -561,7 +563,9 @@ ExceptionHandler(ExceptionType which)
                     outAckHdr.totalSize = 1;// size/MaxMailSize ; 
                     outAckHdr.curPack = 0;
                     outAckHdr.messageID = msgID;
-                    outAckHdr.migrateFlag = 1;
+                    outAckHdr.migrateFlag = machine->ReadRegister(4);
+                    whence = machine->ReadRegister(4);
+                    fprintf(stderr, "exit value: %d , %d, %d\n", outAckHdr.migrateFlag, machine->ReadRegister(4), whence);
                     outAckHdr.pageID = currentThread->space->pid;
 
                     //Right now I am just passing in the buffer from one message to another, this might
@@ -572,12 +576,38 @@ ExceptionHandler(ExceptionType which)
                     ((Semaphore *)currentThread->inKernel)->V();
                     // currentThread->Finish();
                   }
-                }
+                } 
                 curr = root;
                 DEBUG('j', "Thread exiting %d.\n", currentThread->space->pid);
                 
                 while(curr->child != currentThread->space->pid && curr->next !=NULL){
                   curr = curr->next;  // Iterate to find the correct semphore to V
+                }
+                if(curr->migrated == 1){
+                  msgCTR->P();
+                  msgctr++;
+                  msgID=msgctr;
+                  msgCTR->V(); 
+                  outPktHdr.to = server;   
+                  outMailHdr.to = netname;
+                  outMailHdr.from = 0;// 1; 
+                  outMailHdr.length = 5; 
+                  outAckHdr.totalSize = 1;
+                  outAckHdr.curPack = 0;
+                  outAckHdr.messageID = msgID;
+                  outAckHdr.migrateFlag = machine->ReadRegister(4);
+                  whence = machine->ReadRegister(4);
+                  outAckHdr.pageID = currentThread->space->pid;
+                  outAckHdr.child = curr->parent;
+                  curr->migrated = 3;
+
+                  // Right now I am just passing in the buffer from one message to another, this might
+                  // need to change to deep copying it over to a new buffer due to bad things happening... No you don't the deep copy happens
+                  // inside the mail packet.
+
+                  mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                  postOffice->SendThings(mail, 0);
+                  ((Semaphore *)currentThread->inKernel)->V();
                 }
                 if(curr->child != currentThread->space->pid){
                   DEBUG('a', "How the hell do you break an exit?\n");
@@ -592,6 +622,7 @@ ExceptionHandler(ExceptionType which)
                   currentThread->space->remDiskPages();
                   chillBrother->V();  
                   delete currentThread->space;
+                  curr->touched = true;
                   incrementPC=machine->ReadRegister(NextPCReg)+4;
                 // fprintf(stderr, "I am V\n");
                   ((Semaphore *)currentThread->inKernel)->V();
@@ -626,7 +657,7 @@ ExceptionHandler(ExceptionType which)
                   }
 
                   else{
-                    curr->touched = true;
+                    // curr->touched = true;
                     forking->V();
                     DEBUG('j', "Parent %d, joining for %d.\n", currentThread->space->pid, curr->child);
                     //fprintf(stderr, "addr %d out of join\n", currentThread->space);
@@ -637,6 +668,23 @@ ExceptionHandler(ExceptionType which)
                 else{
                   //Case where the process has been migrated
                   DEBUG('j', "Join(Migrated Thread)");
+                  forking->P();
+                  for(curr = root; curr != NULL && (curr->child != whence || curr->parent != currentThread->space->pid); curr = curr->next){}
+                  if (curr != NULL){
+                    forking->V();
+                    curr->death->P();
+                    machine->WriteRegister(2, curr->exit); // Return the exit value.
+                  }
+                  else{
+                    for(curr = root; curr->next != NULL && (curr->child != whence || curr->parent != currentThread->space->pid); curr = curr->next){}
+                    curr->next = new(std::nothrow) FamilyNode(-whence, currentThread->space->pid, NULL, -1);
+                    forking->V();
+
+                    // CHECK IF CHILD ALREADY EXITTED
+
+                    curr->next->death->P();
+                    machine->WriteRegister(2, curr->next->exit); // Return the exit value.
+                  }
                   // GrabMessage from mailbox 2 to tell you when the child has joined
                 }
                 //(void) interrupt->SetLevel(oldLevel);
@@ -917,7 +965,7 @@ ExceptionHandler(ExceptionType which)
                 }
                 else {
                   t = new(std::nothrow) Thread("clone");
-                  curr->next = new(std::nothrow) FamilyNode(newSpacer->pid, currentThread->space->pid, newSpacer);  // Add new parent child relation to family tree.
+                  curr->next = new(std::nothrow) FamilyNode(newSpacer->pid, currentThread->space->pid, newSpacer, -1);  // Add new parent child relation to family tree.
                   
                   t->space = newSpacer; // Give child its brand new space.
                   t->SaveUserState(); // Write all current machine registers to userRegisters for child.
@@ -1426,10 +1474,10 @@ ExceptionHandler(ExceptionType which)
 
                 //Validate its respones? YES, change this later AKA no ASSERT(false)
 
-                if(recMail->ackHdr.migrateFlag!=1){ASSERT(false);}
+                ASSERT(recMail->ackHdr.migrateFlag >= 0);
 
                 //Forward the `victim` clients response AKA the data to the `chosen` client
-
+                adult = recMail->ackHdr.migrateFlag;
                 msgCTR->P();
                 msgctr++;
                 msgID=msgctr;
@@ -1450,9 +1498,24 @@ ExceptionHandler(ExceptionType which)
                 fromMacher = whence;
                 toMacher = location;
 
+
                 //Right now I am just passing in the buffer from one message to another, this might
                 //need to change to deep copying it over to a new buffer due to bad things happening...
-
+                                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = whence;   
+                outMailHdr.to = 1;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = netname;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                outAckHdr.pageID = oldPID;
+                outAckHdr.migrateFlag = 3;
                 mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, recMail->data);
                 postOffice->SendThings(mail, netname);
                 fprintf(stderr, "Waiting on the chosen one\n");
@@ -1462,10 +1525,20 @@ ExceptionHandler(ExceptionType which)
                 while(curFTN->next != NULL){
                     curFTN = curFTN->next;
                 }
-                curFTN->next = new(std::nothrow) ForeignThreadNode(oldPID, recved->head->cur->ackHdr.pageID, fromMacher, toMacher);
+                curFTN->next = new(std::nothrow) ForeignThreadNode(oldPID, recved->head->cur->ackHdr.pageID, fromMacher, toMacher, adult);
                 fprintf(stderr, "Responded\n");
                 curNode = recved->head;
                 recMail = curNode->cur;
+
+                // Give us all the already exited values.
+
+
+
+
+
+
+                mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                postOffice->SendThings(mail, 0);
                 //If it is a success, doge is on your side
                 //    much happy                          
                 //                          very nachos

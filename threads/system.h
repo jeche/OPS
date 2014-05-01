@@ -423,7 +423,7 @@ public:
     FamilyNode* next;
     AddrSpace *kiddo;
 
-    FamilyNode(int t, int p, AddrSpace* gogo){
+    FamilyNode(int t, int p, AddrSpace* gogo, int migrater){
         death = new(std::nothrow) Semaphore("deadKid", 0);
         parent = p;
         child = t;
@@ -431,7 +431,7 @@ public:
         next=NULL;
         exit = -5;
         kiddo = gogo;
-        migrated = -1;
+        migrated = migrater;
     };
 
     ~FamilyNode(){
@@ -448,12 +448,14 @@ public:
     int curPID;
     int fromMach;
     int toMach;
+    int parent;
     ForeignThreadNode* next;
-    ForeignThreadNode(int orig, int cur, int fromMacher, int toMacher){
+    ForeignThreadNode(int orig, int cur, int fromMacher, int toMacher, int parentPID){
         origPID = orig;
         curPID = cur;
         fromMach = fromMacher;
         toMach = toMacher;
+        parent = parentPID;
         next = NULL;
     };
     ~ForeignThreadNode(){};

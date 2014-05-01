@@ -413,7 +413,7 @@ void Pager(int clientMachNum){
 
             msgCTR->P();
             msgctr++;
-            msgID=msgctr;
+            msgID = msgctr;
             msgCTR->V(); 
 
             outPktHdr.to = clientMachNum;   
@@ -527,27 +527,67 @@ void Pager(int clientMachNum){
             //No load balancing necessary as we are removing a process!
             
         } else if(curMail->mailHdr.length == 4){
-            // this is a signal to send out for a network exit
-            // ASSERT(false);
+            // this is a signal to send out for a network exit, sends to either the original machine or to wherever the parent went
             msgCTR->P();
             msgctr++;
             msgID=msgctr;
             msgCTR->V(); 
             ForeignThreadNode *curFTN = foreignRoot;
+            ForeignThreadNode *possParent;
             while(curFTN->next != NULL && (curFTN->curPID != curMail->ackHdr.pageID || curFTN->toMach != curMail->pktHdr.from)){
                 curFTN = curFTN->next; 
             }
-            outPktHdr.to = curFTN->fromMach;
+            for(possParent = foreignRoot; possParent != NULL && (curFTN->parent != possParent->origPID || curFTN->fromMach != possParent->fromMach); possParent = possParent->next){}
+            if(possParent != NULL){
+                outPktHdr.to = possParent->toMach;
+                outMailHdr.from = possParent->toMach;
+                outAckHdr.pageID = possParent->curPID; // the pid of the parent on the new machine 
+            }
+            else{
+                outPktHdr.to = curFTN->fromMach;    
+                outMailHdr.from = curFTN->fromMach;
+                outAckHdr.pageID = curFTN->origPID;
+            }
+            // while(possParent != NULL)
+            // fprintf(stderr, "exit value %d\n", curMail->ackHdr.migrateFlag);
+            sprintf(pageBuf, "%d\n", curMail->ackHdr.migrateFlag); // exit value
+            // fprintf(stderr, pageBuf);
+            
             outMailHdr.to = 1;
-            outMailHdr.from = curFTN->fromMach;
+            
             outMailHdr.length = 128;
             outAckHdr.totalSize = 1;
             outAckHdr.curPack = 0;
             outAckHdr.messageID = msgID;
-            outAckHdr.pageID = curFTN->origPID;
             outAckHdr.migrateFlag = 2;
             curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             postOffice->SendThings(curMail, curFTN->fromMach);
+        } else if (curMail->mailHdr.length == 5){
+            // parent was migrated sending to the parent's new machine the child's info, child pid is in pageID
+            msgCTR->P();
+            msgctr++;
+            msgID=msgctr;
+            msgCTR->V();
+            int parent = curMail->ackHdr.child;
+            int origin = curMail->pktHdr.from;
+            ForeignThreadNode *parentLoc;
+            for(parentLoc = foreignRoot ; parentLoc != NULL && (parent != parentLoc->origPID || origin != parentLoc->fromMach); parentLoc = parentLoc->next){}
+            ASSERT(parentLoc != NULL);
+            outAckHdr.child = curMail->ackHdr.pageID;
+            outPktHdr.to = parentLoc->toMach;
+            outMailHdr.from = parentLoc->toMach;
+            outAckHdr.pageID = parentLoc->curPID;
+            
+
+            sprintf(pageBuf, "%d\n", curMail->ackHdr.migrateFlag); // exit value
+            outMailHdr.to = 1;
+            outMailHdr.length = 128;
+            outAckHdr.totalSize = 1;
+            outAckHdr.curPack = 0;
+            outAckHdr.messageID = msgID;
+            outAckHdr.migrateFlag = 2;
+            curMail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+            postOffice->SendThings(curMail, outMailHdr.from);
         }
         else{
             ASSERT(false);
@@ -615,7 +655,7 @@ void migrationHandler(){
         // ASSERT(false);
         //scheduler->Print();
         fprintf(stderr, "\n\n");
-        //oldLevel = interrupt->SetLevel(IntOff);//Turn off interupts since we don't want processes to wake up while we are doing this
+        // oldLevel = interrupt->SetLevel(IntOff);// Turn off interupts since we don't want processes to wake up while we are doing this
         // ASSERT(false);
         
         MailNode* curNode = message->head;
@@ -625,18 +665,46 @@ void migrationHandler(){
         int msgID;
         memset(pageBuf, '\0', sizeof(pageBuf));
         if (curMail->ackHdr.migrateFlag == 2){
-            // Network Exit
+            // Network Exit if child was migrated
             FamilyNode *curr;
             forking->P();
             curr = root;
             while(curr->child != curMail->ackHdr.pageID && curr->next !=NULL){
                   curr = curr->next;  // Iterate to find the correct semphore to V
             }
-            curr->exit = atoi(curMail->data);
+            if(curr == NULL){
+                for(curr = root; curr->next != NULL && (curr->child != -curMail->ackHdr.child || curr->parent != currentThread->space->pid); curr = curr->next){}
+                curr->next = new(std::nothrow) FamilyNode(-curMail->ackHdr.child, curMail->ackHdr.pageID, NULL, -1);
+                curr = curr->next;
+            }
+            memset(buffer, '\0', sizeof(buffer));
+            int j = 0;
+            char c = curMail->data[0];
+            while(c != '\n'){
+                if(c=='\n'){
+                    break;
+                }
+                buffer[j]=c;
+                j++;
+                c = curMail->data[j];
+            }
+            curr->exit = atoi(buffer);
+            memset(buffer, '\0', sizeof(buffer));
             curr->death->V();
             forking->V();
-        }
-        else if(curMail->ackHdr.migrateFlag == 0){//Server is requesting a process
+        } else if (curMail->ackHdr.migrateFlag == 3){
+            // FamilyNode *curr;
+            // forking->P();
+            // curr = root;
+            // while
+            int parent = curMail->ackHdr.pageID;
+            FamilyNode *curr;
+            for(curr = root; curr != NULL; curr = curr->next){
+                if(parent == curr->parent && curr->touched && curr->migrated == 1){
+                    
+                }
+            }
+        } else if(curMail->ackHdr.migrateFlag == 0){//Server is requesting a process
 
 
             //First Checkpoint the Process
@@ -680,7 +748,18 @@ void migrationHandler(){
             // forking->P();
             curr = root;
             outAckHdr.pageID = removeThread->space->pid;
-            fprintf(stderr, "oldPID: %d\n", removeThread->space->pid);
+            FamilyNode *curr;
+            for(curr = root; curr != NULL; curr = curr->next){
+                if (outAckHdr.pageID == curr->parent){
+                    curr->migrated = 1;
+                }
+                else if(outAckHdr.pageID == curr->child){
+                    curr->migrated = 2;
+                }
+            }
+
+            for(curr = root; curr != NULL && curr->child != outAckHdr.pageID; curr = curr->next){}
+            // fprintf(stderr, "oldPID: %d\n", removeThread->space->pid);
             // while(curr->child != removeThread->space->pid && curr->next !=NULL){
             //     curr = curr->next;  // Iterate to find the correct semphore to V
             // }
@@ -717,7 +796,9 @@ void migrationHandler(){
             outAckHdr.totalSize = 1;// size/MaxMailSize ; 
             outAckHdr.curPack = 0;
             outAckHdr.messageID = msgID;
-            outAckHdr.migrateFlag = 1;
+            if(curr != NULL){
+                outAckHdr.migrateFlag = curr->parent;
+            }
 
 
             memset(pageBuf, '\0', sizeof(pageBuf));
@@ -804,7 +885,7 @@ void migrationHandler(){
             while(curr->next !=NULL){
                 curr = curr->next;  // Iterate to find the correct semphore to V
             }
-            curr->next = new(std::nothrow) FamilyNode(migspace->pid, 0, migspace);
+            curr->next = new(std::nothrow) FamilyNode(migspace->pid, 0, migspace, -1);
             curFTN = foreignRoot;
             while(curFTN->next != NULL){
                 curFTN = curFTN->next;
@@ -1040,8 +1121,8 @@ Initialize(int argc, char **argv)
     pid = 0;
     msgctr = 0;
     timeoutctr = 0;
-    root = new(std::nothrow) FamilyNode(pid, pid, NULL);
-    foreignRoot = new(std::nothrow) ForeignThreadNode(NULL, NULL, NULL, NULL);
+    root = new(std::nothrow) FamilyNode(pid, pid, NULL, -1);
+    foreignRoot = new(std::nothrow) ForeignThreadNode(NULL, NULL, NULL, NULL, NULL);
 #ifdef USER_PROGRAM
     machine = new(std::nothrow) Machine(debugUserProg); // this must come first
     synchConsole = new(std::nothrow) SynchConsole("synch console");

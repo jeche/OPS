@@ -56,6 +56,7 @@ class AckHeader {
     int messageID;
     int pageID;
     int migrateFlag;
+    int child;
 
 };
 
