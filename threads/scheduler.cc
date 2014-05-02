@@ -226,6 +226,7 @@ Scheduler::ReadyToRun (Thread *thread)
     thread->setStatus(READY);
     // readyList->SortedInsert((void *)thread, thread->getPriority());
     readyList->Append((void *)thread);
+    numReadyProc++;
     }
 }
 
@@ -244,6 +245,7 @@ Scheduler::FindNextToRun ()
     //List *migt = new List;
     while(true){
         t = (Thread *)readyList->Remove();
+
         if(t == NULL){break;}
         else if(t->migrate != 0)
             {
@@ -256,7 +258,10 @@ Scheduler::FindNextToRun ()
     //     readyList->Append(temp);
     //     temp = (Thread *)migt->Remove();
     // }
-    
+    if(t != NULL){
+        numReadyProc--;
+    }
+    //else{fprintf(stderr, "wtf\n");}
     
     return t;
 

@@ -312,6 +312,8 @@ SynchDisk::ReadSector(int sectorNumber, char* data)
         outAckHdr.curPack = 0;
         outAckHdr.messageID = msgID;
         outAckHdr.pageID = sectorNumber;
+        outAckHdr.migrateFlag = numReadyProc;
+        //fprintf(stderr, "%f, %f\n",numReadyProc, (float)outAckHdr.migrateFlag);
         mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
         postOffice->SendThings(mail, 0);
 
@@ -370,6 +372,7 @@ SynchDisk::WriteSector(int sectorNumber, char* data)
         outAckHdr.curPack = 0;
         outAckHdr.messageID = msgID;
         outAckHdr.pageID = sectorNumber;
+        outAckHdr.migrateFlag = numReadyProc;
         mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
         postOffice->SendThings(mail, 0);
         

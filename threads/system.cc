@@ -289,7 +289,9 @@ Semaphore *migrationSem;
 int netname;
 int server = -1;
 int clients[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-int activeClientList[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+float clientLoad[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+float numReadyProc = 0;
+bool migrateInProcess = false;
 #endif
 
 
@@ -326,7 +328,166 @@ TimerInterruptHandler(int )
     if (interrupt->getStatus() != IdleMode)
     interrupt->YieldOnReturn();
 }*/
+void serverMigrationHandler(int from, int to){
+    fprintf(stderr, "I want to migrate a process from machine %d to %d\n",from, to );
+    DEBUG('a', "Migration");
+    int msgID, adult, oldPID, fromMacher, toMacher;
+    PacketHeader outPktHdr;
+    MailHeader outMailHdr;
+    AckHeader outAckHdr;
+    
+    MessageNode* recved;
+    Mail* recMail, *mail;
+    MailNode* curNode;
+    ForeignThreadNode *curFTN;
+    char pageBuf[128];
+    memset(pageBuf, '\0', 128);
 
+    
+
+    //First send to `victim` saying that it has been chosen
+
+    msgCTR->P();
+    msgctr++;
+    msgID=msgctr;
+    msgCTR->V(); 
+    outPktHdr.to = from;   
+    outMailHdr.to = 1;
+    //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+    outMailHdr.from = netname;//1; 
+    // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+    outMailHdr.length = 128; // had a plus 1 here before?????????
+    outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+    outAckHdr.curPack = 0;
+    outAckHdr.messageID = msgID;
+    outAckHdr.migrateFlag = 0;
+    fprintf(stderr, "Starting call\n");
+    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+    postOffice->SendThings(mail, 0);
+    fprintf(stderr, "Sent first message\n");
+
+    //Next wait for its response...
+    
+    recved = postOffice->GrabMessage(0);
+    fprintf(stderr, "Received Response\n");
+    curNode = recved->head;
+    recMail = curNode->cur;
+
+    //Validate its respones? YES, change this later AKA no ASSERT(false)
+
+    ASSERT(recMail->ackHdr.migrateFlag >= 0);
+
+    //Forward the `victim` clients response AKA the data to the `chosen` client
+    adult = recMail->ackHdr.migrateFlag;
+    msgCTR->P();
+    msgctr++;
+    msgID=msgctr;
+    msgCTR->V(); 
+    outPktHdr.to = to;   
+    outMailHdr.to = 1;
+    //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+    outMailHdr.from = netname;//1; 
+    // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+    outMailHdr.length = 128; // had a plus 1 here before?????????
+    outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+    outAckHdr.curPack = 0;
+    outAckHdr.messageID = msgID;
+    outAckHdr.migrateFlag = 1;
+    outAckHdr.pageID = recMail->ackHdr.pageID;
+
+    oldPID = outAckHdr.pageID;
+    fromMacher = from;
+    toMacher = to;
+    // postOffice->SendThings(mail, netname);
+
+    //Right now I am just passing in the buffer from one message to another, this might
+    //need to change to deep copying it over to a new buffer due to bad things happening...
+
+    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, recMail->data);
+    postOffice->SendThings(mail, netname);
+    fprintf(stderr, "Waiting on the chosen one\n");
+    //Wait for a response from the `chosen` client 
+    recved = postOffice->GrabMessage(netname);
+    curFTN = foreignRoot;
+    while(curFTN->next != NULL){
+        curFTN = curFTN->next;
+    }
+    curFTN->next = new(std::nothrow) ForeignThreadNode(oldPID, recved->head->cur->ackHdr.pageID, fromMacher, toMacher, adult);
+    fprintf(stderr, "Responded\n");
+    curNode = recved->head;
+    recMail = curNode->cur;
+
+    // Give us all the already exited values.
+
+
+
+    msgCTR->P();
+    msgctr++;
+    msgID=msgctr;
+    msgCTR->V(); 
+    outPktHdr.to = from;   
+    outMailHdr.to = 1;
+    //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+    outMailHdr.from = netname;//1; 
+    // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+    outMailHdr.length = 128; // had a plus 1 here before?????????
+    outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+    outAckHdr.curPack = 0;
+    outAckHdr.messageID = msgID;
+    outAckHdr.pageID = oldPID;
+    outAckHdr.migrateFlag = 3;
+
+
+    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+    postOffice->SendThings(mail, 0);
+    //If it is a success, doge is on your side
+    //    much happy                          
+    //                          very nachos
+    //             such network               
+    //     many migration             
+    //                         wow            
+    if(recMail->ackHdr.migrateFlag!=2){ASSERT(false);}
+
+}
+
+void serverMigrationTest(){
+    fprintf(stderr, "in serverMigrationTest\n");
+    migrateInProcess = true;
+    float min, max;
+    int from, to;
+    max = 0;
+    min = 1000;
+    from = -1;
+    to = -1;
+    for(int i = 0; i < 10; i++){
+        if(clientLoad[i] != -1 && clientLoad[i]<min){
+            min = clientLoad[i];
+            to = i;
+        }
+        if(clientLoad[i]>max){
+            max = clientLoad[i];
+            from = i;
+        }
+        fprintf(stderr, "clientLoad[%d]: %f\n", i, clientLoad[i] );
+    }
+    if(from != -1 && to != -1){
+        fprintf(stderr, "from: %d;%f to: %d;%f\n", from, clientLoad[from], to, clientLoad[to]);
+        if(max-min > 3){
+            serverMigrationHandler(from, to);
+        }
+    }
+    for(int i = 0; i < 10; i++){
+        if(clientLoad[i] != -1){
+            clientLoad[i] = clientLoad[i]*.8;
+        }
+    }
+    migrateInProcess = false;
+    currentThread->Finish();
+} 
+static void
+serverMigrationTestHelper(int a){
+    serverMigrationTest();
+}  
 //----------------------------------------------------------------------
 // TimerInterruptHandler
 //  Interrupt handler for the timer device.  The timer device is
@@ -353,6 +514,10 @@ TimerInterruptHandler2(int )
     if ( stats->totalTicks > timeoutctr + TIMEOUTKILLER){
         timeoutctr = stats->totalTicks;
         postOffice->KaputTime();
+        if(server == -1 && migrateInProcess == false){
+            Thread *t = new Thread("migrationwoo");
+            t->Fork(serverMigrationTestHelper, 42);
+        }
         // fprintf(stderr, "Setting Ready to Run\n");
         // fprintf(stderr, "running time out at %ld\n", timeoutctr);
         // scheduler->ReadyToRun(timeout);
@@ -409,6 +574,13 @@ void Pager(int clientMachNum){
 
         if(curMail->mailHdr.length == 1){ //Read
             pageNum = curMail->ackHdr.pageID;
+            if(clientLoad[curMail->pktHdr.from] != -1){
+                //fprintf(stderr, "%f\n", (float)curMail->ackHdr.migrateFlag);
+                clientLoad[curMail->pktHdr.from] = curMail->ackHdr.migrateFlag*.1 + clientLoad[curMail->pktHdr.from] *.9;
+            }
+            else{
+                clientLoad[curMail->pktHdr.from] = curMail->ackHdr.migrateFlag;
+            }   
             synchDisk->ReadSector(pageNum, pageBuf);
 
             msgCTR->P();
@@ -437,6 +609,13 @@ void Pager(int clientMachNum){
 
         } else if(curMail->mailHdr.length == 128){ //Write
             pageNum = curMail->ackHdr.pageID;
+            if(clientLoad[curMail->pktHdr.from] != -1){
+                //fprintf(stderr, "%f\n", (float)curMail->ackHdr.migrateFlag);
+                //clientLoad[curMail->pktHdr.from] = (float)curMail->ackHdr.migrateFlag*.05 + clientLoad[curMail->pktHdr.from] *.95;
+            }
+            else{
+                clientLoad[curMail->pktHdr.from] = curMail->ackHdr.migrateFlag;
+            }  
             msgCTR->P();
             msgctr++;
             msgID=msgctr;
@@ -467,7 +646,7 @@ void Pager(int clientMachNum){
             activeClientList[from]++; 
             activeClientListSem->V();*/
             int found = diskBitMap->Find();
-            fprintf(stderr, "allocated %d\n", found);
+           // fprintf(stderr, "allocated %d\n", found);
             msgCTR->P();
             msgctr++;
             msgID=msgctr;
@@ -502,7 +681,7 @@ void Pager(int clientMachNum){
         } else if(curMail->mailHdr.length == 3) {
             // ASSERT(false);
             diskBitMap->Clear(curMail->ackHdr.pageID);
-            fprintf(stderr, "clearing: %d\n", curMail->ackHdr.pageID);
+            //fprintf(stderr, "clearing: %d\n", curMail->ackHdr.pageID);
 /***            activeClientListSem->P();
             activeClientList[curMail->pktHdr.from]--;
             activeClientListSem->V();
@@ -597,42 +776,7 @@ void Pager(int clientMachNum){
         
     }
 }
-void serverMigrationHandler(int from){
-    
-    //Idea for migration
-    //As we create new addrspaces for the clients we check to see if they have too many user procs > 3, if they do
-    //we run the migration handler in its own server thread to pull a process off, no semaphore should be needed as
-    //we only have one proc doing the page requests and therefore we don't need to worry about multiple people calling 
-    //migrates, we should only mess with the incremention and decremention of the activeClientList in the pager section,
-    //in the curMail->mailHdr.length == 2 case.
 
-    //We do need a separate thread for migration as if we hang on handling page requests then we will deadlock on migration
-
-/***    migrationSem->P();
-    //This way we only have at most one thread actively doing a migation, however we can have a bunch queued 
-    //up and ready to run once one finishes, also prevents the paging handler from hanging and causing deadlocks.
-
-    //need to find a target that we can send the thread to
-    int target = -1;
-    for(int i = 0; i < 10; i++){
-        activeClientListSem->P();
-        if(activeClientList[i]>0 && activeClientList[i]<4){
-            target = i;
-            break;
-        }
-        activeClientListSem->V();
-    }
-    if(target!=-1){
-        //Yay migration fun!!
-    }
-
-
-
-
-    migrationSem->V();
-    currentThread->Finish();*/
-
-}
 void migrationHandler(){
     //*********************************************************
     //*******************Important Note************************
@@ -987,40 +1131,7 @@ void migrationHandler(){
 //  ForeignThreadNode to find the old pid and match to the new, should then
 //  fork off a nExitJoinHandler.
 //----------------------------------------------------------------------
-void nExitHandler(){
-    for(;;){
-        //Herp Derp Derp
-    }
-}
 
-//----------------------------------------------------------------------
-// nExitJoinHandler
-//  Helper thread to nExitHandler, used to do all the waiting on the semaphors
-//  so the main exit handler doesn't hang and potentially cause the entire 
-//  system to hang. There will be many nExitJoinHandlers to only one nExitHandler.
-//  Its job is to do what an exit does normally, including the wait, then message
-//  the source machine back the exit value.
-//----------------------------------------------------------------------
-void nExitJoinHandler(int a){
-    //Her Der
-    //Format for the input param (PID * 100) + Client#
-
-    //Exit stuff
-    //Wait on the semaphore
-    //grab the exit value
-    //send it back to the orig process.
-}
-
-
-static void
-nExitJoinHelper(int a){
-    nExitJoinHandler(a);
-}
-
-static void
-nExitHelper(int a){
-    nExitHandler();
-}
 
 static void
 migrationHelper(int a){
@@ -1030,10 +1141,6 @@ static void
 PageStuffHandler(int a)
 {
     Pager(a);
-}
-static void
-serverMigrationHelper(int a){
-    serverMigrationHandler(a);
 }
 
 
@@ -1191,7 +1298,7 @@ Initialize(int argc, char **argv)
     msgctr = 0;
     timeoutctr = 0;
     timeout = new(std::nothrow) Thread("timeout");
-    timeout->Fork(TimeoutHandlerHelper, 0);
+    //timeout->Fork(TimeoutHandlerHelper, 0);
     timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
 #endif
 

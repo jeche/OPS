@@ -410,7 +410,9 @@ extern int server;
 extern int clients[10];
 extern List *allThreads;
 extern List *migThreads;
-extern int activeClientList[10];
+extern float clientLoad[10];
+extern float numReadyProc;
+extern bool migrateInProcess;
 
 class FamilyNode{
 public:
