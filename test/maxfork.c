@@ -48,7 +48,7 @@ main()
     print("     kid["); printd(i, ConsoleOutput); print("]=");
         printd(kid[i], ConsoleOutput); print("\n");
   }
-
+  Exit(10);
   Halt();
 
   /* not reached */

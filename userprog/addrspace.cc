@@ -1276,7 +1276,7 @@ bool AddrSpace::writeBackDirty(){
 
             }
         }
-        fprintf(stderr, "page: %d\n", i);
+        //fprintf(stderr, "page: %d\n", i);
     }
     
     return true;

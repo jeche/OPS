@@ -273,6 +273,7 @@ class Thread {
     Thread* copyThread();
     int migrate;
     void *inKernel;
+    int hasForked;
 
   private:
     // some of the private data for this class is listed above

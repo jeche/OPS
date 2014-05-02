@@ -544,6 +544,11 @@ ExceptionHandler(ExceptionType which)
                 //fprintf(stderr, "EXIT\n");
                 DEBUG('j', "Exit addr: %d\n", currentThread->space->pid);
                 forking->P();
+                t = (Thread *)allThreads->Remove();
+                while(t != NULL && t != currentThread){
+                    allThreads->Append(t);
+                    t = (Thread *)allThreads->Remove();
+                }
                 //oldLevel = interrupt->SetLevel(IntOff);
                 if(currentThread->migrate == 1){
                   curFTN = foreignRoot;
@@ -931,6 +936,7 @@ ExceptionHandler(ExceptionType which)
         case SC_Fork:
                 //fprintf(stderr, "fork\n");
                 DEBUG('j', "Fork\n");
+                currentThread->hasForked = 1;
                 if(root==NULL){
                   DEBUG('j', "Root for the family tree is nonexistent.\n");
                 }

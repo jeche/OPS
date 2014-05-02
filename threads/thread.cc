@@ -41,6 +41,7 @@ Thread::Thread(const char* threadName)
     status = JUST_CREATED;
     space = NULL;
     migrate = -1;
+    hasForked = 0;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif

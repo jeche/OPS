@@ -349,13 +349,43 @@ Scheduler::StealUserThread()
     //Also so long as we turn interupts off before entering into here, then the case of currentThread should not crop up
     //If issues then likely the above is not true
 
+
+    Thread *possibleUserThread, *tempReturn;
+    List *rejects = new List;
+
+    possibleUserThread = (Thread *) readyList->Remove();
+    while(possibleUserThread != NULL && (possibleUserThread->space == NULL || possibleUserThread->hasForked == 1 || possibleUserThread->migrate != -1 || (possibleUserThread->space != NULL && possibleUserThread->space->pid == 0))){
+        rejects->Append(possibleUserThread);
+        possibleUserThread = (Thread *) readyList->Remove();
+    }
+    tempReturn = (Thread *) rejects->Remove();
+    while(tempReturn != NULL){
+        readyList->Append(tempReturn);
+        tempReturn = (Thread *) rejects->Remove();
+    }
+    if(possibleUserThread == NULL){
+        //fprintf(stderr, "Returning a NULL Thread, AKA no viable thread to migrate\n");
+        return possibleUserThread;
+    }
+    else{
+        //fprintf(stderr, "Returning a Thread viable for migration\n");
+        ((Semaphore *)possibleUserThread->inKernel)->P();
+        possibleUserThread->migrate = 0;
+        return possibleUserThread;
+    }
+    
+    
+
+
+
+/*
     Thread *possibleUserThread;
     
     
     possibleUserThread = (Thread *)allThreads->Remove();
     while(possibleUserThread != NULL && possibleUserThread->space == NULL || possibleUserThread->migrate != -1 || (possibleUserThread->space != NULL && possibleUserThread->space->pid == 0)){
         allThreads->Append(possibleUserThread);
-
+        if(possibleUserThread->space != NULL){fprintf(stderr, "possibleUserThread pid: %d\n", possibleUserThread->space->pid);}
         //possibleUserThread->Print();
         //if(possibleUserThread->space != NULL){fprintf(stderr, "*");}
         //fprintf(stderr, "\n");
@@ -371,7 +401,7 @@ Scheduler::StealUserThread()
     possibleUserThread->migrate = 0;
     // ASSERT(false);
     return possibleUserThread;
-
+*/
 
     /*List *notUserThread = new List; 
     readyList->Mapcar((VoidFunctionPtr) ThreadPrint);

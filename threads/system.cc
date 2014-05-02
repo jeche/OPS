@@ -361,21 +361,25 @@ void serverMigrationHandler(int from, int to){
     outAckHdr.curPack = 0;
     outAckHdr.messageID = msgID;
     outAckHdr.migrateFlag = 0;
-    fprintf(stderr, "Starting call\n");
+    //fprintf(stderr, "Starting call\n");
     mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
     postOffice->SendThings(mail, 0);
-    fprintf(stderr, "Sent first message\n");
+    //fprintf(stderr, "Sent first message\n");
 
     //Next wait for its response...
     
     recved = postOffice->GrabMessage(0);
-    fprintf(stderr, "Received Response\n");
+    //fprintf(stderr, "Received Response\n");
+
     curNode = recved->head;
     recMail = curNode->cur;
 
     //Validate its respones? YES, change this later AKA no ASSERT(false)
-
-    ASSERT(recMail->ackHdr.migrateFlag >= 0);
+    if(recMail->ackHdr.migrateFlag == -1){
+        fprintf(stderr, "Client does not have any migratable threads available\n");
+        return;
+    }
+    //ASSERT(recMail->ackHdr.migrateFlag >= 0);
 
     //Forward the `victim` clients response AKA the data to the `chosen` client
     adult = recMail->ackHdr.migrateFlag;
@@ -405,7 +409,7 @@ void serverMigrationHandler(int from, int to){
 
     mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, recMail->data);
     postOffice->SendThings(mail, netname);
-    fprintf(stderr, "Waiting on the chosen one\n");
+    //fprintf(stderr, "Waiting on the chosen one\n");
     //Wait for a response from the `chosen` client 
     recved = postOffice->GrabMessage(netname);
     curFTN = foreignRoot;
@@ -413,7 +417,7 @@ void serverMigrationHandler(int from, int to){
         curFTN = curFTN->next;
     }
     curFTN->next = new(std::nothrow) ForeignThreadNode(oldPID, recved->head->cur->ackHdr.pageID, fromMacher, toMacher, adult);
-    fprintf(stderr, "Responded\n");
+    //fprintf(stderr, "Responded\n");
     curNode = recved->head;
     recMail = curNode->cur;
 
@@ -435,7 +439,7 @@ void serverMigrationHandler(int from, int to){
     outAckHdr.curPack = 0;
     outAckHdr.messageID = msgID;
     outAckHdr.pageID = oldPID;
-    outAckHdr.migrateFlag = 3;
+    outAckHdr.migrateFlag = 0;
 
 
     mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
@@ -451,7 +455,7 @@ void serverMigrationHandler(int from, int to){
 }
 
 void serverMigrationTest(){
-    fprintf(stderr, "in serverMigrationTest\n");
+    //fprintf(stderr, "in serverMigrationTest\n");
     migrateInProcess = true;
     float min, max;
     int from, to;
@@ -470,12 +474,16 @@ void serverMigrationTest(){
         }
         fprintf(stderr, "clientLoad[%d]: %f\n", i, clientLoad[i] );
     }
-    if(from != -1 && to != -1){
-        fprintf(stderr, "from: %d;%f to: %d;%f\n", from, clientLoad[from], to, clientLoad[to]);
-        if(max-min > 3){
-            serverMigrationHandler(from, to);
-        }
+    if(from != -1 && to != -1 && max-min > 4){
+        //fprintf(stderr, "from: %d;%f to: %d;%f\n", from, clientLoad[from], to, clientLoad[to]);
+        
+        serverMigrationHandler(from, to);
+        
     }
+    else{
+        fprintf(stderr, "No Migration\n");
+    }
+
     for(int i = 0; i < 10; i++){
         if(clientLoad[i] != -1){
             clientLoad[i] = clientLoad[i]*.8;
@@ -576,7 +584,7 @@ void Pager(int clientMachNum){
             pageNum = curMail->ackHdr.pageID;
             if(clientLoad[curMail->pktHdr.from] != -1){
                 //fprintf(stderr, "%f\n", (float)curMail->ackHdr.migrateFlag);
-                clientLoad[curMail->pktHdr.from] = curMail->ackHdr.migrateFlag*.1 + clientLoad[curMail->pktHdr.from] *.9;
+                clientLoad[curMail->pktHdr.from] = curMail->ackHdr.migrateFlag*.2 + clientLoad[curMail->pktHdr.from] *.8;
             }
             else{
                 clientLoad[curMail->pktHdr.from] = curMail->ackHdr.migrateFlag;
@@ -756,7 +764,7 @@ void Pager(int clientMachNum){
             int parent = curMail->ackHdr.child;
             int origin = clientMachNum;
             ForeignThreadNode *parentLoc;
-            for(parentLoc = foreignRoot ; parentLoc != NULL && (parent != parentLoc->origPID || origin != parentLoc->fromMach); parentLoc = parentLoc->next){ fprintf(stderr, "%d %d %d %d\n", parent, parentLoc->origPID, origin, parentLoc->fromMach);}
+            //for(parentLoc = foreignRoot ; parentLoc != NULL && (parent != parentLoc->origPID || origin != parentLoc->fromMach); parentLoc = parentLoc->next){ fprintf(stderr, "%d %d %d %d\n", parent, parentLoc->origPID, origin, parentLoc->fromMach);}
             ASSERT(parentLoc != NULL);
             outAckHdr.child = curMail->ackHdr.pageID;
             outPktHdr.to = parentLoc->toMach;
@@ -804,7 +812,7 @@ void migrationHandler(){
         MessageNode* message = postOffice->GrabMessage(1);
         // ASSERT(false);
         //scheduler->Print();
-        fprintf(stderr, "\n\n");
+        //fprintf(stderr, "\n\n");
         // oldLevel = interrupt->SetLevel(IntOff);// Turn off interupts since we don't want processes to wake up while we are doing this
         // ASSERT(false);
         
@@ -855,142 +863,167 @@ void migrationHandler(){
             //Thread *t = currentThread;
             //ASSERT(false);
             //interrupt->SetLevel(oldLevel);
-            Thread* removeThread = scheduler->StealUserThread();
-            
-            ASSERT(removeThread->space != NULL);
-            char* filename = "migckpt";//This should not be a fixed filename, should be "t[netname] [counter]"
-            if(!fileSystem->Create(filename, 16)){
-                ASSERT(false);
-            }
-            open = fileSystem->Open(filename);
-            
-            removeThread->space->writeBackDirty();
             oldLevel = interrupt->SetLevel(IntOff);
-            open->Write("#Checkpoint\n", 12);
-            //Write the pid to the file, for nExit!!
-            len = sprintf(buffer, "%d\n", removeThread->space->pid);
-            open->Write(buffer, len);
-            for(int i = 0; i < NumTotalRegs; i++){
-                reg = machine->ReadRegister(i);
-                len = sprintf(buffer, "%d\n", reg);
-                open->Write(buffer,len);
-                memset(buffer, '\0', sizeof(buffer));//could cause issues if I am not using sizeof correctly
-            }
+            Thread* removeThread = scheduler->StealUserThread();
             interrupt->SetLevel(oldLevel);
-            numPages = removeThread->space->getNumPages();
-            len = sprintf(buffer, "%d\n", numPages);
-            open->Write(buffer,len);
 
-            for(int i=0;i<numPages;i++){//Should write the contents of all the pages
-                synchDisk->ReadSector(removeThread->space->revPageTable[i].physicalPage, pageBuf);
-                open->Write(pageBuf, 128);
-            }
-            //Now we kill it, making sure to V on its parent so when it joins it doesn't get stuck
-            //There may be concurrency issues here, logically it should be fine since we turned interupts off, and slept the only running proc.
-            //Might not need to P on the forking semaphore
-
-            // forking->P();
-            curr = root;
-            outAckHdr.pageID = removeThread->space->pid;
-            FamilyNode *curr;
-            for(curr = root; curr != NULL; curr = curr->next){
-                if (outAckHdr.pageID == curr->parent){
-                    curr->migrated = 1;
-                }
-                else if(outAckHdr.pageID == curr->child){
-                    curr->migrated = 2;
-                }
-            }
-
-            for(curr = root; curr != NULL && curr->child != outAckHdr.pageID; curr = curr->next){}
-            // fprintf(stderr, "oldPID: %d\n", removeThread->space->pid);
-            // while(curr->child != removeThread->space->pid && curr->next !=NULL){
-            //     curr = curr->next;  // Iterate to find the correct semphore to V
-            // }
-            // if(curr->child != removeThread->space->pid){
-            //     ASSERT(false);
-            // }
-            // else{
-            //     curr->exit = 42;
-            //     forking->V();
-            //     curr->death->V();
+            if(removeThread == NULL){
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = server;   
+                outMailHdr.to = server;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = 1;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                outAckHdr.migrateFlag = -1;
+                memset(pageBuf, '\0', sizeof(pageBuf));
                 
+                mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                //postOffice->SendThings(mail, 1);
+                postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+                delete mail;
+            }
+            else{
+                char* filename = "migckpt";//This should not be a fixed filename, should be "t[netname] [counter]"
+                if(!fileSystem->Create(filename, 16)){
+                    ASSERT(false);
+                }
+                open = fileSystem->Open(filename);
                 
-            //     // ASSERT(false);
-                
-            // }
-            chillBrother->P();
+                removeThread->space->writeBackDirty();
+                oldLevel = interrupt->SetLevel(IntOff);
+                open->Write("#Checkpoint\n", 12);
+                //Write the pid to the file, for nExit!!
+                len = sprintf(buffer, "%d\n", removeThread->space->pid);
+                open->Write(buffer, len);
+                for(int i = 0; i < NumTotalRegs; i++){
+                    reg = machine->ReadRegister(i);
+                    len = sprintf(buffer, "%d\n", reg);
+                    open->Write(buffer,len);
+                    memset(buffer, '\0', sizeof(buffer));//could cause issues if I am not using sizeof correctly
+                }
+                interrupt->SetLevel(oldLevel);
+                numPages = removeThread->space->getNumPages();
+                len = sprintf(buffer, "%d\n", numPages);
+                open->Write(buffer,len);
 
-            removeThread->space->remDiskPages();
-            chillBrother->V();  
-            delete removeThread->space;
-            removeThread->Murder();
-            // ASSERT(false);
-            //Now it is time to send back to the server what the file name is so it can pass it on to the target client
-            msgCTR->P();
-            msgctr++;
-            msgID=msgctr;
-            msgCTR->V(); 
-            outPktHdr.to = server;   
-            outMailHdr.to = server;
-            //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
-            outMailHdr.from = 1;//1; 
-            // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
-            outMailHdr.length = 128; // had a plus 1 here before?????????
-            outAckHdr.totalSize = 1;// size/MaxMailSize ; 
-            outAckHdr.curPack = 0;
-            outAckHdr.messageID = msgID;
-            if(curr != NULL){
-                outAckHdr.migrateFlag = curr->parent;
-            }
+                for(int i=0;i<numPages;i++){//Should write the contents of all the pages
+                    synchDisk->ReadSector(removeThread->space->revPageTable[i].physicalPage, pageBuf);
+                    open->Write(pageBuf, 128);
+                }
+                //Now we kill it, making sure to V on its parent so when it joins it doesn't get stuck
+                //There may be concurrency issues here, logically it should be fine since we turned interupts off, and slept the only running proc.
+                //Might not need to P on the forking semaphore
+
+                // forking->P();
+                curr = root;
+                outAckHdr.pageID = removeThread->space->pid;
+                FamilyNode *curr;
+                for(curr = root; curr != NULL; curr = curr->next){
+                    if (outAckHdr.pageID == curr->parent){
+                        curr->migrated = 1;
+                    }
+                    else if(outAckHdr.pageID == curr->child){
+                        curr->migrated = 2;
+                    }
+                }
+
+                for(curr = root; curr != NULL && curr->child != outAckHdr.pageID; curr = curr->next){}
+                // fprintf(stderr, "oldPID: %d\n", removeThread->space->pid);
+                // while(curr->child != removeThread->space->pid && curr->next !=NULL){
+                //     curr = curr->next;  // Iterate to find the correct semphore to V
+                // }
+                // if(curr->child != removeThread->space->pid){
+                //     ASSERT(false);
+                // }
+                // else{
+                //     curr->exit = 42;
+                //     forking->V();
+                //     curr->death->V();
+                    
+                    
+                //     // ASSERT(false);
+                    
+                // }
+                chillBrother->P();
+
+                removeThread->space->remDiskPages();
+                chillBrother->V();  
+                delete removeThread->space;
+                removeThread->Murder();
+                // ASSERT(false);
+                //Now it is time to send back to the server what the file name is so it can pass it on to the target client
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = server;   
+                outMailHdr.to = server;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = 1;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                if(curr != NULL){
+                    outAckHdr.migrateFlag = curr->parent;
+                }
 
 
-            memset(pageBuf, '\0', sizeof(pageBuf));
-            int k;
-            for(k = 0; filename[k] != '\0' && k < 128; k++){
-                pageBuf[k] = filename[k];
-            }
-            for(;k < 128; k++){
-                pageBuf[k]='\0';
-            }
-            mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-            //postOffice->SendThings(mail, 1);
-            postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
-            delete mail;
-            message = postOffice->GrabMessage(1);
-            curNode = message->head;
-            curMail = curNode->cur;
-            int parent = curMail->ackHdr.pageID;
-            for(curr = root; curr != NULL; curr = curr->next){
-                if(parent == curr->parent && curr->touched && curr->migrated == 1){
-                    // Do equivalent of exit here
-                    msgCTR->P();
-                    msgctr++;
-                    msgID=msgctr;
-                    msgCTR->V(); 
-                    outPktHdr.to = server;   
-                    outMailHdr.to = netname;
-                    outMailHdr.from = 0;// 1; 
-                    outMailHdr.length = 5; 
-                    outAckHdr.totalSize = 1;
-                    outAckHdr.curPack = 0;
-                    outAckHdr.messageID = msgID;
-                    outAckHdr.migrateFlag = curr->exit;
-                    // whence = machine->ReadRegister(4);
-                    outAckHdr.pageID = curr->child;
-                    outAckHdr.child = curr->parent;
-                    curr->migrated = 3;
+                memset(pageBuf, '\0', sizeof(pageBuf));
+                int k;
+                for(k = 0; filename[k] != '\0' && k < 128; k++){
+                    pageBuf[k] = filename[k];
+                }
+                for(;k < 128; k++){
+                    pageBuf[k]='\0';
+                }
+                mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                //postOffice->SendThings(mail, 1);
+                postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+                delete mail;
+                message = postOffice->GrabMessage(1);
+                curNode = message->head;
+                curMail = curNode->cur;
+                int parent = curMail->ackHdr.pageID;
+                for(curr = root; curr != NULL; curr = curr->next){
+                    if(parent == curr->parent && curr->touched && curr->migrated == 1){
+                        // Do equivalent of exit here
+                        msgCTR->P();
+                        msgctr++;
+                        msgID=msgctr;
+                        msgCTR->V(); 
+                        outPktHdr.to = server;   
+                        outMailHdr.to = netname;
+                        outMailHdr.from = 0;// 1; 
+                        outMailHdr.length = 5; 
+                        outAckHdr.totalSize = 1;
+                        outAckHdr.curPack = 0;
+                        outAckHdr.messageID = msgID;
+                        outAckHdr.migrateFlag = curr->exit;
+                        // whence = machine->ReadRegister(4);
+                        outAckHdr.pageID = curr->child;
+                        outAckHdr.child = curr->parent;
+                        curr->migrated = 3;
 
-                    // Right now I am just passing in the buffer from one message to another, this might
-                    // need to change to deep copying it over to a new buffer due to bad things happening... No you don't the deep copy happens
-                    // inside the mail packet.
+                        // Right now I am just passing in the buffer from one message to another, this might
+                        // need to change to deep copying it over to a new buffer due to bad things happening... No you don't the deep copy happens
+                        // inside the mail packet.
 
-                    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-                    postOffice->SendThings(mail, 0);
+                        mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                        postOffice->SendThings(mail, 0);
+                    }
                 }
             }
 
-            forking->V();
+//            forking->V();
 
 
         }
@@ -1068,7 +1101,7 @@ void migrationHandler(){
                 curFTN = curFTN->next;
             }
             // curFTN->next = new(std::nothrow) ForeignThreadNode(oldPID, migspace->pid);
-            fprintf(stderr, "oldPID: %d\n", oldPID);
+            //fprintf(stderr, "oldPID: %d\n", oldPID);
             // mig->migrate = true;
 
             mig->migrate = 1;
