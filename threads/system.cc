@@ -467,6 +467,7 @@ void Pager(int clientMachNum){
             activeClientList[from]++; 
             activeClientListSem->V();*/
             int found = diskBitMap->Find();
+            fprintf(stderr, "allocated %d\n", found);
             msgCTR->P();
             msgctr++;
             msgID=msgctr;
@@ -501,6 +502,7 @@ void Pager(int clientMachNum){
         } else if(curMail->mailHdr.length == 3) {
             // ASSERT(false);
             diskBitMap->Clear(curMail->ackHdr.pageID);
+            fprintf(stderr, "clearing: %d\n", curMail->ackHdr.pageID);
 /***            activeClientListSem->P();
             activeClientList[curMail->pktHdr.from]--;
             activeClientListSem->V();
@@ -1163,7 +1165,7 @@ Initialize(int argc, char **argv)
     chillBrother = new(std::nothrow) Semaphore("chillBrother", 1);
     execing = new(std::nothrow) Semaphore("execing", 1);
     forkexecing = new(std::nothrow) Semaphore("forkexecing", 1);
-    
+
     
 
     for(int i = 0; i < NumPhysPages; i++){

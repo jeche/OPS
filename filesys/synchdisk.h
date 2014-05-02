@@ -29,7 +29,9 @@ class SynchDisk {
     SynchDisk(char* name);    		// Initialize a synchronous disk,
 					// by initializing the raw Disk.
     ~SynchDisk();			// De-allocate the synch disk data
-    
+
+    int AllocPage();
+    void ClearPage(int page);
     void ReadSector(int sectorNumber, char* data);
     					// Read/write a disk sector, returning
     					// only once the data is actually read 

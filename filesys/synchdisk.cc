@@ -62,6 +62,8 @@ SynchDisk::~SynchDisk()
     delete semaphore;
 }
 
+
+
 //----------------------------------------------------------------------
 // SynchDisk::ReadSector
 // 	Read the contents of a disk sector into a buffer.  Return only
@@ -207,6 +209,83 @@ SynchDisk::~SynchDisk()
 //  "sectorNumber" -- the disk sector to read
 //  "data" -- the buffer to hold the contents of the disk sector
 //----------------------------------------------------------------------
+
+int
+SynchDisk::AllocPage(){
+
+    lock->Acquire();
+    PacketHeader outPktHdr;
+    MailHeader outMailHdr;
+    AckHeader outAckHdr;
+    Mail* mail;
+    int msgID;
+    int found;
+    char data[2];
+    msgCTR->P();
+    msgctr++;
+    msgID=msgctr;
+    msgCTR->V(); 
+    outPktHdr.to = server;   
+    outMailHdr.to = netname;
+    //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+    outMailHdr.from = 0;//1; 
+    // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+    outMailHdr.length = 2; // had a plus 1 here before?????????
+    outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+    outAckHdr.curPack = 0;
+    outAckHdr.messageID = msgID;
+    outAckHdr.pageID = 0;
+    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+    postOffice->SendThings(mail, 0);
+    // postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+    // delete mail;
+    // fprintf(stderr, "Write Before\n");
+    MessageNode* message = postOffice->GrabMessage(0);
+    MailNode* curNode = message->head;
+    Mail* curMail = curNode->cur;
+
+    found = curMail->ackHdr.pageID;
+    // fprintf(stderr,"allocated %d\n", found);
+    delete curNode;
+    delete message;
+    lock->Release();
+    return found;
+}
+
+void
+SynchDisk::ClearPage(int page){
+    lock->Acquire();
+    PacketHeader outPktHdr;
+    MailHeader outMailHdr;
+    AckHeader outAckHdr;
+    Mail* mail;
+    char data[3];
+    int msgID;
+    msgCTR->P();
+    msgctr++;
+    msgID=msgctr;
+    msgCTR->V(); 
+    outPktHdr.to = server;   
+    outMailHdr.to = netname;
+    //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+    outMailHdr.from = 0;//1; 
+    // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+    outMailHdr.length = 3; // had a plus 1 here before?????????
+    outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+    outAckHdr.curPack = 0;
+    outAckHdr.messageID = msgID;
+    outAckHdr.pageID = page;
+    // fprintf(stderr,"clearing %d\n", page);
+    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, data);
+    // postOffice->SendThings(mail, 0);
+    postOffice->SendThings(mail, 0);
+    // delete mail;
+    // fprintf(stderr, "Write Before\n");
+    MessageNode* message = postOffice->GrabMessage(0);
+    delete message;
+
+    lock->Release();
+}
 
 void
 SynchDisk::ReadSector(int sectorNumber, char* data)
