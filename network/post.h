@@ -170,6 +170,7 @@ class MailBox {
     HistoryNode *head;
     Thread *ackAttack;
     void* post;
+    bool isSending;
   private:
     SynchList *messages;	// A mailbox is just a list of arrived messages
     MessageNode *curmsg;

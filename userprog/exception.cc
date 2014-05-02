@@ -528,7 +528,7 @@ ExceptionHandler(ExceptionType which)
       case SyscallException:
       switch (type) {
         case SC_Halt:
-                DEBUG('a', "Shutdown, initiated by user program.\n");
+                DEBUG('j', "Shutdown, initiated by user program %d.\n", currentThread->space->pid);
                 //fprintf(stderr, "Normal Halt\n");
                 curr = root;
                 // while(curr->next !=NULL){
@@ -1497,25 +1497,11 @@ ExceptionHandler(ExceptionType which)
                 oldPID = outAckHdr.pageID;
                 fromMacher = whence;
                 toMacher = location;
-
+                // postOffice->SendThings(mail, netname);
 
                 //Right now I am just passing in the buffer from one message to another, this might
                 //need to change to deep copying it over to a new buffer due to bad things happening...
-                                msgCTR->P();
-                msgctr++;
-                msgID=msgctr;
-                msgCTR->V(); 
-                outPktHdr.to = whence;   
-                outMailHdr.to = 1;
-                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
-                outMailHdr.from = netname;//1; 
-                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
-                outMailHdr.length = 128; // had a plus 1 here before?????????
-                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
-                outAckHdr.curPack = 0;
-                outAckHdr.messageID = msgID;
-                outAckHdr.pageID = oldPID;
-                outAckHdr.migrateFlag = 3;
+
                 mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, recMail->data);
                 postOffice->SendThings(mail, netname);
                 fprintf(stderr, "Waiting on the chosen one\n");
@@ -1534,7 +1520,21 @@ ExceptionHandler(ExceptionType which)
 
 
 
-
+                msgCTR->P();
+                msgctr++;
+                msgID=msgctr;
+                msgCTR->V(); 
+                outPktHdr.to = whence;   
+                outMailHdr.to = 1;
+                //fprintf(stderr, "mailheader.to %d\n", outMailHdr.to);
+                outMailHdr.from = netname;//1; 
+                // fprintf(stderr, "add something to addrspace to denote which mailbox belongs to which process\n"); 
+                outMailHdr.length = 128; // had a plus 1 here before?????????
+                outAckHdr.totalSize = 1;// size/MaxMailSize ; 
+                outAckHdr.curPack = 0;
+                outAckHdr.messageID = msgID;
+                outAckHdr.pageID = oldPID;
+                outAckHdr.migrateFlag = 3;
 
 
                 mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);

@@ -144,7 +144,7 @@ MailBox::MailBox()
 { 
     messages = new(std::nothrow) SynchList();
     unwantedMessages = new(std::nothrow) SynchList(); 
-    
+    isSending = false;
     curmsg = NULL; // new(std::nothrow) MailNode(NULL);
     ackLock = new(std::nothrow) Lock("ackLock");
     hasAck = new(std::nothrow) Condition("hasAck");
@@ -161,6 +161,7 @@ MailBox::MailBox()
     recvThread->Fork(CompleteHelper, (int)this);
     ackAttack = new (std::nothrow) Thread("mailbox ackattack sender");
     ackAttack->Fork(AckHelper, (int)this);
+
 
 }
 
@@ -198,13 +199,15 @@ void MailBox::SendPackets(){
     for(;;){
         // Remove a message ready for sendings
         m = (Mail *)sendList->Remove();
+        isSending = true;
         // Prep to send it to the post office
         cleaner = m;
-        mailHdr = m->mailHdr;
-        pktHdr = m->pktHdr;
-        ackHdr = m->ackHdr;
+        mailHdr = cleaner->mailHdr;
+        pktHdr = cleaner->pktHdr;
+        ackHdr = cleaner->ackHdr;
         char *data = m->data;
         // GO LITTLE MESSAGE!  BE FREE!
+
         ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
         
         // Try to remove an ack.  Looking for my ack.  WHERE IS MY ACK BACK? 
@@ -216,7 +219,8 @@ void MailBox::SendPackets(){
             // sending Ack
             // fprintf(stderr, "sending fail %d, %d\n", ackHdr.curPack, ackHdr.messageID);
             ASSERT(m->ackHdr.totalSize == -1);
-            ASSERT(mailHdr.length != (unsigned)-1 && ackHdr.totalSize != -1);
+            ASSERT(mailHdr.length != (unsigned)-1);
+            ASSERT(ackHdr.totalSize != -1);
             delete m;
             ((PostOffice* )post)->Send(pktHdr, mailHdr, ackHdr, data);
             m = (Mail *) ackList->Remove();
@@ -225,7 +229,7 @@ void MailBox::SendPackets(){
             // }
         }
 
-
+        isSending = false;
         ASSERT(m->pktHdr.from == pktHdr.to && m->mailHdr.from == mailHdr.to);
         delete m;
         delete cleaner;
@@ -973,7 +977,7 @@ void PostOffice::KaputTime(){
     for(int i = 0; i < numBoxes; i++){
         mail = new(std::nothrow) Mail(pktHdr, mailHdr, ackHdr, &data); 
         mail->mailHdr.length = -1;
-        if(boxes[i].ackList->IsEmpty()){
+        if(boxes[i].ackList->IsEmpty() && boxes[i].isSending){
             boxes[i].ackList->Append((void *) mail);
         }
 

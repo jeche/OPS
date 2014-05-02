@@ -701,7 +701,30 @@ void migrationHandler(){
             FamilyNode *curr;
             for(curr = root; curr != NULL; curr = curr->next){
                 if(parent == curr->parent && curr->touched && curr->migrated == 1){
-                    
+                    // Do equivalent of exit here
+                    msgCTR->P();
+                    msgctr++;
+                    msgID=msgctr;
+                    msgCTR->V(); 
+                    outPktHdr.to = server;   
+                    outMailHdr.to = netname;
+                    outMailHdr.from = 0;// 1; 
+                    outMailHdr.length = 5; 
+                    outAckHdr.totalSize = 1;
+                    outAckHdr.curPack = 0;
+                    outAckHdr.messageID = msgID;
+                    outAckHdr.migrateFlag = curr->exit;
+                    // whence = machine->ReadRegister(4);
+                    outAckHdr.pageID = curr->child;
+                    outAckHdr.child = curr->parent;
+                    curr->migrated = 3;
+
+                    // Right now I am just passing in the buffer from one message to another, this might
+                    // need to change to deep copying it over to a new buffer due to bad things happening... No you don't the deep copy happens
+                    // inside the mail packet.
+
+                    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                    postOffice->SendThings(mail, 0);
                 }
             }
         } else if(curMail->ackHdr.migrateFlag == 0){//Server is requesting a process
@@ -1140,6 +1163,7 @@ Initialize(int argc, char **argv)
     chillBrother = new(std::nothrow) Semaphore("chillBrother", 1);
     execing = new(std::nothrow) Semaphore("execing", 1);
     forkexecing = new(std::nothrow) Semaphore("forkexecing", 1);
+    
     
 
     for(int i = 0; i < NumPhysPages; i++){

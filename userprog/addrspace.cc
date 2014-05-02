@@ -355,6 +355,7 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
         } else{
            found = diskBitMap->Find(); 
         }
+
         if(found == -1){
             numPages = i + 1;
             i = numPages + 1;
@@ -375,15 +376,19 @@ AddrSpace::AddrSpace(OpenFile *executable, int PID)
             pageTable[i].dirty = false;
             pageTable[i].readOnly = false; 
             //fprintf(stderr, "DiskPageOrig: %d\n", found);
+            chillBrother->P();
             if(diskPages[found]->getStatus() == Free){
                 //diskPages[found]->setStatus(InUse);
                 diskPages[found]->addAddr(this);
             }
             else{
+                if(diskPages[found]->getStatus() == InUse){
+                    fprintf(stderr, "Poop\n");
+                }
                 fprintf(stderr, "diskPages not correctly set up\n");
                 DEBUG('a', "Tried to use a diskPage already in use\n");
             }
-
+            chillBrother->V();
             // diskBitMap->Mark(found);
             DEBUG('a', "Initializing address space, 0x%x virtual page %d,0x%x phys page %d,\n",
                                         i*PageSize,i, found*PageSize, found);
