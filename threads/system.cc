@@ -467,7 +467,7 @@ void Pager(int clientMachNum){
             activeClientList[from]++; 
             activeClientListSem->V();*/
             int found = diskBitMap->Find();
-            fprintf(stderr, "allocated %d\n", found);
+            // fprintf(stderr, "allocated %d\n", found);
             msgCTR->P();
             msgctr++;
             msgID=msgctr;
@@ -502,7 +502,7 @@ void Pager(int clientMachNum){
         } else if(curMail->mailHdr.length == 3) {
             // ASSERT(false);
             diskBitMap->Clear(curMail->ackHdr.pageID);
-            fprintf(stderr, "clearing: %d\n", curMail->ackHdr.pageID);
+            // fprintf(stderr, "clearing: %d\n", curMail->ackHdr.pageID);
 /***            activeClientListSem->P();
             activeClientList[curMail->pktHdr.from]--;
             activeClientListSem->V();
@@ -571,9 +571,9 @@ void Pager(int clientMachNum){
             msgID=msgctr;
             msgCTR->V();
             int parent = curMail->ackHdr.child;
-            int origin = curMail->pktHdr.from;
+            int origin = clientMachNum;
             ForeignThreadNode *parentLoc;
-            for(parentLoc = foreignRoot ; parentLoc != NULL && (parent != parentLoc->origPID || origin != parentLoc->fromMach); parentLoc = parentLoc->next){}
+            for(parentLoc = foreignRoot ; parentLoc != NULL && (parent != parentLoc->origPID || origin != parentLoc->fromMach); parentLoc = parentLoc->next){ fprintf(stderr, "%d %d %d %d\n", parent, parentLoc->origPID, origin, parentLoc->fromMach);}
             ASSERT(parentLoc != NULL);
             outAckHdr.child = curMail->ackHdr.pageID;
             outPktHdr.to = parentLoc->toMach;
@@ -699,36 +699,7 @@ void migrationHandler(){
             // forking->P();
             // curr = root;
             // while
-            int parent = curMail->ackHdr.pageID;
-            FamilyNode *curr;
-            for(curr = root; curr != NULL; curr = curr->next){
-                if(parent == curr->parent && curr->touched && curr->migrated == 1){
-                    // Do equivalent of exit here
-                    msgCTR->P();
-                    msgctr++;
-                    msgID=msgctr;
-                    msgCTR->V(); 
-                    outPktHdr.to = server;   
-                    outMailHdr.to = netname;
-                    outMailHdr.from = 0;// 1; 
-                    outMailHdr.length = 5; 
-                    outAckHdr.totalSize = 1;
-                    outAckHdr.curPack = 0;
-                    outAckHdr.messageID = msgID;
-                    outAckHdr.migrateFlag = curr->exit;
-                    // whence = machine->ReadRegister(4);
-                    outAckHdr.pageID = curr->child;
-                    outAckHdr.child = curr->parent;
-                    curr->migrated = 3;
 
-                    // Right now I am just passing in the buffer from one message to another, this might
-                    // need to change to deep copying it over to a new buffer due to bad things happening... No you don't the deep copy happens
-                    // inside the mail packet.
-
-                    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
-                    postOffice->SendThings(mail, 0);
-                }
-            }
         } else if(curMail->ackHdr.migrateFlag == 0){//Server is requesting a process
 
 
@@ -838,6 +809,39 @@ void migrationHandler(){
             //postOffice->SendThings(mail, 1);
             postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
             delete mail;
+            message = postOffice->GrabMessage(1);
+            curNode = message->head;
+            curMail = curNode->cur;
+            int parent = curMail->ackHdr.pageID;
+            for(curr = root; curr != NULL; curr = curr->next){
+                if(parent == curr->parent && curr->touched && curr->migrated == 1){
+                    // Do equivalent of exit here
+                    msgCTR->P();
+                    msgctr++;
+                    msgID=msgctr;
+                    msgCTR->V(); 
+                    outPktHdr.to = server;   
+                    outMailHdr.to = netname;
+                    outMailHdr.from = 0;// 1; 
+                    outMailHdr.length = 5; 
+                    outAckHdr.totalSize = 1;
+                    outAckHdr.curPack = 0;
+                    outAckHdr.messageID = msgID;
+                    outAckHdr.migrateFlag = curr->exit;
+                    // whence = machine->ReadRegister(4);
+                    outAckHdr.pageID = curr->child;
+                    outAckHdr.child = curr->parent;
+                    curr->migrated = 3;
+
+                    // Right now I am just passing in the buffer from one message to another, this might
+                    // need to change to deep copying it over to a new buffer due to bad things happening... No you don't the deep copy happens
+                    // inside the mail packet.
+
+                    mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
+                    postOffice->SendThings(mail, 0);
+                }
+            }
+
             forking->V();
 
 
@@ -945,6 +949,7 @@ void migrationHandler(){
             outAckHdr.migrateFlag = 2;
             mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
             postOffice->Send(outPktHdr, outMailHdr, outAckHdr, mail->data);
+            fileSystem->Remove("migckpt");
             delete mail;
             // machine->Run();
             // postOffice->SendThings(mail, 1);
@@ -1190,8 +1195,8 @@ Initialize(int argc, char **argv)
     msgCTR = new(std::nothrow) Semaphore("msgCTR", 1);
     msgctr = 0;
     timeoutctr = 0;
-    timeout = new(std::nothrow) Thread("timeout");
-    timeout->Fork(TimeoutHandlerHelper, 0);
+    // timeout = new(std::nothrow) Thread("timeout");
+    // timeout->Fork(TimeoutHandlerHelper, 0);
     timer2 = new(std::nothrow) Timer(TimerInterruptHandler2, 0, randomYield);
 #endif
 
