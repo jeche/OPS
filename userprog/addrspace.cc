@@ -1268,7 +1268,7 @@ bool AddrSpace::writeBackDirty(){
                    pageBuf[q] = machine->mainMemory[i * PageSize + q];
 
                 }
-                allThreads->Mapcar((VoidFunctionPtr) ThreadPrint);
+                // allThreads->Mapcar((VoidFunctionPtr) ThreadPrint);
                 //ASSERT(false);
 
                 synchDisk->WriteSector(ramPages[i]->head->revPageTable[ramPages[i]->vPage].physicalPage, pageBuf);

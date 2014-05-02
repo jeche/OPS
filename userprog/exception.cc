@@ -238,6 +238,7 @@ HandleTLBFault(int vaddr)
 
 void CopyRegs(int k){
   int incrementPC;
+  DEBUG('j', "In Copy Regs\n");
   currentThread->RestoreUserState();
   currentThread->space->RestoreState();
   machine->WriteRegister(2, 0);
@@ -541,7 +542,7 @@ ExceptionHandler(ExceptionType which)
                 break;
         case SC_Exit:
                 //fprintf(stderr, "EXIT\n");
-                DEBUG('j', "Exit addr: %d\n", currentThread->space);
+                DEBUG('j', "Exit addr: %d\n", currentThread->space->pid);
                 forking->P();
                 //oldLevel = interrupt->SetLevel(IntOff);
                 if(currentThread->migrate == 1){
@@ -935,7 +936,7 @@ ExceptionHandler(ExceptionType which)
                 }
                 curr = root;
                 forking->P();
-                oldLevel = interrupt->SetLevel(IntOff);
+                // oldLevel = interrupt->SetLevel(IntOff);
                 pid++; // bump pid before adding kid
                 size = pid;
                 while(curr->next != NULL){
@@ -973,7 +974,7 @@ ExceptionHandler(ExceptionType which)
                   machine->WriteRegister(2, newSpacer->pid); // Write the appropriate return val for parent
                   // fprintf(stderr, "newSpacer->pid: %d\n", newSpacer->pid);
                   t->Fork(CopyRegs, (int)currentThread); // Fork child.
-                  (void) interrupt->SetLevel(oldLevel);
+                  // (void) interrupt->SetLevel(oldLevel);
                   forking->V();
 
                   //Move back maybe
@@ -1040,7 +1041,7 @@ ExceptionHandler(ExceptionType which)
                     if(numPages<=0){currentThread->RestoreUserState(); flag = 1;}
                     oldSpacer = currentThread->space;
                     newSpacer = new(std::nothrow) AddrSpace(open, numPages, currentThread->space->pid);//AddrSpace Constructer reads in the pages
-                    if(!newSpacer->enoughSpace){currentThread->RestoreUserState(); flag = 1;}
+                    if(newSpacer->enoughSpace != 1){currentThread->RestoreUserState(); flag = 1;ASSERT(false);}
                     if(flag){fprintf(stderr, "Exec Error\n");ASSERT(false);machine->WriteRegister(2, -1);forking->V();}
                     //************************************************************************************************************
                     else{
@@ -1534,7 +1535,7 @@ ExceptionHandler(ExceptionType which)
                 outAckHdr.curPack = 0;
                 outAckHdr.messageID = msgID;
                 outAckHdr.pageID = oldPID;
-                outAckHdr.migrateFlag = 3;
+                outAckHdr.migrateFlag = 0;
 
 
                 mail = new(std::nothrow) Mail(outPktHdr, outMailHdr, outAckHdr, pageBuf);
